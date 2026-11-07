@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pixel Runner • 2D Pixel Art Platformer",
-  description: "An Awwwards-inspired 2D pixel art side-scrolling platformer built with Next.js, HTML5 Canvas, and Web Audio API.",
+  title: "Kembara Dani • Perjalanan Gadis Berhijab Asal Malaysia",
+  description: "Sebuah pengalaman game 2D Pixel Art platformer bercerita tentang kembara seorang gadis berhijab asal Malaysia dari Kampung Warisan ke Puncak Kinabalu. Dibangun dengan Next.js 14, Canvas 2D, dan Web Audio API.",
 };
 
 export default function RootLayout({
@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className="dark">
+    <html lang="ms" className="dark">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>

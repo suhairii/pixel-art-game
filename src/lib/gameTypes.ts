@@ -5,6 +5,20 @@ export interface Rect {
   height: number;
 }
 
+export type DaniPoseState =
+  | "idle_1"
+  | "idle_2"
+  | "run_1"
+  | "run_2"
+  | "run_3"
+  | "run_4"
+  | "jump_takeoff"
+  | "jump_apex"
+  | "jump_fall"
+  | "land_impact"
+  | "stomp"
+  | "victory";
+
 export interface Player extends Rect {
   vx: number;
   vy: number;
@@ -12,9 +26,11 @@ export interface Player extends Rect {
   facingLeft: boolean;
   health: number;
   maxHealth: number;
-  coins: number;
+  karipapCount: number;
+  tehTarikCount: number;
   score: number;
-  state: "idle" | "run" | "jump" | "hurt";
+  pose: DaniPoseState;
+  poseTimer: number;
   invincibleTimer: number;
 }
 
@@ -25,16 +41,18 @@ export interface Enemy extends Rect {
   distance: number;
   isAlive: boolean;
   squishTimer: number;
+  enemyType: "slime" | "drone" | "stone";
 }
 
-export interface Coin extends Rect {
+export interface CollectibleItem extends Rect {
   id: number;
+  type: "karipap" | "tehTarik" | "bungaRaya";
   collected: boolean;
   floatOffset: number;
 }
 
 export interface Platform extends Rect {
-  type: "ground" | "floating" | "brick" | "hazard";
+  type: "ground" | "floating" | "bamboo" | "roof" | "granite";
 }
 
 export interface Particle {
@@ -52,12 +70,13 @@ export interface LevelData {
   id: number;
   name: string;
   subtitle: string;
-  theme: "emerald" | "neon" | "sunset";
+  locationTag: string;
+  theme: "kampung" | "klcc" | "kinabalu";
   skyGradient: [string, string];
   spawn: { x: number; y: number };
   exit: Rect;
   platforms: Platform[];
-  coins: Coin[];
+  items: CollectibleItem[];
   enemies: Enemy[];
   worldWidth: number;
 }
