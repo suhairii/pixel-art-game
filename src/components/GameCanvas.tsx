@@ -88,6 +88,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanWalk24: HTMLImageElement | null;
     gerobak24: HTMLImageElement | null;
     daniSheet: HTMLImageElement | null;
+    daniWalk24: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -96,6 +97,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanWalk24: null,
     gerobak24: null,
     daniSheet: null,
+    daniWalk24: null,
   });
 
   // Interactive Objects
@@ -164,6 +166,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const img = new Image();
         img.src = src;
         img.onload = () => resolve(img);
+        img.onerror = () => resolve(img);
+      });
+    };
+
+    const loadOptionalImage = (src: string): Promise<HTMLImageElement | null> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
       });
     };
 
@@ -175,8 +187,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/jihan_walk_24frames_transparent.png"),
       loadImage("/gerobak_animated_24frames_transparent.png"),
       loadImage("/dani_spritesheet_10poses_transparent.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet };
+      loadOptionalImage("/dani_walk_24frames_transparent.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniWalk24]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniWalk24 };
     });
   }, []);
 
@@ -361,6 +374,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         jihanWalk24: jihanWalkImg,
         gerobak24: gerobakImg,
         daniSheet: daniImg,
+        daniWalk24: daniWalkImg,
       } = imagesRef.current;
 
       // Layer 1: Background Panorama with Parallax
@@ -494,8 +508,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
-        // 1. If Jihan and walk sheet is loaded and not performing special emote:
-        if (charId === "jihan" && jihanWalkImg && !isSpecialEmote) {
+        // 1. If 24-frame walk sheet is loaded and not performing special emote:
+        const walk24Img = charId === "jihan" ? jihanWalkImg : daniWalkImg;
+        if (walk24Img && !isSpecialEmote) {
           let col = 0;
           let row = 0;
           if (isMoving) {
@@ -519,9 +534,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (pos.facingLeft) {
             ctx.translate(screenX + destW / 2, screenY);
             ctx.scale(-1, 1);
-            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            ctx.drawImage(walk24Img, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
           } else {
-            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+            ctx.drawImage(walk24Img, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
           }
           ctx.restore();
         } else {
