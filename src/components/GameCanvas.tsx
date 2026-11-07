@@ -285,16 +285,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         companion.vx = 0;
       }
 
-      // 4. Update Animations (24-Frame Walk Cycles)
+      // 4. Update Animations (24-Frame Walk Cycles with Strict Integer Pacing)
       // Active anim
       active.animTimer++;
       const isActiveMoving = Math.abs(active.vx) > 0.1;
       if (isActiveMoving) {
-        // Increment 24-frame walk timer with subframe precision for buttery fluid stepping
-        active.walkTimer += isRun ? 0.75 : 0.45;
-        active.walk24Frame = Math.floor(active.walkTimer) % 24;
-
-        active.pose = isRun ? (Math.floor(active.walkTimer / 3) % 2 === 0 ? "run_1" : "run_2") : "walk_1";
+        // Integer-locked cadence: walk advances every 2 ticks (30fps), run advances every 1 tick (60fps)
+        const walkStep = isRun ? 1 : 2;
+        if (active.animTimer % walkStep === 0) {
+          active.walk24Frame = (active.walk24Frame + 1) % 24;
+        }
+        active.walkTimer++;
+        active.pose = isRun ? (Math.floor(active.walkTimer / 6) % 2 === 0 ? "run_1" : "run_2") : "walk_1";
       } else {
         active.walkTimer = 0;
         if (isDialogueOpen) {
@@ -308,8 +310,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       companion.animTimer++;
       const isCompanionMoving = Math.abs(companion.vx) > 0.1;
       if (isCompanionMoving) {
-        companion.walkTimer += isRun ? 0.75 : 0.45;
-        companion.pose = isRun ? (Math.floor(companion.walkTimer / 3) % 2 === 0 ? "run_1" : "run_2") : "walk_1";
+        const compStep = isRun ? 1 : 2;
+        if (companion.animTimer % compStep === 0) {
+          companion.walk24Frame = (companion.walk24Frame + 1) % 24;
+        }
+        companion.walkTimer++;
+        companion.pose = isRun ? (Math.floor(companion.walkTimer / 6) % 2 === 0 ? "run_1" : "run_2") : "walk_1";
       } else {
         companion.walkTimer = 0;
         companion.pose = "idle_stand";
@@ -438,12 +444,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // Layer 4.5: Gerobak Pisang Epe & Saraba (24-Frame Micro-Animation Sheet)
       const gerobakX = 1120 - camX;
       if (gerobakImg) {
-        // 24 frames arranged in 6 cols x 4 rows
-        const gFrame = Math.floor(globalTimer / 4) % 24;
+        // 24 frames arranged in 6 cols x 4 rows with stabilized integer 210x212 grid
+        const gFrame = Math.floor(globalTimer / 3) % 24;
         const gCol = gFrame % 6;
         const gRow = Math.floor(gFrame / 6);
-        const gFrameW = 1264 / 6;
-        const gFrameH = 848 / 4;
+        const gFrameW = 210;
+        const gFrameH = 212;
         const gSx = gCol * gFrameW;
         const gSy = gRow * gFrameH;
         ctx.drawImage(gerobakImg, gSx, gSy, gFrameW, gFrameH, gerobakX, GROUND_Y - 138, 225, 150);
@@ -478,20 +484,32 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // Layer 6: Draw Characters with 24-Frame Walk Engine
       const renderCharacter = (
         charId: CharacterId,
-        pos: { x: number; y: number; vx: number; facingLeft: boolean; pose: CharacterPose; walkTimer: number },
+        pos: { x: number; y: number; vx: number; facingLeft: boolean; pose: CharacterPose; walkTimer: number; walk24Frame: number },
         isCurrentActive: boolean
       ) => {
         const isMoving = Math.abs(pos.vx) > 0.1;
         const screenX = pos.x - camX;
         const screenY = pos.y - 100;
 
-        // 1. If Jihan is walking, render with ultra-fluid 24-frame walk cycle!
-        if (charId === "jihan" && isMoving && jihanWalkImg) {
-          const frame24 = Math.floor(pos.walkTimer) % 24;
-          const col = frame24 % 6;
-          const row = Math.floor(frame24 / 6);
-          const frameW = 1264 / 6;
-          const frameH = 848 / 4;
+        // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
+        const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
+
+        // 1. If Jihan and walk sheet is loaded and not performing special emote:
+        if (charId === "jihan" && jihanWalkImg && !isSpecialEmote) {
+          let col = 0;
+          let row = 0;
+          if (isMoving) {
+            const frame24 = pos.walk24Frame % 24;
+            col = frame24 % 6;
+            row = Math.floor(frame24 / 6);
+          } else {
+            // Idle stance from 24-frame sheet (frame 0) with seamless scale and zero popping
+            col = 0;
+            row = 0;
+          }
+
+          const frameW = 210;
+          const frameH = 212;
           const sx = col * frameW;
           const sy = row * frameH;
           const destW = 86;
@@ -517,8 +535,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           let row = 0;
 
           if (isMoving) {
-            // Fluid stepping cycle from poses
-            const stepPhase = Math.floor(pos.walkTimer * 0.8) % 3;
+            // Smooth 3-frame stepping cadence for 10-pose fallback
+            const stepPhase = Math.floor(pos.walkTimer / 6) % 3;
             col = stepPhase === 0 ? 2 : stepPhase === 1 ? 3 : 4;
             row = 0;
           } else {
