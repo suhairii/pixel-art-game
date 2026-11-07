@@ -9,52 +9,70 @@ interface TouchControlsProps {
 }
 
 export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentInput }) => {
+  const triggerHaptic = () => {
+    if (typeof window !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(12);
+      } catch {
+        // Ignore if not permitted
+      }
+    }
+  };
+
   return (
-    <div className="flex w-full max-w-4xl mx-auto items-center justify-between px-2 py-2 select-none touch-none">
-      {/* Directional Pad */}
-      <div className="flex items-center gap-3">
+    <div className="w-full max-w-4xl mx-auto flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 select-none touch-none">
+      {/* Directional Pad (Left & Right) */}
+      <div className="flex items-center gap-2.5 sm:gap-3.5">
         <button
           type="button"
           onTouchStart={(e) => {
             e.preventDefault();
+            triggerHaptic();
             onInput({ ...currentInput, left: true });
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             onInput({ ...currentInput, left: false });
           }}
-          onMouseDown={() => onInput({ ...currentInput, left: true })}
+          onMouseDown={() => {
+            triggerHaptic();
+            onInput({ ...currentInput, left: true });
+          }}
           onMouseUp={() => onInput({ ...currentInput, left: false })}
-          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer ${
+          className={`w-13 h-13 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-100 active:scale-90 cursor-pointer shadow-md ${
             currentInput.left
-              ? "bg-rose-500/30 border border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.4)]"
-              : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 backdrop-blur-md"
+              ? "bg-rose-500/40 border-2 border-rose-400 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.5)]"
+              : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 backdrop-blur-md"
           }`}
-          aria-label="Move Left"
+          aria-label="Lari Kiri"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-6 h-6 sm:w-7 sm:h-7" />
         </button>
 
         <button
           type="button"
           onTouchStart={(e) => {
             e.preventDefault();
+            triggerHaptic();
             onInput({ ...currentInput, right: true });
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             onInput({ ...currentInput, right: false });
           }}
-          onMouseDown={() => onInput({ ...currentInput, right: true })}
+          onMouseDown={() => {
+            triggerHaptic();
+            onInput({ ...currentInput, right: true });
+          }}
           onMouseUp={() => onInput({ ...currentInput, right: false })}
-          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer ${
+          className={`w-13 h-13 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-100 active:scale-90 cursor-pointer shadow-md ${
             currentInput.right
-              ? "bg-rose-500/30 border border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.4)]"
-              : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 backdrop-blur-md"
+              ? "bg-rose-500/40 border-2 border-rose-400 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.5)]"
+              : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 backdrop-blur-md"
           }`}
-          aria-label="Move Right"
+          aria-label="Lari Kanan"
         >
-          <ArrowRight className="w-6 h-6" />
+          <ArrowRight className="w-6 h-6 sm:w-7 sm:h-7" />
         </button>
       </div>
 
@@ -64,22 +82,26 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentIn
           type="button"
           onTouchStart={(e) => {
             e.preventDefault();
+            triggerHaptic();
             onInput({ ...currentInput, jump: true });
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             onInput({ ...currentInput, jump: false });
           }}
-          onMouseDown={() => onInput({ ...currentInput, jump: true })}
+          onMouseDown={() => {
+            triggerHaptic();
+            onInput({ ...currentInput, jump: true });
+          }}
           onMouseUp={() => onInput({ ...currentInput, jump: false })}
-          className={`w-24 h-14 sm:w-28 sm:h-16 rounded-2xl flex items-center justify-center gap-2 font-mono text-xs uppercase font-bold tracking-wider transition-all duration-150 active:scale-95 cursor-pointer ${
+          className={`w-24 h-13 sm:w-32 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 sm:gap-2 font-mono text-xs sm:text-sm uppercase font-bold tracking-wider transition-all duration-100 active:scale-90 cursor-pointer shadow-md ${
             currentInput.jump
-              ? "bg-rose-500/30 border border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.4)]"
-              : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 backdrop-blur-md"
+              ? "bg-rose-500/40 border-2 border-rose-400 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.5)]"
+              : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 backdrop-blur-md"
           }`}
-          aria-label="Jump"
+          aria-label="Lompat"
         >
-          <ArrowUp className="w-5 h-5" />
+          <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" />
           <span>LOMPAT</span>
         </button>
       </div>

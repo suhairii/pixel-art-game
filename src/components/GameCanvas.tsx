@@ -620,12 +620,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   }, [isPaused, scanlines, onLevelComplete, onGameOver, onStatsUpdate, virtualInput]);
 
   return (
-    <div className="relative w-full aspect-[16/9] max-w-4xl mx-auto overflow-hidden rounded-[1.5rem] bg-black ring-1 ring-white/10 shadow-2xl">
+    <div className="relative w-full aspect-[16/9] overflow-hidden bg-black select-none touch-none">
       <canvas
         ref={canvasRef}
         width={VIEW_W}
         height={VIEW_H}
-        className="w-full h-full object-contain block select-none"
+        onTouchStart={(e) => e.preventDefault()}
+        className="w-full h-full object-contain block select-none touch-none"
         style={{
           imageRendering: "pixelated",
         }}
