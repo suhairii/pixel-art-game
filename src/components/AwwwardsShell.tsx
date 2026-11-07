@@ -222,7 +222,7 @@ export const AwwwardsShell: React.FC = () => {
 
                   <button
                     onClick={startJourney}
-                    className="group inline-flex items-center gap-2.5 px-6 py-2.5 sm:px-8 sm:py-3.5 rounded-full bg-rose-500 text-white font-semibold text-xs sm:text-sm tracking-wider uppercase shadow-[0_0_25px_rgba(244,63,94,0.4)] hover:bg-rose-400 transition-all duration-200 active:scale-95 cursor-pointer"
+                    className="group inline-flex items-center justify-center gap-2.5 px-7 py-3 sm:px-9 sm:py-3.5 rounded-full bg-rose-500 text-white font-bold text-xs sm:text-sm tracking-wider uppercase shadow-[0_0_30px_rgba(244,63,94,0.5)] hover:bg-rose-400 transition-all duration-150 active:scale-95 cursor-pointer"
                   >
                     <span>MAIN SEKARANG</span>
                     <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-0.5 transition-transform duration-150">
@@ -248,7 +248,7 @@ export const AwwwardsShell: React.FC = () => {
 
                   <button
                     onClick={restartCurrentLevel}
-                    className="group inline-flex items-center gap-2.5 px-6 py-2.5 sm:px-7 sm:py-3 rounded-full bg-white text-black font-semibold text-xs tracking-wider uppercase hover:bg-white/90 transition-all duration-150 active:scale-95 shadow-lg cursor-pointer"
+                    className="group inline-flex items-center justify-center gap-2.5 px-7 py-3 rounded-full bg-white text-black font-bold text-xs tracking-wider uppercase hover:bg-white/90 transition-all duration-150 active:scale-95 shadow-xl cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-45 transition-transform" />
                     <span>CUBA LAGI</span>
@@ -260,7 +260,7 @@ export const AwwwardsShell: React.FC = () => {
         </div>
       </main>
 
-      {/* OVERLAY: FULL-VIEWPORT STORY CUTSCENES (Never squished inside canvas!) */}
+      {/* OVERLAY: FULL-VIEWPORT STORY CUTSCENES */}
       <AnimatePresence>
         {gameState === "story_intro" && (
           <StoryDialog
@@ -281,8 +281,8 @@ export const AwwwardsShell: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* ON-SCREEN BUTTONS (Docked thumb-friendly bottom bar) */}
-      <footer className="relative z-10 w-full max-w-4xl py-1">
+      {/* ON-SCREEN BUTTONS (Chunky Arcade D-pad & Jump Button) */}
+      <footer className="relative z-10 w-full max-w-4xl py-1 sm:py-2">
         <TouchControls onInput={setVirtualInput} currentInput={virtualInput} />
       </footer>
     </div>

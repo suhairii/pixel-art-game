@@ -9,100 +9,120 @@ interface TouchControlsProps {
 }
 
 export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentInput }) => {
-  const triggerHaptic = () => {
+  const triggerHaptic = (pattern: number = 15) => {
     if (typeof window !== "undefined" && "vibrate" in navigator) {
       try {
-        navigator.vibrate(12);
+        navigator.vibrate(pattern);
       } catch {
-        // Ignore if not permitted
+        // Ignore if vibration not permitted
       }
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 select-none touch-none">
-      {/* Directional Pad (Left & Right) */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5">
+    <div className="w-full max-w-4xl mx-auto flex items-center justify-between px-2 sm:px-6 py-2 select-none touch-none">
+      {/* Directional Pad (Left & Right Buttons - Extra Large & Chunky) */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Tombol Kiri */}
         <button
           type="button"
           onTouchStart={(e) => {
             e.preventDefault();
-            triggerHaptic();
+            triggerHaptic(15);
             onInput({ ...currentInput, left: true });
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             onInput({ ...currentInput, left: false });
           }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, left: false });
+          }}
           onMouseDown={() => {
-            triggerHaptic();
+            triggerHaptic(15);
             onInput({ ...currentInput, left: true });
           }}
           onMouseUp={() => onInput({ ...currentInput, left: false })}
-          className={`w-13 h-13 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-100 active:scale-90 cursor-pointer shadow-md ${
+          onMouseLeave={() => onInput({ ...currentInput, left: false })}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`w-18 h-18 sm:w-22 sm:h-22 min-w-[72px] min-h-[72px] sm:min-w-[88px] sm:min-h-[88px] rounded-2xl sm:rounded-3xl flex items-center justify-center transition-transform duration-75 active:scale-90 cursor-pointer shadow-xl ${
             currentInput.left
-              ? "bg-rose-500/40 border-2 border-rose-400 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.5)]"
-              : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 backdrop-blur-md"
+              ? "bg-rose-500 border-2 border-rose-300 text-white shadow-[0_0_25px_rgba(244,63,94,0.7)] scale-95"
+              : "bg-white/10 hover:bg-white/20 active:bg-rose-500/30 border-2 border-white/20 text-white backdrop-blur-lg"
           }`}
           aria-label="Lari Kiri"
         >
-          <ArrowLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+          <ArrowLeft className="w-8 h-8 sm:w-10 sm:h-10 pointer-events-none drop-shadow" />
         </button>
 
+        {/* Tombol Kanan */}
         <button
           type="button"
           onTouchStart={(e) => {
             e.preventDefault();
-            triggerHaptic();
+            triggerHaptic(15);
             onInput({ ...currentInput, right: true });
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             onInput({ ...currentInput, right: false });
           }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, right: false });
+          }}
           onMouseDown={() => {
-            triggerHaptic();
+            triggerHaptic(15);
             onInput({ ...currentInput, right: true });
           }}
           onMouseUp={() => onInput({ ...currentInput, right: false })}
-          className={`w-13 h-13 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-100 active:scale-90 cursor-pointer shadow-md ${
+          onMouseLeave={() => onInput({ ...currentInput, right: false })}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`w-18 h-18 sm:w-22 sm:h-22 min-w-[72px] min-h-[72px] sm:min-w-[88px] sm:min-h-[88px] rounded-2xl sm:rounded-3xl flex items-center justify-center transition-transform duration-75 active:scale-90 cursor-pointer shadow-xl ${
             currentInput.right
-              ? "bg-rose-500/40 border-2 border-rose-400 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.5)]"
-              : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 backdrop-blur-md"
+              ? "bg-rose-500 border-2 border-rose-300 text-white shadow-[0_0_25px_rgba(244,63,94,0.7)] scale-95"
+              : "bg-white/10 hover:bg-white/20 active:bg-rose-500/30 border-2 border-white/20 text-white backdrop-blur-lg"
           }`}
           aria-label="Lari Kanan"
         >
-          <ArrowRight className="w-6 h-6 sm:w-7 sm:h-7" />
+          <ArrowRight className="w-8 h-8 sm:w-10 sm:h-10 pointer-events-none drop-shadow" />
         </button>
       </div>
 
-      {/* Action / Jump Button */}
+      {/* Action / Jump Button (Extra Wide & Ergonomic for Right Thumb) */}
       <div>
         <button
           type="button"
           onTouchStart={(e) => {
             e.preventDefault();
-            triggerHaptic();
+            triggerHaptic(20);
             onInput({ ...currentInput, jump: true });
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             onInput({ ...currentInput, jump: false });
           }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, jump: false });
+          }}
           onMouseDown={() => {
-            triggerHaptic();
+            triggerHaptic(20);
             onInput({ ...currentInput, jump: true });
           }}
           onMouseUp={() => onInput({ ...currentInput, jump: false })}
-          className={`w-24 h-13 sm:w-32 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 sm:gap-2 font-mono text-xs sm:text-sm uppercase font-bold tracking-wider transition-all duration-100 active:scale-90 cursor-pointer shadow-md ${
+          onMouseLeave={() => onInput({ ...currentInput, jump: false })}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`w-32 h-18 sm:w-44 sm:h-22 min-w-[128px] min-h-[72px] sm:min-w-[176px] sm:min-h-[88px] rounded-2xl sm:rounded-3xl flex items-center justify-center gap-2 font-mono text-sm sm:text-base uppercase font-black tracking-widest transition-transform duration-75 active:scale-90 cursor-pointer shadow-xl ${
             currentInput.jump
-              ? "bg-rose-500/40 border-2 border-rose-400 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.5)]"
-              : "bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 backdrop-blur-md"
+              ? "bg-rose-500 border-2 border-rose-300 text-white shadow-[0_0_30px_rgba(244,63,94,0.8)] scale-95"
+              : "bg-gradient-to-r from-rose-500/30 to-rose-600/30 hover:from-rose-500/40 hover:to-rose-600/40 border-2 border-rose-400/60 text-white backdrop-blur-lg"
           }`}
           aria-label="Lompat"
         >
-          <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span>LOMPAT</span>
+          <ArrowUp className="w-6 h-6 sm:w-8 sm:h-8 pointer-events-none drop-shadow" />
+          <span className="pointer-events-none drop-shadow">LOMPAT</span>
         </button>
       </div>
     </div>
