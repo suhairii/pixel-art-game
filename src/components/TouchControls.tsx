@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, ArrowRight, Zap, MessageCircle, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Zap, MessageCircle, Users, Sword } from "lucide-react";
 
 interface TouchControlsProps {
-  onInput: (input: { left: boolean; right: boolean; run: boolean; interact: boolean }) => void;
-  currentInput: { left: boolean; right: boolean; run: boolean; interact: boolean };
+  onInput: (input: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean }) => void;
+  currentInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean };
   onSwitchCharacter: () => void;
   activeCharacter: "jihan" | "dani";
 }
@@ -114,8 +114,8 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
         </button>
       </div>
 
-      {/* Action Buttons (Interact [E] & Switch [Q]) */}
-      <div className="flex items-center gap-2.5 sm:gap-4">
+      {/* Action Buttons (Attack [J / Space], Interact [E] & Switch [Q]) */}
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Switch Character Button */}
         <button
           type="button"
@@ -123,7 +123,7 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
             triggerHaptic(20);
             onSwitchCharacter();
           }}
-          className={`px-3 sm:px-4 py-2.5 sm:py-3.5 rounded-2xl border text-xs font-mono font-bold flex items-center gap-2 transition-all active:scale-90 cursor-pointer shadow-lg ${
+          className={`px-2.5 sm:px-4 py-2 sm:py-3.5 rounded-2xl border text-xs font-mono font-bold flex items-center gap-1.5 sm:gap-2 transition-all active:scale-90 cursor-pointer shadow-lg ${
             isJihan
               ? "bg-amber-500/20 border-amber-400/50 text-amber-200"
               : "bg-rose-500/20 border-rose-400/50 text-rose-200"
@@ -131,8 +131,43 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
           title="Ganti Karakter (Q)"
         >
           <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span className="hidden sm:inline">KONTROL: {isJihan ? "JIHAN" : "DANI"}</span>
+          <span className="hidden md:inline">KONTROL: {isJihan ? "JIHAN" : "DANI"}</span>
           <span className="text-[10px] opacity-60 font-mono">[Q]</span>
+        </button>
+
+        {/* Combat / Attack Button [Space / J / F] */}
+        <button
+          type="button"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            triggerHaptic(25);
+            onInput({ ...currentInput, attack: true });
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, attack: false });
+          }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, attack: false });
+          }}
+          onMouseDown={() => {
+            triggerHaptic(25);
+            onInput({ ...currentInput, attack: true });
+          }}
+          onMouseUp={() => onInput({ ...currentInput, attack: false })}
+          onMouseLeave={() => onInput({ ...currentInput, attack: false })}
+          className={`h-14 px-3.5 sm:h-18 sm:px-6 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1.5 sm:gap-2 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
+            currentInput.attack
+              ? "bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 scale-95 shadow-[0_0_25px_rgba(244,63,94,0.9)]"
+              : "bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border border-rose-400/40 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+          }`}
+          aria-label="Serang [J / Spasi]"
+          title="Serang [J / Spasi]"
+        >
+          <Sword className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="hidden xs:inline">SERANG</span>
+          <span className="text-[10px] opacity-75 font-mono">[J]</span>
         </button>
 
         {/* Interact / Action Button [E] */}
@@ -147,12 +182,17 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
             e.preventDefault();
             onInput({ ...currentInput, interact: false });
           }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, interact: false });
+          }}
           onMouseDown={() => {
             triggerHaptic(25);
             onInput({ ...currentInput, interact: true });
           }}
           onMouseUp={() => onInput({ ...currentInput, interact: false })}
-          className={`h-16 px-5 sm:h-20 sm:px-7 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-2 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
+          onMouseLeave={() => onInput({ ...currentInput, interact: false })}
+          className={`h-14 px-3.5 sm:h-18 sm:px-6 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1.5 sm:gap-2 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
             currentInput.interact
               ? "bg-gradient-to-r from-amber-400 to-orange-500 scale-95 shadow-[0_0_30px_rgba(245,158,11,0.8)]"
               : "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 border border-amber-300/40"
@@ -160,7 +200,8 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
           aria-label="Interaksi [E]"
         >
           <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span>INTERAKSI [E]</span>
+          <span className="hidden xs:inline">INTERAKSI</span>
+          <span className="text-[10px] opacity-75 font-mono">[E]</span>
         </button>
       </div>
     </div>

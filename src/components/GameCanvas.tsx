@@ -15,7 +15,7 @@ interface GameCanvasProps {
   onTriggerDialogue: (dialogueId: string) => void;
   isDialogueOpen: boolean;
   scanlines: boolean;
-  virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean };
+  virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean };
 }
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({
@@ -29,12 +29,71 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Keyboard input state
-  const keysRef = useRef<{ left: boolean; right: boolean; run: boolean; interact: boolean }>({
+  const keysRef = useRef<{ left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean }>({
     left: false,
     right: false,
     run: false,
     interact: false,
+    attack: false,
   });
+
+  // Combat Mode State & Training Dummies
+  const attackStateRef = useRef<{
+    isAttacking: boolean;
+    frame: number;
+    timer: number;
+    hasHit: boolean;
+    slashPlayed: boolean;
+  }>({
+    isAttacking: false,
+    frame: 0,
+    timer: 0,
+    hasHit: false,
+    slashPlayed: false,
+  });
+
+  const screenShakeRef = useRef(0);
+  const comboRef = useRef({ count: 0, timer: 0 });
+
+  const trainingDummiesRef = useRef<
+    {
+      id: string;
+      x: number;
+      y: number;
+      shake: number;
+      hitTimer: number;
+      label: string;
+    }[]
+  >([
+    { id: "dummy_losari", x: 620, y: GROUND_Y, shake: 0, hitTimer: 0, label: "Dummy Latihan Silat" },
+    { id: "dummy_warkop", x: 1530, y: GROUND_Y, shake: 0, hitTimer: 0, label: "Sasaran Kayu Daeng Rauf" },
+  ]);
+
+  const combatParticlesRef = useRef<
+    {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      color: string;
+      size: number;
+      life: number;
+      maxLife: number;
+    }[]
+  >([]);
+
+  const damageNumbersRef = useRef<
+    {
+      x: number;
+      y: number;
+      text: string;
+      color: string;
+      life: number;
+      maxLife: number;
+      vy: number;
+      isCrit: boolean;
+    }[]
+  >([]);
 
   // Player positions & states
   const jihanPosRef = useRef({
@@ -86,6 +145,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     micro: HTMLImageElement | null;
     jihanSheet: HTMLImageElement | null;
     jihanMaster: HTMLImageElement | null;
+    jihanCombat: HTMLImageElement | null;
     gerobak24: HTMLImageElement | null;
     daniSheet: HTMLImageElement | null;
     daniMaster: HTMLImageElement | null;
@@ -95,6 +155,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     micro: null,
     jihanSheet: null,
     jihanMaster: null,
+    jihanCombat: null,
     gerobak24: null,
     daniSheet: null,
     daniMaster: null,
@@ -185,11 +246,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/env_micro_animations_cats_clouds_transparent.png"),
       loadImage("/jihan_spritesheet_10poses_transparent.png"),
       loadImage("/jihan_master_sheet_8frames.png"),
+      loadImage("/jihan_combat_sheet.png"),
       loadImage("/gerobak_animated_24frames_transparent.png"),
       loadImage("/dani_spritesheet_10poses_transparent.png"),
       loadImage("/dani_master_sheet_8frames.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, gerobak24, daniSheet, daniMaster]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, gerobak24, daniSheet, daniMaster };
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster };
     });
   }, []);
 
@@ -209,6 +271,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (e.key === "e" || e.key === "E" || e.key === "Enter") {
         keysRef.current.interact = true;
       }
+      if (e.key === " " || e.key === "j" || e.key === "J" || e.key === "f" || e.key === "F") {
+        keysRef.current.attack = true;
+      }
       if (e.key === "q" || e.key === "Q") {
         onSwitchCharacter();
         sound.playInteract();
@@ -227,6 +292,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       if (e.key === "e" || e.key === "E" || e.key === "Enter") {
         keysRef.current.interact = false;
+      }
+      if (e.key === " " || e.key === "j" || e.key === "J" || e.key === "f" || e.key === "F") {
+        keysRef.current.attack = false;
       }
     };
 
@@ -257,14 +325,116 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const isRight = keysRef.current.right || virtualInput.right;
       const isRun = keysRef.current.run || virtualInput.run;
       const isInteract = keysRef.current.interact || virtualInput.interact;
+      const isAttackInput = keysRef.current.attack || virtualInput.attack;
+      const attack = attackStateRef.current;
 
       // 2. Active & Companion Reference
       const isJihanActive = activeCharacter === "jihan";
       const active = isJihanActive ? jihanPosRef.current : daniPosRef.current;
       const companion = isJihanActive ? daniPosRef.current : jihanPosRef.current;
 
+      // 2.5 Combat State Machine
+      if (isAttackInput && !attack.isAttacking && !isDialogueOpen) {
+        attack.isAttacking = true;
+        attack.frame = 0;
+        attack.timer = 0;
+        attack.hasHit = false;
+        attack.slashPlayed = false;
+      }
+
+      if (attack.isAttacking) {
+        attack.timer++;
+
+        // Play sword slash whoosh sound at frame 2
+        if (attack.frame === 2 && !attack.slashPlayed) {
+          attack.slashPlayed = true;
+          sound.playSwordSlash();
+        }
+
+        // Lunge forward slightly during crescent slash (frames 2 to 4)
+        if (attack.frame >= 2 && attack.frame <= 4) {
+          const lungeSpeed = isJihanActive ? 1.6 : 1.2;
+          active.x += active.facingLeft ? -lungeSpeed : lungeSpeed;
+          active.x = Math.max(100, Math.min(WORLD_W - 120, active.x));
+        }
+
+        // Hit detection on crescent slash (frames 3 & 4)
+        if ((attack.frame === 3 || attack.frame === 4) && !attack.hasHit) {
+          for (const dummy of trainingDummiesRef.current) {
+            const facingMatches = active.facingLeft ? dummy.x <= active.x : dummy.x >= active.x;
+            const dist = Math.abs(active.x - dummy.x);
+            if (dist < 95 && facingMatches) {
+              attack.hasHit = true;
+              sound.playHitImpact();
+              screenShakeRef.current = 6;
+              dummy.shake = 16;
+              dummy.hitTimer = 22;
+
+              // Combo increment
+              comboRef.current.count++;
+              comboRef.current.timer = 120; // 2 seconds window
+
+              // Damage calculation with critical strike chance
+              const isCrit = Math.random() < 0.35;
+              const baseDmg = isCrit ? Math.floor(85 + Math.random() * 45) : Math.floor(40 + Math.random() * 25);
+              const text = isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`;
+              const color = isCrit ? "#f59e0b" : "#38bdf8";
+
+              // Floating damage popup
+              damageNumbersRef.current.push({
+                x: dummy.x + (Math.random() - 0.5) * 20,
+                y: dummy.y - 85,
+                text,
+                color,
+                life: 35,
+                maxLife: 35,
+                vy: -1.8,
+                isCrit,
+              });
+
+              // Hit spark burst particles
+              for (let p = 0; p < 14; p++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 5;
+                combatParticlesRef.current.push({
+                  x: dummy.x,
+                  y: dummy.y - 50 + (Math.random() - 0.5) * 20,
+                  vx: Math.cos(angle) * speed + (active.facingLeft ? -2 : 2),
+                  vy: Math.sin(angle) * speed - 1.5,
+                  color: p % 3 === 0 ? "#38bdf8" : p % 3 === 1 ? "#fbbf24" : "#ffffff",
+                  size: 2 + Math.random() * 3,
+                  life: 18 + Math.floor(Math.random() * 10),
+                  maxLife: 28,
+                });
+              }
+              break;
+            }
+          }
+        }
+
+        // Advance frames every 3 ticks
+        if (attack.timer % 3 === 0) {
+          attack.frame++;
+          if (attack.frame >= 8) {
+            attack.isAttacking = false;
+            attack.frame = 0;
+            attack.timer = 0;
+            attack.hasHit = false;
+            attack.slashPlayed = false;
+          }
+        }
+      }
+
+      // Combo cooldown decay
+      if (comboRef.current.timer > 0) {
+        comboRef.current.timer--;
+        if (comboRef.current.timer <= 0) {
+          comboRef.current.count = 0;
+        }
+      }
+
       // 3. Update Active Character Physics
-      if (!isDialogueOpen) {
+      if (!isDialogueOpen && !attack.isAttacking) {
         const speed = isRun ? 4.8 : 2.6;
         if (isLeft && !isRight) {
           active.vx = -speed;
@@ -372,10 +542,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         micro: microImg,
         jihanSheet: jihanImg,
         jihanMaster: jihanMasterImg,
+        jihanCombat: jihanCombatImg,
         gerobak24: gerobakImg,
         daniSheet: daniImg,
         daniMaster: daniMasterImg,
       } = imagesRef.current;
+
+      // Screen shake calculation
+      if (screenShakeRef.current > 0) {
+        screenShakeRef.current *= 0.86;
+        if (screenShakeRef.current < 0.2) screenShakeRef.current = 0;
+      }
+      const shakeX = (Math.random() - 0.5) * screenShakeRef.current;
+      const shakeY = (Math.random() - 0.5) * screenShakeRef.current;
+
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
 
       // Layer 1: Background Panorama with Parallax
       if (bgImg) {
@@ -495,7 +677,94 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.drawImage(microImg, sx, 30, 200, 200, catX, GROUND_Y - 45, 52, 52);
       }
 
-      // Layer 6: Draw Characters with 24-Frame Walk Engine
+      // Layer 5.5: Training Dummies / Targets (Sparring Posts at Pantai Losari)
+      trainingDummiesRef.current.forEach((dummy) => {
+        const dummyScreenX = dummy.x - camX;
+        if (dummyScreenX < -100 || dummyScreenX > CANVAS_W + 100) return;
+
+        // Wobble physics on hit
+        if (dummy.hitTimer > 0) {
+          dummy.hitTimer--;
+          dummy.shake *= 0.88;
+        } else {
+          dummy.shake = 0;
+        }
+        const wobbleAngle = (Math.sin(globalTimer * 0.9) * dummy.shake * Math.PI) / 180;
+
+        ctx.save();
+        ctx.translate(dummyScreenX, dummy.y);
+        ctx.rotate(wobbleAngle);
+
+        // Ground shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(0, 10, 24, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Wooden cross-base
+        ctx.fillStyle = "#3e2723";
+        ctx.fillRect(-22, 2, 44, 8);
+        ctx.fillStyle = "#5d4037";
+        ctx.fillRect(-18, 0, 36, 4);
+
+        // Main trunk (wooden pillar / pole)
+        const isHitFlash = dummy.hitTimer > 14;
+        ctx.fillStyle = isHitFlash ? "#fef08a" : "#795548";
+        ctx.fillRect(-8, -85, 16, 90);
+        ctx.fillStyle = isHitFlash ? "#ffffff" : "#8d6e63";
+        ctx.fillRect(-6, -85, 5, 90);
+
+        // Straw rope bindings around chest & waist
+        ctx.fillStyle = isHitFlash ? "#ffffff" : "#d97706";
+        ctx.fillRect(-10, -68, 20, 14);
+        ctx.fillRect(-10, -42, 20, 10);
+        ctx.fillStyle = "#fef3c7";
+        ctx.fillRect(-9, -65, 18, 2);
+        ctx.fillRect(-9, -60, 18, 2);
+        ctx.fillRect(-9, -39, 18, 2);
+
+        // Wooden sparring cross-arms
+        ctx.fillStyle = isHitFlash ? "#fef08a" : "#5d4037";
+        ctx.fillRect(-32, -62, 64, 8);
+        ctx.fillStyle = "#8d6e63";
+        ctx.fillRect(-30, -62, 60, 3);
+        // Red cloth wraps on arm tips
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(-32, -62, 7, 8);
+        ctx.fillRect(25, -62, 7, 8);
+
+        // Head target (straw helmet)
+        ctx.fillStyle = isHitFlash ? "#ffffff" : "#b45309";
+        ctx.beginPath();
+        ctx.arc(0, -96, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#d97706";
+        ctx.beginPath();
+        ctx.arc(-2, -98, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bullseye Emblem
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath();
+        ctx.arc(0, -55, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(0, -55, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // Label above dummy
+        ctx.save();
+        ctx.font = "bold 10px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.fillText(dummy.label, dummyScreenX, dummy.y - 120);
+        ctx.restore();
+      });
+
+      // Layer 6: Draw Characters with 24-Frame Walk Engine & Combat Mode
       const renderCharacter = (
         charId: CharacterId,
         pos: { x: number; y: number; vx: number; facingLeft: boolean; pose: CharacterPose; walkTimer: number; walk24Frame: number; animTimer: number },
@@ -504,106 +773,155 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const isMoving = Math.abs(pos.vx) > 0.1;
         const screenX = pos.x - camX;
         const screenY = pos.y - 100;
+        const isAttacking = isCurrentActive && attackStateRef.current.isAttacking;
 
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
-        // 1. Unified Master 8-frame sheet rendering for Jihan & Dani (IDLE, WALK, RUN)
-        const masterImg = charId === "dani" ? daniMasterImg : jihanMasterImg;
-        if (masterImg && !isSpecialEmote) {
-          let col = 0;
-          let row = 0;
-          if (isMoving) {
-            if (isRun) {
-              row = 2; // RUN (8 frames)
-              col = Math.floor(pos.walkTimer / 3) % 8;
+        // 0. Dedicated Combat Mode Animation
+        if (isAttacking && charId === "jihan" && jihanCombatImg) {
+          const col = Math.min(7, Math.max(0, attackStateRef.current.frame));
+          const frameW = 240;
+          const frameH = 240;
+          const sx = col * 240;
+          const sy = 0;
+          const destW = 135;
+          const destH = 135;
+
+          // Align foot precisely to pos.y + 18 (ground level)
+          const footYOffset = destH * (229 / 240);
+          const drawY = pos.y + 18 - footYOffset;
+
+          ctx.save();
+          if (pos.facingLeft) {
+            ctx.translate(screenX, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(jihanCombatImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+          } else {
+            ctx.drawImage(jihanCombatImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+          }
+          ctx.restore();
+        } else if (isAttacking && charId === "dani") {
+          // Dani combat martial arts leap using master sheet
+          const masterImg = daniMasterImg || daniImg;
+          if (masterImg) {
+            const col = (attackStateRef.current.frame * 2) % 8;
+            const row = 2; // Leap / strike row
+            const frameW = 210;
+            const frameH = 212;
+            const sx = col * frameW;
+            const sy = row * frameH;
+            const destW = 86;
+            const destH = 118;
+
+            ctx.save();
+            if (pos.facingLeft) {
+              ctx.translate(screenX + destW / 2, screenY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(masterImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
             } else {
-              row = 1; // WALK (8 frames)
-              col = Math.floor(pos.walkTimer / 6) % 8;
+              ctx.drawImage(masterImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
             }
-          } else {
-            row = 0; // IDLE (8 frames breathing & blink)
-            col = Math.floor(pos.animTimer / 8) % 8;
+            ctx.restore();
           }
-
-          const frameW = 210;
-          const frameH = 212;
-          const sx = col * frameW;
-          const sy = row * frameH;
-          const destW = 86;
-          const destH = 118;
-
-          ctx.save();
-          if (pos.facingLeft) {
-            ctx.translate(screenX + destW / 2, screenY);
-            ctx.scale(-1, 1);
-            ctx.drawImage(masterImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
-          } else {
-            ctx.drawImage(masterImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
-          }
-          ctx.restore();
         } else {
-          // Standard 10-pose sheet rendering
-          const sheet = charId === "jihan" ? jihanImg : daniImg;
-          if (!sheet) return;
-
-          const frameW = 275.2;
-          const frameH = 384;
-          let col = 0;
-          let row = 0;
-
-          if (isMoving) {
-            // Smooth 3-frame stepping cadence for 10-pose fallback
-            const stepPhase = Math.floor(pos.walkTimer / 6) % 3;
-            col = stepPhase === 0 ? 2 : stepPhase === 1 ? 3 : 4;
-            row = 0;
-          } else {
-            switch (pos.pose) {
-              case "idle_stand":
-                col = 0;
-                row = 0;
-                break;
-              case "idle_look":
-                col = 1;
-                row = 0;
-                break;
-              case "run_1":
-                col = 0;
-                row = 1;
-                break;
-              case "run_2":
-                col = 1;
-                row = 1;
-                break;
-              case "inspect":
-                col = 2;
-                row = 1;
-                break;
-              case "talk":
-                col = 3;
-                row = 1;
-                break;
-              case "happy":
-                col = 4;
-                row = 1;
-                break;
+          // 1. Unified Master 8-frame sheet rendering for Jihan & Dani (IDLE, WALK, RUN)
+          const masterImg = charId === "dani" ? daniMasterImg : jihanMasterImg;
+          if (masterImg && !isSpecialEmote) {
+            let col = 0;
+            let row = 0;
+            if (isMoving) {
+              if (isRun) {
+                row = 2; // RUN (8 frames)
+                col = Math.floor(pos.walkTimer / 3) % 8;
+              } else {
+                row = 1; // WALK (8 frames)
+                col = Math.floor(pos.walkTimer / 6) % 8;
+              }
+            } else {
+              row = 0; // IDLE (8 frames breathing & blink)
+              col = Math.floor(pos.animTimer / 8) % 8;
             }
-          }
 
-          const sx = col * frameW;
-          const sy = row * frameH;
-          const destW = 86;
-          const destH = 118;
+            const frameW = 210;
+            const frameH = 212;
+            const sx = col * frameW;
+            const sy = row * frameH;
+            const destW = 86;
+            const destH = 118;
 
-          ctx.save();
-          if (pos.facingLeft) {
-            ctx.translate(screenX + destW / 2, screenY);
-            ctx.scale(-1, 1);
-            ctx.drawImage(sheet, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            ctx.save();
+            if (pos.facingLeft) {
+              ctx.translate(screenX + destW / 2, screenY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(masterImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            } else {
+              ctx.drawImage(masterImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+            }
+            ctx.restore();
           } else {
-            ctx.drawImage(sheet, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+            // Standard 10-pose sheet rendering
+            const sheet = charId === "jihan" ? jihanImg : daniImg;
+            if (!sheet) return;
+
+            const frameW = 275.2;
+            const frameH = 384;
+            let col = 0;
+            let row = 0;
+
+            if (isMoving) {
+              // Smooth 3-frame stepping cadence for 10-pose fallback
+              const stepPhase = Math.floor(pos.walkTimer / 6) % 3;
+              col = stepPhase === 0 ? 2 : stepPhase === 1 ? 3 : 4;
+              row = 0;
+            } else {
+              switch (pos.pose) {
+                case "idle_stand":
+                  col = 0;
+                  row = 0;
+                  break;
+                case "idle_look":
+                  col = 1;
+                  row = 0;
+                  break;
+                case "run_1":
+                  col = 0;
+                  row = 1;
+                  break;
+                case "run_2":
+                  col = 1;
+                  row = 1;
+                  break;
+                case "inspect":
+                  col = 2;
+                  row = 1;
+                  break;
+                case "talk":
+                  col = 3;
+                  row = 1;
+                  break;
+                case "happy":
+                  col = 4;
+                  row = 1;
+                  break;
+              }
+            }
+
+            const sx = col * frameW;
+            const sy = row * frameH;
+            const destW = 86;
+            const destH = 118;
+
+            ctx.save();
+            if (pos.facingLeft) {
+              ctx.translate(screenX + destW / 2, screenY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(sheet, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            } else {
+              ctx.drawImage(sheet, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+            }
+            ctx.restore();
           }
-          ctx.restore();
         }
 
         // Active Player Glow Indicator
@@ -627,6 +945,55 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       } else {
         renderCharacter("jihan", jihanPosRef.current, false);
         renderCharacter("dani", daniPosRef.current, true);
+      }
+
+      // Layer 6.5: Combat Hit Spark Particles
+      for (let i = combatParticlesRef.current.length - 1; i >= 0; i--) {
+        const p = combatParticlesRef.current[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.22; // subtle gravity
+        p.vx *= 0.94;
+        p.life--;
+
+        if (p.life <= 0) {
+          combatParticlesRef.current.splice(i, 1);
+          continue;
+        }
+
+        const pScreenX = p.x - camX;
+        const alpha = p.life / p.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(pScreenX - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        ctx.restore();
+      }
+
+      // Layer 6.7: Floating Damage Popups
+      for (let i = damageNumbersRef.current.length - 1; i >= 0; i--) {
+        const d = damageNumbersRef.current[i];
+        d.y += d.vy;
+        d.vy *= 0.95;
+        d.life--;
+
+        if (d.life <= 0) {
+          damageNumbersRef.current.splice(i, 1);
+          continue;
+        }
+
+        const dScreenX = d.x - camX;
+        const alpha = Math.min(1, d.life / 10);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = d.isCrit ? "bold 16px 'Courier New', monospace" : "bold 13px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.strokeText(d.text, dScreenX, d.y);
+        ctx.fillStyle = d.color;
+        ctx.fillText(d.text, dScreenX, d.y);
+        ctx.restore();
       }
 
       // Layer 7: Interactive Balloon Prompts
@@ -687,6 +1054,37 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
+      // Layer 7.5: Combo Counter HUD (Top Right Screen)
+      if (comboRef.current.count > 0) {
+        ctx.save();
+        const combo = comboRef.current.count;
+        const comboText = `⚔️ ${combo} HIT COMBO!`;
+        const comboX = CANVAS_W - 130;
+        const comboY = 40;
+
+        // Pulse scale
+        const scale = 1 + Math.sin(globalTimer * 0.4) * 0.06;
+        ctx.translate(comboX, comboY);
+        ctx.scale(scale, scale);
+
+        // Pill background
+        ctx.fillStyle = "rgba(10, 15, 26, 0.88)";
+        ctx.strokeStyle = combo >= 10 ? "#ef4444" : combo >= 5 ? "#f59e0b" : "#38bdf8";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-65, -16, 130, 32, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        // Text
+        ctx.font = "bold 12px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = combo >= 10 ? "#f87171" : combo >= 5 ? "#fbbf24" : "#7dd3fc";
+        ctx.fillText(comboText, 0, 0);
+        ctx.restore();
+      }
+
       // Layer 8: Retro Vignette & Atmosphere
       const vignette = ctx.createRadialGradient(
         CANVAS_W / 2,
@@ -701,7 +1099,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-      // Layer 9: Scanlines (if enabled)
+      // Restore camera screen shake
+      ctx.restore();
+
+      // Layer 9: Scanlines (if enabled, fixed CRT screen overlay)
       if (scanlines) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
         for (let y = 0; y < CANVAS_H; y += 3) {

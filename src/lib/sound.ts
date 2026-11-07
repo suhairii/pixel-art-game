@@ -235,6 +235,62 @@ class SoundSystem {
       osc.stop(now + 0.22);
     } catch {}
   }
+
+  // Sword slash whoosh
+  public playSwordSlash() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(850, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.15);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {}
+  }
+
+  // Hit impact clink / metallic strike
+  public playHitImpact() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc1.type = "triangle";
+      osc1.frequency.setValueAtTime(1250, now);
+      osc1.frequency.exponentialRampToValueAtTime(220, now + 0.18);
+
+      osc2.type = "square";
+      osc2.frequency.setValueAtTime(480, now);
+      osc2.frequency.exponentialRampToValueAtTime(80, now + 0.14);
+
+      gain.gain.setValueAtTime(0.26, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.18);
+      osc2.stop(now + 0.18);
+    } catch {}
+  }
 }
 
 export const sound = new SoundSystem();

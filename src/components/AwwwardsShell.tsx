@@ -47,11 +47,13 @@ export const AwwwardsShell: React.FC = () => {
     right: boolean;
     run: boolean;
     interact: boolean;
+    attack: boolean;
   }>({
     left: false,
     right: false,
     run: false,
     interact: false,
+    attack: false,
   });
 
   const handleSoundToggle = () => {
@@ -281,7 +283,7 @@ export const AwwwardsShell: React.FC = () => {
                   </div>
 
                   <p className="text-[10px] sm:text-[11px] font-mono text-white/50 tracking-wider">
-                    Gunakan [A/D] atau Panah untuk Berjalan • [Shift] Lari • [E] Interaksi • [Q] Ganti Karakter
+                    Gunakan [A/D] Berjalan • [Shift] Lari • [E] Interaksi • [Q] Ganti Karakter • [Spasi/J/F] Serang (Combat Mode)
                   </p>
                 </motion.div>
               )}
