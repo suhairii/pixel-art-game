@@ -88,7 +88,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanWalk24: HTMLImageElement | null;
     gerobak24: HTMLImageElement | null;
     daniSheet: HTMLImageElement | null;
-    daniWalk24: HTMLImageElement | null;
+    daniMaster: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -97,7 +97,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanWalk24: null,
     gerobak24: null,
     daniSheet: null,
-    daniWalk24: null,
+    daniMaster: null,
   });
 
   // Interactive Objects
@@ -187,9 +187,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/jihan_walk_24frames_transparent.png"),
       loadImage("/gerobak_animated_24frames_transparent.png"),
       loadImage("/dani_spritesheet_10poses_transparent.png"),
-      loadOptionalImage("/dani_walk_24frames_transparent.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniWalk24]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniWalk24 };
+      loadImage("/dani_master_sheet_8frames.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniMaster]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniMaster };
     });
   }, []);
 
@@ -374,7 +374,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         jihanWalk24: jihanWalkImg,
         gerobak24: gerobakImg,
         daniSheet: daniImg,
-        daniWalk24: daniWalkImg,
+        daniMaster: daniMasterImg,
       } = imagesRef.current;
 
       // Layer 1: Background Panorama with Parallax
@@ -498,7 +498,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // Layer 6: Draw Characters with 24-Frame Walk Engine
       const renderCharacter = (
         charId: CharacterId,
-        pos: { x: number; y: number; vx: number; facingLeft: boolean; pose: CharacterPose; walkTimer: number; walk24Frame: number },
+        pos: { x: number; y: number; vx: number; facingLeft: boolean; pose: CharacterPose; walkTimer: number; walk24Frame: number; animTimer: number },
         isCurrentActive: boolean
       ) => {
         const isMoving = Math.abs(pos.vx) > 0.1;
@@ -508,9 +508,41 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
-        // 1. If 24-frame walk sheet is loaded and not performing special emote:
-        const walk24Img = charId === "jihan" ? jihanWalkImg : daniWalkImg;
-        if (walk24Img && !isSpecialEmote) {
+        // 1. Dani rendering with master 8-frame sheet (IDLE, WALK, RUN)
+        if (charId === "dani" && daniMasterImg && !isSpecialEmote) {
+          let col = 0;
+          let row = 0;
+          if (isMoving) {
+            if (isRun) {
+              row = 2; // RUN
+              col = Math.floor(pos.walkTimer / 3) % 8;
+            } else {
+              row = 1; // WALK
+              col = Math.floor(pos.walkTimer / 6) % 8;
+            }
+          } else {
+            row = 0; // IDLE breathing & blink cycle
+            col = Math.floor(pos.animTimer / 8) % 8;
+          }
+
+          const frameW = 210;
+          const frameH = 212;
+          const sx = col * frameW;
+          const sy = row * frameH;
+          const destW = 86;
+          const destH = 118;
+
+          ctx.save();
+          if (pos.facingLeft) {
+            ctx.translate(screenX + destW / 2, screenY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(daniMasterImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+          } else {
+            ctx.drawImage(daniMasterImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+          }
+          ctx.restore();
+        } else if (charId === "jihan" && jihanWalkImg && !isSpecialEmote) {
+          // Jihan rendering with 24-frame walk sheet
           let col = 0;
           let row = 0;
           if (isMoving) {
@@ -518,7 +550,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             col = frame24 % 6;
             row = Math.floor(frame24 / 6);
           } else {
-            // Idle stance from 24-frame sheet (frame 0) with seamless scale and zero popping
             col = 0;
             row = 0;
           }
@@ -534,9 +565,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (pos.facingLeft) {
             ctx.translate(screenX + destW / 2, screenY);
             ctx.scale(-1, 1);
-            ctx.drawImage(walk24Img, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
           } else {
-            ctx.drawImage(walk24Img, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
           }
           ctx.restore();
         } else {
