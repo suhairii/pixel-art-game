@@ -149,6 +149,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     gerobak24: HTMLImageElement | null;
     daniSheet: HTMLImageElement | null;
     daniMaster: HTMLImageElement | null;
+    daniCombat: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -159,6 +160,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     gerobak24: null,
     daniSheet: null,
     daniMaster: null,
+    daniCombat: null,
   });
 
   // Interactive Objects
@@ -250,8 +252,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/gerobak_animated_24frames_transparent.png"),
       loadImage("/dani_spritesheet_10poses_transparent.png"),
       loadImage("/dani_master_sheet_8frames.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster };
+      loadImage("/dani_combat_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat };
     });
   }, []);
 
@@ -546,6 +549,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         gerobak24: gerobakImg,
         daniSheet: daniImg,
         daniMaster: daniMasterImg,
+        daniCombat: daniCombatImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -801,8 +805,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.drawImage(jihanCombatImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
           }
           ctx.restore();
+        } else if (isAttacking && charId === "dani" && daniCombatImg) {
+          const col = Math.min(7, Math.max(0, attackStateRef.current.frame));
+          const frameW = 240;
+          const frameH = 240;
+          const sx = col * 240;
+          const sy = 0;
+          const destW = 135;
+          const destH = 135;
+
+          // Align foot precisely to pos.y + 18 (ground level)
+          // foot_y in 240 frame is 225px
+          const footYOffset = destH * (225 / 240);
+          const drawY = pos.y + 18 - footYOffset;
+
+          ctx.save();
+          if (pos.facingLeft) {
+            ctx.translate(screenX, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(daniCombatImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+          } else {
+            ctx.drawImage(daniCombatImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+          }
+          ctx.restore();
         } else if (isAttacking && charId === "dani") {
-          // Dani combat martial arts leap using master sheet
+          // Fallback if combat image still loading
           const masterImg = daniMasterImg || daniImg;
           if (masterImg) {
             const col = (attackStateRef.current.frame * 2) % 8;
