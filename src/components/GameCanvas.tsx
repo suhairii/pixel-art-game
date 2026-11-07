@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef } from "react";
 import { sound } from "@/lib/sound";
 import { CharacterId, CharacterPose, InteractiveObject, CloudLayer, FlyingBird } from "@/lib/gameTypes";
 
@@ -45,6 +45,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     pose: "idle_stand" as CharacterPose,
     animFrame: 0,
     animTimer: 0,
+    walkTimer: 0,
+    walk24Frame: 0,
   });
 
   const daniPosRef = useRef({
@@ -55,9 +57,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     pose: "idle_stand" as CharacterPose,
     animFrame: 0,
     animTimer: 0,
+    walkTimer: 0,
+    walk24Frame: 0,
   });
 
   const cameraXRef = useRef(0);
+  const globalTimerRef = useRef(0);
 
   // Ambient elements
   const cloudsRef = useRef<CloudLayer[]>([
@@ -73,7 +78,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   ]);
 
   const catAnimRef = useRef({ frame: 0, timer: 0 });
-  const lanternAnimRef = useRef({ frame: 0, timer: 0 });
 
   // Loaded images cache
   const imagesRef = useRef<{
@@ -81,12 +85,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     props: HTMLImageElement | null;
     micro: HTMLImageElement | null;
     jihanSheet: HTMLImageElement | null;
+    jihanWalk24: HTMLImageElement | null;
+    gerobak24: HTMLImageElement | null;
     daniSheet: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
     micro: null,
     jihanSheet: null,
+    jihanWalk24: null,
+    gerobak24: null,
     daniSheet: null,
   });
 
@@ -164,9 +172,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/env_sulawesi_street_props_transparent.png"),
       loadImage("/env_micro_animations_cats_clouds_transparent.png"),
       loadImage("/jihan_spritesheet_10poses_transparent.png"),
+      loadImage("/jihan_walk_24frames_transparent.png"),
+      loadImage("/gerobak_animated_24frames_transparent.png"),
       loadImage("/dani_spritesheet_10poses_transparent.png"),
-    ]).then(([bg, props, micro, jihanSheet, daniSheet]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, daniSheet };
+    ]).then(([bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet };
     });
   }, []);
 
@@ -226,6 +236,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (!ctx) return;
 
       ctx.imageSmoothingEnabled = false;
+      globalTimerRef.current++;
+      const globalTimer = globalTimerRef.current;
 
       // 1. Combine inputs
       const isLeft = keysRef.current.left || virtualInput.left;
@@ -255,7 +267,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         active.x = Math.max(100, Math.min(WORLD_W - 120, active.x));
 
         // Companion follow logic (gently follows active player)
-        const targetDist = active.facingLeft ? 65 : -65;
+        const targetDist = active.facingLeft ? 70 : -70;
         const targetX = active.x + targetDist;
         const compDiff = targetX - companion.x;
 
@@ -273,24 +285,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         companion.vx = 0;
       }
 
-      // 4. Update Animations
+      // 4. Update Animations (24-Frame Walk Cycles)
       // Active anim
       active.animTimer++;
-      if (Math.abs(active.vx) > 0.1) {
-        const frameInterval = isRun ? 6 : 9;
-        if (active.animTimer % frameInterval === 0) {
-          active.animFrame = (active.animFrame + 1) % (isRun ? 2 : 3);
-        }
-        active.pose = isRun
-          ? active.animFrame === 0
-            ? "run_1"
-            : "run_2"
-          : active.animFrame === 0
-          ? "walk_1"
-          : active.animFrame === 1
-          ? "walk_2"
-          : "walk_3";
+      const isActiveMoving = Math.abs(active.vx) > 0.1;
+      if (isActiveMoving) {
+        // Increment 24-frame walk timer with subframe precision for buttery fluid stepping
+        active.walkTimer += isRun ? 0.75 : 0.45;
+        active.walk24Frame = Math.floor(active.walkTimer) % 24;
+
+        active.pose = isRun ? (Math.floor(active.walkTimer / 3) % 2 === 0 ? "run_1" : "run_2") : "walk_1";
       } else {
+        active.walkTimer = 0;
         if (isDialogueOpen) {
           active.pose = "talk";
         } else {
@@ -300,33 +306,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Companion anim
       companion.animTimer++;
-      if (Math.abs(companion.vx) > 0.1) {
-        const frameInterval = isRun ? 6 : 9;
-        if (companion.animTimer % frameInterval === 0) {
-          companion.animFrame = (companion.animFrame + 1) % (isRun ? 2 : 3);
-        }
-        companion.pose = isRun
-          ? companion.animFrame === 0
-            ? "run_1"
-            : "run_2"
-          : companion.animFrame === 0
-          ? "walk_1"
-          : companion.animFrame === 1
-          ? "walk_2"
-          : "walk_3";
+      const isCompanionMoving = Math.abs(companion.vx) > 0.1;
+      if (isCompanionMoving) {
+        companion.walkTimer += isRun ? 0.75 : 0.45;
+        companion.pose = isRun ? (Math.floor(companion.walkTimer / 3) % 2 === 0 ? "run_1" : "run_2") : "walk_1";
       } else {
+        companion.walkTimer = 0;
         companion.pose = "idle_stand";
       }
 
       // 5. Update Ambient Animations
       catAnimRef.current.timer++;
-      if (catAnimRef.current.timer % 30 === 0) {
+      if (catAnimRef.current.timer % 24 === 0) {
         catAnimRef.current.frame = (catAnimRef.current.frame + 1) % 6;
-      }
-
-      lanternAnimRef.current.timer++;
-      if (lanternAnimRef.current.timer % 18 === 0) {
-        lanternAnimRef.current.frame = (lanternAnimRef.current.frame + 1) % 3;
       }
 
       // Update birds
@@ -355,7 +347,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // 7. DRAW SCENE
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-      const { bg: bgImg, props: propsImg, micro: microImg, jihanSheet: jihanImg, daniSheet: daniImg } = imagesRef.current;
+      const {
+        bg: bgImg,
+        props: propsImg,
+        micro: microImg,
+        jihanSheet: jihanImg,
+        jihanWalk24: jihanWalkImg,
+        gerobak24: gerobakImg,
+        daniSheet: daniImg,
+      } = imagesRef.current;
 
       // Layer 1: Background Panorama with Parallax
       if (bgImg) {
@@ -410,10 +410,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const warkopX = 1600 - camX;
         ctx.drawImage(propsImg, 680, 20, 340, 300, warkopX, GROUND_Y - 145, 180, 160);
 
-        // Gerobak Pisang Epe & Saraba
-        const gerobakX = 1120 - camX;
-        ctx.drawImage(propsImg, 140, 50, 480, 270, gerobakX, GROUND_Y - 120, 210, 130);
-
         // Rustic Wooden Bench
         const benchX = 750 - camX;
         ctx.drawImage(propsImg, 350, 350, 280, 170, benchX, GROUND_Y - 65, 120, 75);
@@ -439,6 +435,38 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.drawImage(propsImg, 550, 530, 160, 220, plant2X, GROUND_Y - 55, 45, 60);
       }
 
+      // Layer 4.5: Gerobak Pisang Epe & Saraba (24-Frame Micro-Animation Sheet)
+      const gerobakX = 1120 - camX;
+      if (gerobakImg) {
+        // 24 frames arranged in 6 cols x 4 rows
+        const gFrame = Math.floor(globalTimer / 4) % 24;
+        const gCol = gFrame % 6;
+        const gRow = Math.floor(gFrame / 6);
+        const gFrameW = 1264 / 6;
+        const gFrameH = 848 / 4;
+        const gSx = gCol * gFrameW;
+        const gSy = gRow * gFrameH;
+        ctx.drawImage(gerobakImg, gSx, gSy, gFrameW, gFrameH, gerobakX, GROUND_Y - 138, 225, 150);
+
+        // Subtle warm glow halo around the lantern
+        ctx.save();
+        const lanternGlow = ctx.createRadialGradient(
+          gerobakX + 45,
+          GROUND_Y - 85,
+          10,
+          gerobakX + 45,
+          GROUND_Y - 85,
+          45
+        );
+        lanternGlow.addColorStop(0, "rgba(251, 191, 36, 0.25)");
+        lanternGlow.addColorStop(1, "rgba(251, 191, 36, 0)");
+        ctx.fillStyle = lanternGlow;
+        ctx.fillRect(gerobakX, GROUND_Y - 130, 90, 90);
+        ctx.restore();
+      } else if (propsImg) {
+        ctx.drawImage(propsImg, 140, 50, 480, 270, gerobakX, GROUND_Y - 120, 210, 130);
+      }
+
       // Layer 5: Kucing Oyen (Interactive Cat)
       if (microImg) {
         const catX = 430 - camX;
@@ -447,85 +475,105 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.drawImage(microImg, sx, 30, 200, 200, catX, GROUND_Y - 45, 52, 52);
       }
 
-      // Layer 6: Draw Characters (Dani & Jihan)
-      const drawCharacterSprite = (
-        sheet: HTMLImageElement | null,
-        pos: { x: number; y: number; facingLeft: boolean; pose: CharacterPose },
+      // Layer 6: Draw Characters with 24-Frame Walk Engine
+      const renderCharacter = (
+        charId: CharacterId,
+        pos: { x: number; y: number; vx: number; facingLeft: boolean; pose: CharacterPose; walkTimer: number },
         isCurrentActive: boolean
       ) => {
-        if (!sheet) return;
-
+        const isMoving = Math.abs(pos.vx) > 0.1;
         const screenX = pos.x - camX;
         const screenY = pos.y - 100;
-        const frameW = 275.2;
-        const frameH = 384;
 
-        // Pose to Column & Row mapping
-        let col = 0;
-        let row = 0;
+        // 1. If Jihan is walking, render with ultra-fluid 24-frame walk cycle!
+        if (charId === "jihan" && isMoving && jihanWalkImg) {
+          const frame24 = Math.floor(pos.walkTimer) % 24;
+          const col = frame24 % 6;
+          const row = Math.floor(frame24 / 6);
+          const frameW = 1264 / 6;
+          const frameH = 848 / 4;
+          const sx = col * frameW;
+          const sy = row * frameH;
+          const destW = 86;
+          const destH = 118;
 
-        switch (pos.pose) {
-          case "idle_stand":
-            col = 0;
-            row = 0;
-            break;
-          case "idle_look":
-            col = 1;
-            row = 0;
-            break;
-          case "walk_1":
-            col = 2;
-            row = 0;
-            break;
-          case "walk_2":
-            col = 3;
-            row = 0;
-            break;
-          case "walk_3":
-            col = 4;
-            row = 0;
-            break;
-          case "run_1":
-            col = 0;
-            row = 1;
-            break;
-          case "run_2":
-            col = 1;
-            row = 1;
-            break;
-          case "inspect":
-            col = 2;
-            row = 1;
-            break;
-          case "talk":
-            col = 3;
-            row = 1;
-            break;
-          case "happy":
-            col = 4;
-            row = 1;
-            break;
-        }
-
-        const sx = col * frameW;
-        const sy = row * frameH;
-        const destW = 86;
-        const destH = 118;
-
-        ctx.save();
-        if (pos.facingLeft) {
-          ctx.translate(screenX + destW / 2, screenY);
-          ctx.scale(-1, 1);
-          ctx.drawImage(sheet, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+          ctx.save();
+          if (pos.facingLeft) {
+            ctx.translate(screenX + destW / 2, screenY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+          } else {
+            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+          }
+          ctx.restore();
         } else {
-          ctx.drawImage(sheet, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+          // Standard 10-pose sheet rendering
+          const sheet = charId === "jihan" ? jihanImg : daniImg;
+          if (!sheet) return;
+
+          const frameW = 275.2;
+          const frameH = 384;
+          let col = 0;
+          let row = 0;
+
+          if (isMoving) {
+            // Fluid stepping cycle from poses
+            const stepPhase = Math.floor(pos.walkTimer * 0.8) % 3;
+            col = stepPhase === 0 ? 2 : stepPhase === 1 ? 3 : 4;
+            row = 0;
+          } else {
+            switch (pos.pose) {
+              case "idle_stand":
+                col = 0;
+                row = 0;
+                break;
+              case "idle_look":
+                col = 1;
+                row = 0;
+                break;
+              case "run_1":
+                col = 0;
+                row = 1;
+                break;
+              case "run_2":
+                col = 1;
+                row = 1;
+                break;
+              case "inspect":
+                col = 2;
+                row = 1;
+                break;
+              case "talk":
+                col = 3;
+                row = 1;
+                break;
+              case "happy":
+                col = 4;
+                row = 1;
+                break;
+            }
+          }
+
+          const sx = col * frameW;
+          const sy = row * frameH;
+          const destW = 86;
+          const destH = 118;
+
+          ctx.save();
+          if (pos.facingLeft) {
+            ctx.translate(screenX + destW / 2, screenY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(sheet, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+          } else {
+            ctx.drawImage(sheet, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+          }
+          ctx.restore();
         }
-        ctx.restore();
 
         // Active Player Glow Indicator
         if (isCurrentActive) {
           ctx.save();
-          ctx.fillStyle = "rgba(251, 191, 36, 0.85)";
+          ctx.fillStyle = charId === "jihan" ? "rgba(251, 191, 36, 0.9)" : "rgba(244, 63, 94, 0.9)";
           ctx.beginPath();
           ctx.moveTo(screenX, screenY - 14);
           ctx.lineTo(screenX - 6, screenY - 24);
@@ -538,11 +586,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Draw companion first, then active on top
       if (isJihanActive) {
-        drawCharacterSprite(daniImg, daniPosRef.current, false);
-        drawCharacterSprite(jihanImg, jihanPosRef.current, true);
+        renderCharacter("dani", daniPosRef.current, false);
+        renderCharacter("jihan", jihanPosRef.current, true);
       } else {
-        drawCharacterSprite(jihanImg, jihanPosRef.current, false);
-        drawCharacterSprite(daniImg, daniPosRef.current, true);
+        renderCharacter("jihan", jihanPosRef.current, false);
+        renderCharacter("dani", daniPosRef.current, true);
       }
 
       // Layer 7: Interactive Balloon Prompts
