@@ -1,115 +1,114 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Volume2,
   VolumeX,
   Tv,
-  RotateCcw,
   Play,
   Heart,
+  Sparkles,
+  Compass,
+  Users,
   Coffee,
-  Cookie,
+  CheckCircle,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { GameCanvas } from "./GameCanvas";
 import { TouchControls } from "./TouchControls";
 import { StoryDialog } from "./StoryDialog";
-import { LEVELS } from "@/lib/levels";
-import { DANI_STORY } from "@/lib/storyData";
-import { DaniPoseState } from "@/lib/gameTypes";
+import { DIALOGUES } from "@/lib/storyData";
+import { CharacterId, DialogueChoice } from "@/lib/gameTypes";
 
 export const AwwwardsShell: React.FC = () => {
-  const [gameState, setGameState] = useState<"menu" | "story_intro" | "playing" | "story_clear" | "game_over">("menu");
-  const [currentLevel, setCurrentLevel] = useState<number>(0);
+  const [gameState, setGameState] = useState<"menu" | "playing">("menu");
+  const [activeCharacter, setActiveCharacter] = useState<CharacterId>("jihan");
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [scanlines, setScanlines] = useState<boolean>(true);
-  const [virtualInput, setVirtualInput] = useState<{ left: boolean; right: boolean; jump: boolean }>({
+  const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
+
+  // Discovery / Quest Tracker
+  const [discoveries, setDiscoveries] = useState<{
+    catPetted: boolean;
+    pisangEaten: boolean;
+    warkopVisited: boolean;
+    sunsetWatched: boolean;
+  }>({
+    catPetted: false,
+    pisangEaten: false,
+    warkopVisited: false,
+    sunsetWatched: false,
+  });
+
+  const [virtualInput, setVirtualInput] = useState<{
+    left: boolean;
+    right: boolean;
+    run: boolean;
+    interact: boolean;
+  }>({
     left: false,
     right: false,
-    jump: false,
+    run: false,
+    interact: false,
   });
-
-  const [stats, setStats] = useState({
-    health: 3,
-    karipapCount: 0,
-    tehTarikCount: 0,
-    score: 0,
-    levelName: LEVELS[0].name,
-    fps: 60,
-    currentPose: "idle_1" as DaniPoseState,
-  });
-
-  const [highScore, setHighScore] = useState<number>(0);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("dani_journey_highscore");
-      if (saved) setHighScore(parseInt(saved, 10));
-    }
-  }, []);
 
   const handleSoundToggle = () => {
     const enabled = sound.toggleMute();
     setIsMuted(!enabled);
   };
 
+  const handleSwitchCharacter = () => {
+    setActiveCharacter((prev) => (prev === "jihan" ? "dani" : "jihan"));
+    sound.playInteract();
+  };
+
   const startJourney = () => {
-    setGameState("story_intro");
-    sound.playCoin();
-  };
-
-  const proceedFromStoryIntro = () => {
     setGameState("playing");
+    setCurrentDialogueId("intro_1");
     sound.playCoin();
   };
 
-  const handleLevelComplete = (nextLevel: number, totalScore: number) => {
-    if (totalScore > highScore) {
-      setHighScore(totalScore);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("dani_journey_highscore", totalScore.toString());
-      }
+  const handleTriggerDialogue = (dialogueId: string) => {
+    setCurrentDialogueId(dialogueId);
+    if (dialogueId === "cat_1") {
+      setDiscoveries((prev) => ({ ...prev, catPetted: true }));
+    } else if (dialogueId === "pisang_1") {
+      setDiscoveries((prev) => ({ ...prev, pisangEaten: true }));
+    } else if (dialogueId === "warkop_1") {
+      setDiscoveries((prev) => ({ ...prev, warkopVisited: true }));
+    } else if (dialogueId === "bench_1" || dialogueId === "pier_1") {
+      setDiscoveries((prev) => ({ ...prev, sunsetWatched: true }));
     }
-    setGameState("story_clear");
   };
 
-  const proceedFromStoryClear = () => {
-    const nextLvl = currentLevel + 1;
-    if (nextLvl < LEVELS.length) {
-      setCurrentLevel(nextLvl);
-      setGameState("story_intro");
+  const handleDialogNext = (nextId?: string) => {
+    if (nextId) {
+      setCurrentDialogueId(nextId);
     } else {
-      setCurrentLevel(0);
-      setGameState("menu");
+      setCurrentDialogueId(null);
     }
-    sound.playCoin();
   };
 
-  const handleGameOver = (finalScore: number) => {
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("dani_journey_highscore", finalScore.toString());
-      }
+  const handleDialogChoice = (choice: DialogueChoice) => {
+    if (choice.nextId) {
+      setCurrentDialogueId(choice.nextId);
+    } else {
+      setCurrentDialogueId(null);
     }
-    setGameState("game_over");
   };
 
-  const restartCurrentLevel = () => {
-    setGameState("playing");
-    sound.playCoin();
-  };
+  const currentDialogue = currentDialogueId ? DIALOGUES[currentDialogueId] || null : null;
+  const isJihan = activeCharacter === "jihan";
 
-  const currentStory = DANI_STORY[currentLevel] || DANI_STORY[0];
+  const totalDiscoveries = Object.values(discoveries).filter(Boolean).length;
 
   return (
-    <div className="relative min-h-[100dvh] w-full bg-[#050608] text-white selection:bg-rose-500/30 selection:text-rose-200 overflow-x-hidden flex flex-col justify-between items-center p-2 sm:p-4 font-sans select-none">
+    <div className="relative min-h-[100dvh] w-full bg-[#050608] text-white selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden flex flex-col justify-between items-center p-2 sm:p-4 font-sans select-none">
       {/* Background Ambient Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[450px] bg-rose-500/10 rounded-full blur-[140px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[500px] bg-amber-500/10 rounded-full blur-[150px]" />
         <div
           className="fixed inset-0 opacity-[0.03] pointer-events-none"
           style={{
@@ -119,34 +118,46 @@ export const AwwwardsShell: React.FC = () => {
         />
       </div>
 
-      {/* TOP MINI BAR: Only essential HUD & Sound/CRT Toggle */}
+      {/* TOP HEADER BAR: Character Switcher & Story Discovery Tracker */}
       <header className="relative z-10 w-full max-w-4xl flex items-center justify-between px-1 py-1 mb-1 sm:mb-2">
-        {/* Vitals & Score HUD */}
-        <div className="flex items-center gap-1.5 sm:gap-3">
-          {/* Health Hearts */}
-          <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 shadow-md">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Heart
-                key={i}
-                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-300 ${
-                  i < stats.health ? "text-rose-500 fill-rose-500 scale-100" : "text-white/20 scale-90"
-                }`}
+        {/* Active Character Quick Pill */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSwitchCharacter}
+            className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 hover:border-amber-400/40 shadow-md transition-all active:scale-95 cursor-pointer"
+            title="Klik untuk ganti karakter [Q]"
+          >
+            <div
+              className={`relative w-7 h-7 sm:w-8 sm:h-8 rounded-xl overflow-hidden border p-0.5 ${
+                isJihan ? "border-amber-400 bg-amber-500/20" : "border-rose-400 bg-rose-500/20"
+              }`}
+            >
+              <Image
+                src={isJihan ? "/jihan-portrait.png" : "/dani-portrait.png"}
+                alt={isJihan ? "Jihan" : "Dani"}
+                fill
+                sizes="32px"
+                className="object-cover"
               />
-            ))}
-          </div>
+            </div>
+            <div className="text-left font-mono">
+              <div className="text-[10px] text-white/50 leading-none">KARAKTER AKTIF</div>
+              <div
+                className={`text-xs font-bold leading-tight ${
+                  isJihan ? "text-amber-300" : "text-rose-300"
+                }`}
+              >
+                {isJihan ? "JIHAN • SULAWESI" : "DANI • MALAYSIA"}
+              </div>
+            </div>
+            <Users className="w-3.5 h-3.5 text-white/40 ml-1" />
+          </button>
 
-          {/* Collectibles Pill */}
-          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 shadow-md text-[11px] sm:text-xs font-mono">
-            <div className="flex items-center gap-1 text-amber-400" title="Karipap">
-              <Cookie className="w-3.5 h-3.5" />
-              <span>{stats.karipapCount}</span>
-            </div>
-            <div className="flex items-center gap-1 text-orange-400" title="Teh Tarik">
-              <Coffee className="w-3.5 h-3.5" />
-              <span>{stats.tehTarikCount}</span>
-            </div>
-            <span className="text-white/30 hidden xs:inline">|</span>
-            <span className="font-bold text-white/90 hidden xs:inline">{stats.score.toString().padStart(5, "0")}</span>
+          {/* Discovery Tracker Pill */}
+          <div className="hidden sm:flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 shadow-md text-xs font-mono">
+            <span className="text-white/50">EKSPLORASI:</span>
+            <span className="font-bold text-amber-400">{totalDiscoveries}/4 Cerita</span>
+            {totalDiscoveries === 4 && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}
           </div>
         </div>
 
@@ -154,10 +165,10 @@ export const AwwwardsShell: React.FC = () => {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setScanlines(!scanlines)}
-            title="Toggle Scanline"
+            title="Toggle Scanline CRT"
             className={`p-1.5 sm:p-2 rounded-xl border transition-all duration-150 cursor-pointer ${
               scanlines
-                ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-300 shadow-[0_0_12px_rgba(0,240,255,0.2)]"
+                ? "bg-amber-500/10 border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
                 : "bg-black/60 border-white/10 text-white/40 hover:text-white"
             }`}
           >
@@ -166,10 +177,10 @@ export const AwwwardsShell: React.FC = () => {
 
           <button
             onClick={handleSoundToggle}
-            title="Toggle Sound"
+            title="Toggle Suara"
             className={`p-1.5 sm:p-2 rounded-xl border transition-all duration-150 cursor-pointer flex items-center justify-center ${
               !isMuted
-                ? "bg-rose-500/10 border-rose-500/40 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
+                ? "bg-amber-500/10 border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
                 : "bg-black/60 border-white/10 text-white/40 hover:text-white"
             }`}
           >
@@ -182,77 +193,96 @@ export const AwwwardsShell: React.FC = () => {
       <main className="relative z-10 w-full max-w-4xl flex-1 flex items-center justify-center my-auto">
         <div className="relative w-full rounded-[1.4rem] sm:rounded-[2rem] p-1.5 sm:p-2 bg-gradient-to-b from-white/10 via-white/5 to-white/[0.02] ring-1 ring-white/10 shadow-2xl">
           <div className="relative rounded-[calc(1.4rem-0.375rem)] sm:rounded-[calc(2rem-0.5rem)] overflow-hidden bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]">
-            {/* Canvas Game Component */}
+            {/* Canvas Narrative Game */}
             <GameCanvas
-              currentLevelIndex={currentLevel}
-              onLevelComplete={handleLevelComplete}
-              onGameOver={handleGameOver}
-              onStatsUpdate={setStats}
-              isPaused={gameState !== "playing"}
+              activeCharacter={activeCharacter}
+              onSwitchCharacter={handleSwitchCharacter}
+              onTriggerDialogue={handleTriggerDialogue}
+              isDialogueOpen={Boolean(currentDialogueId)}
               scanlines={scanlines}
               virtualInput={virtualInput}
             />
 
-            {/* OVERLAY: CLEAN MOBILE-RESPONSIVE START SCREEN */}
+            {/* In-Game Interactive Story Dialogue Overlay */}
             <AnimatePresence>
-              {gameState === "menu" && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.25 }}
-                  className="absolute inset-0 z-30 flex flex-col items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md text-center"
-                >
-                  <div className="relative w-12 h-12 sm:w-20 sm:h-20 rounded-xl p-0.5 bg-gradient-to-br from-rose-400 via-purple-500 to-cyan-400 shadow-md mb-2 sm:mb-3">
-                    <div className="relative w-full h-full rounded-[0.55rem] sm:rounded-[0.7rem] overflow-hidden bg-[#0d1017]">
-                      <Image
-                        src="/dani-portrait.png"
-                        alt="Dani"
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                        priority
-                      />
-                    </div>
-                  </div>
-
-                  <h2 className="text-xl sm:text-3xl font-black tracking-tight mb-3 sm:mb-5 bg-clip-text text-transparent bg-gradient-to-b from-white via-white/95 to-white/50">
-                    KEMBARA DANI
-                  </h2>
-
-                  <button
-                    onClick={startJourney}
-                    className="group inline-flex items-center justify-center gap-2.5 px-7 py-3 sm:px-9 sm:py-3.5 rounded-full bg-rose-500 text-white font-bold text-xs sm:text-sm tracking-wider uppercase shadow-[0_0_30px_rgba(244,63,94,0.5)] hover:bg-rose-400 transition-all duration-150 active:scale-95 cursor-pointer"
-                  >
-                    <span>MAIN SEKARANG</span>
-                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-0.5 transition-transform duration-150">
-                      <Play className="w-3 h-3 fill-white" />
-                    </div>
-                  </button>
-                </motion.div>
+              {currentDialogue && (
+                <StoryDialog
+                  dialogue={currentDialogue}
+                  onNext={handleDialogNext}
+                  onClose={() => setCurrentDialogueId(null)}
+                  onChoice={handleDialogChoice}
+                />
               )}
             </AnimatePresence>
 
-            {/* OVERLAY: GAME OVER */}
+            {/* OVERLAY: MENU UTAMA (A Space for the Unbound Style) */}
             <AnimatePresence>
-              {gameState === "game_over" && (
+              {gameState === "menu" && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute inset-0 z-30 flex flex-col items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-md text-center"
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 sm:p-8 bg-black/80 backdrop-blur-md text-center"
                 >
-                  <h3 className="text-2xl sm:text-4xl font-black text-rose-500 tracking-tight mb-1 sm:mb-2">GAME OVER</h3>
-                  <p className="text-[11px] sm:text-xs text-white/60 font-mono mb-4 sm:mb-6">SKOR: {stats.score}</p>
+                  {/* Dual Character Portraits */}
+                  <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3 sm:mb-4">
+                    {/* Jihan Portrait */}
+                    <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-2xl p-0.5 bg-gradient-to-br from-amber-400 to-orange-500 shadow-xl">
+                      <div className="relative w-full h-full rounded-[0.85rem] sm:rounded-[1rem] overflow-hidden bg-[#0d1017]">
+                        <Image
+                          src="/jihan-portrait.png"
+                          alt="Jihan"
+                          fill
+                          sizes="96px"
+                          className="object-cover"
+                          priority
+                        />
+                      </div>
+                    </div>
 
-                  <button
-                    onClick={restartCurrentLevel}
-                    className="group inline-flex items-center justify-center gap-2.5 px-7 py-3 rounded-full bg-white text-black font-bold text-xs tracking-wider uppercase hover:bg-white/90 transition-all duration-150 active:scale-95 shadow-xl cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-45 transition-transform" />
-                    <span>CUBA LAGI</span>
-                  </button>
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                    </div>
+
+                    {/* Dani Portrait */}
+                    <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-2xl p-0.5 bg-gradient-to-br from-rose-400 to-cyan-400 shadow-xl">
+                      <div className="relative w-full h-full rounded-[0.85rem] sm:rounded-[1rem] overflow-hidden bg-[#0d1017]">
+                        <Image
+                          src="/dani-portrait.png"
+                          alt="Dani"
+                          fill
+                          sizes="96px"
+                          className="object-cover"
+                          priority
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Title & Tagline */}
+                  <h1 className="text-2xl sm:text-4xl font-black tracking-tight mb-1 bg-clip-text text-transparent bg-gradient-to-b from-amber-200 via-amber-400 to-orange-500">
+                    KEMBARA: KISAH DANI & JIHAN
+                  </h1>
+                  <p className="text-xs sm:text-sm text-white/75 font-serif italic mb-4 sm:mb-6 max-w-md">
+                    “Dua Sahabat Lintas Selat • Menelusuri Hangatnya Senja Pesisir Losari”
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-4 mb-4">
+                    <button
+                      onClick={startJourney}
+                      className="group inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs sm:text-sm tracking-wider uppercase shadow-[0_0_35px_rgba(245,158,11,0.6)] transition-all duration-150 active:scale-95 cursor-pointer"
+                    >
+                      <span>MULAI PETUALANGAN</span>
+                      <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-0.5 transition-transform">
+                        <Play className="w-3 h-3 fill-white" />
+                      </div>
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] sm:text-[11px] font-mono text-white/50 tracking-wider">
+                    Gunakan [A/D] atau Panah untuk Berjalan • [Shift] Lari • [E] Interaksi • [Q] Ganti Karakter
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -260,30 +290,14 @@ export const AwwwardsShell: React.FC = () => {
         </div>
       </main>
 
-      {/* OVERLAY: FULL-VIEWPORT STORY CUTSCENES */}
-      <AnimatePresence>
-        {gameState === "story_intro" && (
-          <StoryDialog
-            story={currentStory}
-            mode="intro"
-            onProceed={proceedFromStoryIntro}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {gameState === "story_clear" && (
-          <StoryDialog
-            story={currentStory}
-            mode="clear"
-            onProceed={proceedFromStoryClear}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ON-SCREEN BUTTONS (Chunky Arcade D-pad & Jump Button) */}
+      {/* FOOTER: Ergonomic Touch Controls */}
       <footer className="relative z-10 w-full max-w-4xl py-1 sm:py-2">
-        <TouchControls onInput={setVirtualInput} currentInput={virtualInput} />
+        <TouchControls
+          onInput={setVirtualInput}
+          currentInput={virtualInput}
+          onSwitchCharacter={handleSwitchCharacter}
+          activeCharacter={activeCharacter}
+        />
       </footer>
     </div>
   );
