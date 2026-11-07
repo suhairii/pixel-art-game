@@ -85,7 +85,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     props: HTMLImageElement | null;
     micro: HTMLImageElement | null;
     jihanSheet: HTMLImageElement | null;
-    jihanWalk24: HTMLImageElement | null;
+    jihanMaster: HTMLImageElement | null;
     gerobak24: HTMLImageElement | null;
     daniSheet: HTMLImageElement | null;
     daniMaster: HTMLImageElement | null;
@@ -94,7 +94,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     props: null,
     micro: null,
     jihanSheet: null,
-    jihanWalk24: null,
+    jihanMaster: null,
     gerobak24: null,
     daniSheet: null,
     daniMaster: null,
@@ -184,12 +184,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/env_sulawesi_street_props_transparent.png"),
       loadImage("/env_micro_animations_cats_clouds_transparent.png"),
       loadImage("/jihan_spritesheet_10poses_transparent.png"),
-      loadImage("/jihan_walk_24frames_transparent.png"),
+      loadImage("/jihan_master_sheet_8frames.png"),
       loadImage("/gerobak_animated_24frames_transparent.png"),
       loadImage("/dani_spritesheet_10poses_transparent.png"),
       loadImage("/dani_master_sheet_8frames.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniMaster]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanWalk24, gerobak24, daniSheet, daniMaster };
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, gerobak24, daniSheet, daniMaster]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, gerobak24, daniSheet, daniMaster };
     });
   }, []);
 
@@ -371,7 +371,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         props: propsImg,
         micro: microImg,
         jihanSheet: jihanImg,
-        jihanWalk24: jihanWalkImg,
+        jihanMaster: jihanMasterImg,
         gerobak24: gerobakImg,
         daniSheet: daniImg,
         daniMaster: daniMasterImg,
@@ -508,20 +508,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
-        // 1. Dani rendering with master 8-frame sheet (IDLE, WALK, RUN)
-        if (charId === "dani" && daniMasterImg && !isSpecialEmote) {
+        // 1. Unified Master 8-frame sheet rendering for Jihan & Dani (IDLE, WALK, RUN)
+        const masterImg = charId === "dani" ? daniMasterImg : jihanMasterImg;
+        if (masterImg && !isSpecialEmote) {
           let col = 0;
           let row = 0;
           if (isMoving) {
             if (isRun) {
-              row = 2; // RUN
+              row = 2; // RUN (8 frames)
               col = Math.floor(pos.walkTimer / 3) % 8;
             } else {
-              row = 1; // WALK
+              row = 1; // WALK (8 frames)
               col = Math.floor(pos.walkTimer / 6) % 8;
             }
           } else {
-            row = 0; // IDLE breathing & blink cycle
+            row = 0; // IDLE (8 frames breathing & blink)
             col = Math.floor(pos.animTimer / 8) % 8;
           }
 
@@ -536,38 +537,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (pos.facingLeft) {
             ctx.translate(screenX + destW / 2, screenY);
             ctx.scale(-1, 1);
-            ctx.drawImage(daniMasterImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            ctx.drawImage(masterImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
           } else {
-            ctx.drawImage(daniMasterImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
-          }
-          ctx.restore();
-        } else if (charId === "jihan" && jihanWalkImg && !isSpecialEmote) {
-          // Jihan rendering with 24-frame walk sheet
-          let col = 0;
-          let row = 0;
-          if (isMoving) {
-            const frame24 = pos.walk24Frame % 24;
-            col = frame24 % 6;
-            row = Math.floor(frame24 / 6);
-          } else {
-            col = 0;
-            row = 0;
-          }
-
-          const frameW = 210;
-          const frameH = 212;
-          const sx = col * frameW;
-          const sy = row * frameH;
-          const destW = 86;
-          const destH = 118;
-
-          ctx.save();
-          if (pos.facingLeft) {
-            ctx.translate(screenX + destW / 2, screenY);
-            ctx.scale(-1, 1);
-            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
-          } else {
-            ctx.drawImage(jihanWalkImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
+            ctx.drawImage(masterImg, sx, sy, frameW, frameH, screenX - destW / 2, screenY, destW, destH);
           }
           ctx.restore();
         } else {
