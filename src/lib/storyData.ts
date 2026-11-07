@@ -268,6 +268,52 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     portrait: "/adif_portrait.png",
     text: "Hahaha mantap sekali ilmu bela diri kalian berdua! Paduan Perisai XL Hairi dan lecutan laso koboi saya berhasil kalian lalui. Mari kita nikmati senja Losari bersama sebagai sahabat sejati!",
     emotion: "happy",
+    nextId: "adif_hairi_chat_main",
+  },
+
+  // POST-BATTLE FRIENDLY CHAT (Bisa ngobrol biasa kapan saja)
+  adif_hairi_chat_main: {
+    id: "adif_hairi_chat_main",
+    speaker: "adif",
+    speakerName: "Adif & Hairi • Sahabat Baru",
+    portrait: "/adif_portrait.png",
+    text: "Halo kawan-kawan! Senang sekali bisa kenal kalian. Ada yang ingin kalian tanyakan atau bicarakan santai?",
+    emotion: "happy",
+    choices: [
+      { text: "Bagaimana pemandangan Makassar dari puncak Tower Listrik, Adif?", nextId: "adif_chat_tower" },
+      { text: "Hairi, dari mana kamu dapat Perisai XL dan Sarung Tinju Merah itu?", nextId: "hairi_chat_shield" },
+      { text: "Ayo kita santai ngopi bareng di Warkop Daeng Rauf!", nextId: "adif_hairi_chat_warkop" },
+    ],
+  },
+  adif_chat_tower: {
+    id: "adif_chat_tower",
+    speaker: "adif",
+    speakerName: "Adif • Sang Koboi Menara",
+    portrait: "/adif_portrait.png",
+    text: "Luar biasa indah! Dari atas sana, kelihatan Pulau Lae-lae, Samalona, sampai kapal Pinisi yang berlayar ke Selat Makassar. Anginnya sepoi-sepoi bikin betah berjam-jam!",
+    emotion: "thoughtful",
+    choices: [
+      { text: "Ada hal lain yang ingin diobrolkan?", nextId: "adif_hairi_chat_main" },
+    ],
+  },
+  hairi_chat_shield: {
+    id: "hairi_chat_shield",
+    speaker: "hairi",
+    speakerName: "Hairi • Pemuda Kaos Abu-abu",
+    portrait: "/hairi_portrait.png",
+    text: "Hehehe, ini prototipe perisai kinetik dari lab jaringan fiber optik XL! Tadi saking paniknya sinyal down, saya pakai buat lampiasin amarah. Untung tebasan Katana kalian bikin saya sadar!",
+    emotion: "happy",
+    choices: [
+      { text: "Ada hal lain yang ingin diobrolkan?", nextId: "adif_hairi_chat_main" },
+    ],
+  },
+  adif_hairi_chat_warkop: {
+    id: "adif_hairi_chat_warkop",
+    speaker: "hairi",
+    speakerName: "Hairi & Adif",
+    portrait: "/hairi_portrait.png",
+    text: "Ide brilian! Yuk meluncur ke gerobak Daeng Rauf, saya traktir Pisang Epe keju cokelat dan Saraba panas buat merayakan persahabatan kita!",
+    emotion: "happy",
   },
 };
 

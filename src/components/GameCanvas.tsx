@@ -157,7 +157,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterMaster: HTMLImageElement | null;
     towerListrik: HTMLImageElement | null;
     adifMaster: HTMLImageElement | null;
+    adifCombat: HTMLImageElement | null;
     hairiMaster: HTMLImageElement | null;
+    hairiCombat: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -174,7 +176,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterMaster: null,
     towerListrik: null,
     adifMaster: null,
+    adifCombat: null,
     hairiMaster: null,
+    hairiCombat: null,
   });
 
   // Adif (Brown Cowboy on Tower) State
@@ -433,9 +437,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/monster_master_sheet.png"),
       loadImage("/tower_listrik.png"),
       loadImage("/adif_master_sheet.png"),
+      loadImage("/adif_combat_sheet.png"),
       loadImage("/hairi_master_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, hairiMaster]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, hairiMaster };
+      loadImage("/hairi_combat_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat };
     });
   }, []);
 
@@ -1459,7 +1465,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         monsterMaster: monsterMasterImg,
         towerListrik: towerListrikImg,
         adifMaster: adifMasterImg,
+        adifCombat: adifCombatImg,
         hairiMaster: hairiMasterImg,
+        hairiCombat: hairiCombatImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -1782,25 +1790,28 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const drawY = adifState.y - destH * (219 / 224);
             ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, drawX, drawY, destW, destH);
           } else {
-            // Adif perched on top of Tower Listrik platform (Row 3, Frame 0)
+            // Adif perched on top of Tower Listrik platform (lookout observation animation)
+            const lookCol = Math.floor(globalTimer / 36) % 3 === 2 ? 1 : 0;
             const drawX = towerScreenX - destW / 2 + 5;
             const drawY = GROUND_Y - 248;
-            ctx.drawImage(adifMasterImg, 0, 3 * frameH, frameW, frameH, drawX, drawY, destW, destH);
+            ctx.drawImage(adifMasterImg, lookCol * frameW, 3 * frameH, frameW, frameH, drawX, drawY, destW, destH);
           }
         } else {
           // Adif on Ground
           let aRow = 0;
+          let aCol = adifState.animFrame % 8;
           if (duelState.inCombat && !duelState.isDefeated) {
             aRow = 2; // Combat with lasso & punch
           } else if (adifState.state === "run") {
             aRow = 1; // Run
           } else if (adifState.state === "defeated") {
-            aRow = 3; // Friendly salute
+            aRow = 3; // Friendly salute & talk
+            aCol = 7; // Friendly waving salute pose
+            adifState.facingLeft = active.x < adifState.x;
           } else {
-            aRow = 0; // Idle (no weapons)
+            aRow = 0; // Idle (no weapons, natural foot weight shifting)
           }
 
-          const aCol = adifState.animFrame % 8;
           const sx = aCol * frameW;
           const sy = aRow * frameH;
           const drawY = adifState.y + 18 - destH * (219 / 224);
@@ -1830,12 +1841,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.restore();
           }
 
+          const isAdifFighting = duelState.inCombat && !duelState.isDefeated;
+          const adifSpriteImg = isAdifFighting && adifCombatImg ? adifCombatImg : adifMasterImg;
+          const adifSampleSy = isAdifFighting && adifCombatImg ? 0 : sy;
+
           if (adifState.facingLeft) {
             ctx.translate(aScreenX, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            ctx.drawImage(adifSpriteImg, sx, adifSampleSy, frameW, frameH, -destW / 2, drawY, destW, destH);
           } else {
-            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, aScreenX - destW / 2, drawY, destW, destH);
+            ctx.drawImage(adifSpriteImg, sx, adifSampleSy, frameW, frameH, aScreenX - destW / 2, drawY, destW, destH);
           }
           ctx.restore();
 
@@ -1890,17 +1905,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const frameH = 192;
 
         let hRow = 0;
+        let hCol = hairiState.animFrame % 8;
         if (duelState.inCombat && !duelState.isDefeated) {
           hRow = 2; // Combat mode with Blue XL Shield + Red Boxing Glove!
         } else if (hairiState.state === "walk_angry") {
           hRow = 1; // Angry stomping walk with red face (no weapons)
         } else if (hairiState.state === "defeated") {
-          hRow = 3; // Cool down, peaceful face
+          hRow = 3; // Cool down, peaceful face, ngobrol talk gestures!
+          hCol = Math.floor(globalTimer / 10) % 8;
+          hairiState.facingLeft = active.x < hairiState.x;
         } else {
           hRow = 0; // Idle angry with red face & clenched fists (no weapons)
         }
 
-        const hCol = hairiState.animFrame % 8;
         const sx = hCol * frameW;
         const sy = hRow * frameH;
         const drawY = hairiState.y + 18 - destH * (190 / 192);
@@ -1931,12 +1948,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.filter = "brightness(2.2)";
         }
 
+        const isHairiFighting = duelState.inCombat && !duelState.isDefeated;
+        const hairiSpriteImg = isHairiFighting && hairiCombatImg ? hairiCombatImg : hairiMasterImg;
+        const hairiSampleSy = isHairiFighting && hairiCombatImg ? 0 : sy;
+
         if (hairiState.facingLeft) {
           ctx.translate(hScreenX, 0);
           ctx.scale(-1, 1);
-          ctx.drawImage(hairiMasterImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+          ctx.drawImage(hairiSpriteImg, sx, hairiSampleSy, frameW, frameH, -destW / 2, drawY, destW, destH);
         } else {
-          ctx.drawImage(hairiMasterImg, sx, sy, frameW, frameH, hScreenX - destW / 2, drawY, destW, destH);
+          ctx.drawImage(hairiSpriteImg, sx, hairiSampleSy, frameW, frameH, hScreenX - destW / 2, drawY, destW, destH);
         }
         ctx.restore();
 
@@ -2444,7 +2465,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             if (nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated) {
               targetDialogue = "panci_defeat";
             } else if (nearestPromptObj.id === "adif_tower" && duelState.isDefeated) {
-              targetDialogue = "adif_hairi_defeat_2";
+              targetDialogue = "adif_hairi_chat_main";
             }
             onTriggerDialogue(targetDialogue);
           }
