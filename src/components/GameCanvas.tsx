@@ -150,6 +150,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     daniSheet: HTMLImageElement | null;
     daniMaster: HTMLImageElement | null;
     daniCombat: HTMLImageElement | null;
+    panciProp: HTMLImageElement | null;
+    cauldronEmergence: HTMLImageElement | null;
+    monsterMaster: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -161,6 +164,52 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     daniSheet: null,
     daniMaster: null,
     daniCombat: null,
+    panciProp: null,
+    cauldronEmergence: null,
+    monsterMaster: null,
+  });
+
+  // Boss Monster State (Summoned from Panci at Far Right)
+  const monsterRef = useRef<{
+    isActive: boolean;
+    isEmerging: boolean;
+    emergeFrame: number;
+    emergeTimer: number;
+    x: number;
+    y: number;
+    vx: number;
+    hp: number;
+    maxHp: number;
+    facingLeft: boolean;
+    state: "idle" | "move" | "attack" | "hurt" | "defeated";
+    animFrame: number;
+    animTimer: number;
+    hitFlash: number;
+    shake: number;
+    attackCooldown: number;
+    isAttacking: boolean;
+    isDefeated: boolean;
+    dissolveTimer: number;
+  }>({
+    isActive: false,
+    isEmerging: false,
+    emergeFrame: 0,
+    emergeTimer: 0,
+    x: 2060,
+    y: GROUND_Y,
+    vx: 0,
+    hp: 500,
+    maxHp: 500,
+    facingLeft: true,
+    state: "idle",
+    animFrame: 0,
+    animTimer: 0,
+    hitFlash: 0,
+    shake: 0,
+    attackCooldown: 60,
+    isAttacking: false,
+    isDefeated: false,
+    dissolveTimer: 0,
   });
 
   // Interactive Objects
@@ -220,6 +269,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       interacted: false,
       dialogueId: "warkop_1",
     },
+    {
+      id: "panci_misterius",
+      type: "pier_edge",
+      x: 2150,
+      y: GROUND_Y - 45,
+      width: 90,
+      height: 90,
+      prompt: "Buka Tutup Panci Misterius",
+      interacted: false,
+      dialogueId: "panci_1",
+    },
   ];
 
   // Preload Images
@@ -253,8 +313,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/dani_spritesheet_10poses_transparent.png"),
       loadImage("/dani_master_sheet_8frames.png"),
       loadImage("/dani_combat_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat };
+      loadImage("/panci_prop.png"),
+      loadImage("/cauldron_emergence_sheet.png"),
+      loadImage("/monster_master_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster };
     });
   }, []);
 
@@ -363,15 +426,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Hit detection on crescent slash (frames 3 & 4)
         if ((attack.frame === 3 || attack.frame === 4) && !attack.hasHit) {
-          for (const dummy of trainingDummiesRef.current) {
-            const facingMatches = active.facingLeft ? dummy.x <= active.x : dummy.x >= active.x;
-            const dist = Math.abs(active.x - dummy.x);
-            if (dist < 95 && facingMatches) {
+          const monster = monsterRef.current;
+          // 1. Check Monster hit if active, not emerging, and not defeated
+          if (monster.isActive && !monster.isEmerging && !monster.isDefeated) {
+            const facingMatches = active.facingLeft ? monster.x <= active.x : monster.x >= active.x;
+            const dist = Math.abs(active.x - monster.x);
+            if (dist < 105 && facingMatches) {
               attack.hasHit = true;
               sound.playHitImpact();
-              screenShakeRef.current = 6;
-              dummy.shake = 16;
-              dummy.hitTimer = 22;
+              screenShakeRef.current = 8;
+              monster.hitFlash = 16;
+              monster.shake = 14;
+              monster.state = "hurt";
+              monster.animTimer = 0;
 
               // Combo increment
               comboRef.current.count++;
@@ -379,14 +446,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
               // Damage calculation with critical strike chance
               const isCrit = Math.random() < 0.35;
-              const baseDmg = isCrit ? Math.floor(85 + Math.random() * 45) : Math.floor(40 + Math.random() * 25);
+              const baseDmg = isCrit ? Math.floor(85 + Math.random() * 45) : Math.floor(40 + Math.random() * 28);
+              monster.hp = Math.max(0, monster.hp - baseDmg);
+
               const text = isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`;
-              const color = isCrit ? "#f59e0b" : "#38bdf8";
+              const color = isCrit ? "#f59e0b" : "#c084fc";
 
               // Floating damage popup
               damageNumbersRef.current.push({
-                x: dummy.x + (Math.random() - 0.5) * 20,
-                y: dummy.y - 85,
+                x: monster.x + (Math.random() - 0.5) * 20,
+                y: monster.y - 95,
                 text,
                 color,
                 life: 35,
@@ -395,22 +464,93 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 isCrit,
               });
 
-              // Hit spark burst particles
-              for (let p = 0; p < 14; p++) {
+              // Hit spark burst particles (purple/gold/cyan)
+              for (let p = 0; p < 16; p++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = 2 + Math.random() * 5;
+                const speed = 2 + Math.random() * 6;
                 combatParticlesRef.current.push({
-                  x: dummy.x,
-                  y: dummy.y - 50 + (Math.random() - 0.5) * 20,
+                  x: monster.x,
+                  y: monster.y - 50 + (Math.random() - 0.5) * 30,
                   vx: Math.cos(angle) * speed + (active.facingLeft ? -2 : 2),
                   vy: Math.sin(angle) * speed - 1.5,
-                  color: p % 3 === 0 ? "#38bdf8" : p % 3 === 1 ? "#fbbf24" : "#ffffff",
-                  size: 2 + Math.random() * 3,
-                  life: 18 + Math.floor(Math.random() * 10),
-                  maxLife: 28,
+                  color: p % 3 === 0 ? "#a855f7" : p % 3 === 1 ? "#fbbf24" : "#ffffff",
+                  size: 2.5 + Math.random() * 3,
+                  life: 20 + Math.floor(Math.random() * 10),
+                  maxLife: 30,
                 });
               }
-              break;
+
+              // Check if monster defeated
+              if (monster.hp <= 0) {
+                monster.isDefeated = true;
+                monster.dissolveTimer = 80;
+                sound.playCoin();
+                damageNumbersRef.current.push({
+                  x: monster.x,
+                  y: monster.y - 120,
+                  text: "✨ SILUMAN DIKALAHKAN! ✨",
+                  color: "#fbbf24",
+                  life: 70,
+                  maxLife: 70,
+                  vy: -1.2,
+                  isCrit: true,
+                });
+                onTriggerDialogue("panci_defeat");
+              }
+            }
+          }
+
+          // 2. Check training dummies if monster not hit
+          if (!attack.hasHit) {
+            for (const dummy of trainingDummiesRef.current) {
+              const facingMatches = active.facingLeft ? dummy.x <= active.x : dummy.x >= active.x;
+              const dist = Math.abs(active.x - dummy.x);
+              if (dist < 95 && facingMatches) {
+                attack.hasHit = true;
+                sound.playHitImpact();
+                screenShakeRef.current = 6;
+                dummy.shake = 16;
+                dummy.hitTimer = 22;
+
+                // Combo increment
+                comboRef.current.count++;
+                comboRef.current.timer = 120; // 2 seconds window
+
+                // Damage calculation with critical strike chance
+                const isCrit = Math.random() < 0.35;
+                const baseDmg = isCrit ? Math.floor(85 + Math.random() * 45) : Math.floor(40 + Math.random() * 25);
+                const text = isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`;
+                const color = isCrit ? "#f59e0b" : "#38bdf8";
+
+                // Floating damage popup
+                damageNumbersRef.current.push({
+                  x: dummy.x + (Math.random() - 0.5) * 20,
+                  y: dummy.y - 85,
+                  text,
+                  color,
+                  life: 35,
+                  maxLife: 35,
+                  vy: -1.8,
+                  isCrit,
+                });
+
+                // Hit spark burst particles
+                for (let p = 0; p < 14; p++) {
+                  const angle = Math.random() * Math.PI * 2;
+                  const speed = 2 + Math.random() * 5;
+                  combatParticlesRef.current.push({
+                    x: dummy.x,
+                    y: dummy.y - 50 + (Math.random() - 0.5) * 20,
+                    vx: Math.cos(angle) * speed + (active.facingLeft ? -2 : 2),
+                    vy: Math.sin(angle) * speed - 1.5,
+                    color: p % 3 === 0 ? "#38bdf8" : p % 3 === 1 ? "#fbbf24" : "#ffffff",
+                    size: 2 + Math.random() * 3,
+                    life: 18 + Math.floor(Math.random() * 10),
+                    maxLife: 28,
+                  });
+                }
+                break;
+              }
             }
           }
         }
@@ -433,6 +573,122 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         comboRef.current.timer--;
         if (comboRef.current.timer <= 0) {
           comboRef.current.count = 0;
+        }
+      }
+
+      // 2.7 Monster AI & State Update
+      const monster = monsterRef.current;
+      if (monster.isActive) {
+        if (monster.isEmerging) {
+          monster.emergeTimer++;
+          // 6 frames in cauldron_emergence_sheet.png, advance every 7 ticks (~42 ticks total = ~700ms)
+          if (monster.emergeTimer % 7 === 0) {
+            monster.emergeFrame++;
+            if (monster.emergeFrame >= 6) {
+              monster.isEmerging = false;
+              monster.state = "idle";
+              monster.x = 2050;
+              screenShakeRef.current = 8;
+              sound.playHitImpact();
+            }
+          }
+          // Purple smoke particles during emergence
+          if (Math.random() < 0.45) {
+            combatParticlesRef.current.push({
+              x: 2150 + (Math.random() - 0.5) * 35,
+              y: GROUND_Y - 30 - Math.random() * 45,
+              vx: (Math.random() - 0.5) * 2,
+              vy: -1.6 - Math.random() * 2,
+              color: Math.random() < 0.5 ? "#a855f7" : "#7c3aed",
+              size: 3 + Math.random() * 4,
+              life: 25,
+              maxLife: 25,
+            });
+          }
+        } else if (!monster.isDefeated) {
+          monster.animTimer++;
+          const distToPlayer = Math.abs(active.x - monster.x);
+          monster.facingLeft = active.x < monster.x;
+
+          if (monster.hitFlash > 0) monster.hitFlash--;
+          if (monster.shake > 0) monster.shake *= 0.85;
+          if (monster.attackCooldown > 0) monster.attackCooldown--;
+
+          if (monster.state === "hurt") {
+            if (monster.animTimer > 15) {
+              monster.state = "idle";
+              monster.animTimer = 0;
+            }
+          } else if (monster.isAttacking) {
+            // Attack animation (Row 2 of monster_master_sheet)
+            if (monster.animTimer % 4 === 0) {
+              monster.animFrame++;
+              if (monster.animFrame === 4 && distToPlayer < 85) {
+                screenShakeRef.current = 5;
+                sound.playStomp();
+                active.vx = monster.facingLeft ? -4.5 : 4.5;
+                active.x += active.vx;
+                for (let k = 0; k < 8; k++) {
+                  combatParticlesRef.current.push({
+                    x: active.x,
+                    y: GROUND_Y - 50,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    color: "#9333ea",
+                    size: 3,
+                    life: 15,
+                    maxLife: 15,
+                  });
+                }
+              }
+              if (monster.animFrame >= 8) {
+                monster.isAttacking = false;
+                monster.state = "idle";
+                monster.animFrame = 0;
+                monster.animTimer = 0;
+                monster.attackCooldown = 80;
+              }
+            }
+          } else {
+            // Move toward player if in range (dist between 80 and 800)
+            if (distToPlayer > 80 && distToPlayer < 800) {
+              monster.state = "move";
+              const mSpeed = 1.3;
+              monster.vx = monster.facingLeft ? -mSpeed : mSpeed;
+              monster.x += monster.vx;
+              if (monster.animTimer % 4 === 0) {
+                monster.animFrame = (monster.animFrame + 1) % 8;
+              }
+            } else if (distToPlayer <= 80 && monster.attackCooldown <= 0) {
+              monster.state = "attack";
+              monster.isAttacking = true;
+              monster.animFrame = 0;
+              monster.animTimer = 0;
+            } else {
+              monster.state = "idle";
+              monster.vx = 0;
+              if (monster.animTimer % 5 === 0) {
+                monster.animFrame = (monster.animFrame + 1) % 8;
+              }
+            }
+          }
+        } else {
+          // Defeated dissolution
+          if (monster.dissolveTimer > 0) {
+            monster.dissolveTimer--;
+            if (Math.random() < 0.6) {
+              combatParticlesRef.current.push({
+                x: monster.x + (Math.random() - 0.5) * 60,
+                y: GROUND_Y - 40 - Math.random() * 50,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -1.5 - Math.random() * 2,
+                color: Math.random() < 0.5 ? "#fbbf24" : "#c084fc",
+                size: 3 + Math.random() * 4,
+                life: 30,
+                maxLife: 30,
+              });
+            }
+          }
         }
       }
 
@@ -550,6 +806,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         daniSheet: daniImg,
         daniMaster: daniMasterImg,
         daniCombat: daniCombatImg,
+        panciProp: panciPropImg,
+        cauldronEmergence: cauldronEmergenceImg,
+        monsterMaster: monsterMasterImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -767,6 +1026,154 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillText(dummy.label, dummyScreenX, dummy.y - 120);
         ctx.restore();
       });
+
+      // Layer 5.6: Ancient Cauldron ("Panci Misterius") & Emergence Sequence
+      const panciObj = interactiveObjects.find((o) => o.id === "panci_misterius");
+      if (panciObj) {
+        const panciScreenX = panciObj.x - camX;
+        const panciScreenY = panciObj.y;
+
+        if (monster.isActive && monster.isEmerging && cauldronEmergenceImg) {
+          // Play 6-frame emergence animation
+          const eFrame = Math.min(5, Math.max(0, monster.emergeFrame));
+          const frameW = 200;
+          const frameH = 200;
+          const sx = eFrame * frameW;
+          const sy = 0;
+          const destW = 140;
+          const destH = 140;
+          const drawY = panciScreenY - 65;
+
+          ctx.save();
+          // Violet shockwave halo
+          const shock = ctx.createRadialGradient(
+            panciScreenX,
+            drawY + 70,
+            10,
+            panciScreenX,
+            drawY + 70,
+            75
+          );
+          shock.addColorStop(0, "rgba(168, 85, 247, 0.65)");
+          shock.addColorStop(0.5, "rgba(147, 51, 234, 0.35)");
+          shock.addColorStop(1, "rgba(88, 28, 135, 0)");
+          ctx.fillStyle = shock;
+          ctx.beginPath();
+          ctx.arc(panciScreenX, drawY + 70, 75, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.drawImage(cauldronEmergenceImg, sx, sy, frameW, frameH, panciScreenX - destW / 2, drawY, destW, destH);
+          ctx.restore();
+        } else if (panciPropImg) {
+          // Resting ancient iron pot with purple simmering steam
+          const destW = 75;
+          const destH = 75;
+          const drawX = panciScreenX - destW / 2;
+          const drawY = panciScreenY - 20;
+
+          ctx.save();
+          const steamPulse = 0.5 + Math.sin(globalTimer * 0.1) * 0.25;
+          const halo = ctx.createRadialGradient(
+            panciScreenX,
+            drawY + 38,
+            8,
+            panciScreenX,
+            drawY + 38,
+            45
+          );
+          halo.addColorStop(0, `rgba(168, 85, 247, ${steamPulse * 0.7})`);
+          halo.addColorStop(0.7, `rgba(126, 34, 206, ${steamPulse * 0.25})`);
+          halo.addColorStop(1, "rgba(88, 28, 135, 0)");
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.arc(panciScreenX, drawY + 38, 45, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.drawImage(panciPropImg, 0, 0, 200, 200, drawX, drawY, destW, destH);
+          ctx.restore();
+        }
+      }
+
+      // Layer 5.7: Boss Monster (Batara Siluman Panci Purba)
+      if (monster.isActive && (!monster.isEmerging || monster.isDefeated) && monsterMasterImg) {
+        let mRow = 0;
+        if (monster.isDefeated || monster.state === "hurt") {
+          mRow = 3; // HURT
+        } else if (monster.state === "attack") {
+          mRow = 2; // ATTACK
+        } else if (monster.state === "move") {
+          mRow = 1; // MOVE
+        } else {
+          mRow = 0; // IDLE
+        }
+
+        const mCol = monster.animFrame % 8;
+        const frameW = 128;
+        const frameH = 128;
+        const sx = mCol * frameW;
+        const sy = mRow * frameH;
+        const destW = 120;
+        const destH = 120;
+
+        // Ground contact alignment (foot baseline at bot_y = 120px)
+        const drawY = monster.y + 18 - destH * (120 / 128);
+        const mScreenX = monster.x - camX + (monster.shake > 0 ? (Math.random() - 0.5) * monster.shake : 0);
+
+        ctx.save();
+        if (monster.isDefeated) {
+          ctx.globalAlpha = Math.max(0, monster.dissolveTimer / 80);
+        }
+
+        // Shadow under monster
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.beginPath();
+        ctx.ellipse(mScreenX, monster.y + 16, 36, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White flash on hit
+        if (monster.hitFlash > 0 && Math.floor(monster.hitFlash / 2) % 2 === 0) {
+          ctx.filter = "brightness(2.2) contrast(1.5)";
+        }
+
+        if (monster.facingLeft) {
+          ctx.translate(mScreenX, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(monsterMasterImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+        } else {
+          ctx.drawImage(monsterMasterImg, sx, sy, frameW, frameH, mScreenX - destW / 2, drawY, destW, destH);
+        }
+        ctx.restore();
+
+        // Monster Floating Mini HP Bar
+        if (!monster.isDefeated) {
+          const miniBarW = 80;
+          const miniBarH = 6;
+          const hpRatio = Math.max(0, monster.hp / monster.maxHp);
+          const barX = mScreenX - miniBarW / 2;
+          const barY = drawY - 14;
+
+          ctx.save();
+          ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+          ctx.fillRect(barX - 2, barY - 2, miniBarW + 4, miniBarH + 4);
+          ctx.strokeStyle = "#9333ea";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(barX - 2, barY - 2, miniBarW + 4, miniBarH + 4);
+
+          // Health gradient
+          const hpGrad = ctx.createLinearGradient(barX, barY, barX + miniBarW, barY);
+          hpGrad.addColorStop(0, "#c084fc");
+          hpGrad.addColorStop(1, "#7c3aed");
+          ctx.fillStyle = hpGrad;
+          ctx.fillRect(barX, barY, miniBarW * hpRatio, miniBarH);
+
+          // Name tag
+          ctx.font = "bold 9px 'Courier New', monospace";
+          ctx.fillStyle = "#f3e8ff";
+          ctx.textAlign = "center";
+          ctx.fillText("SILUMAN PANCI", mScreenX, barY - 5);
+          ctx.restore();
+        }
+      }
 
       // Layer 6: Draw Characters with 24-Frame Walk Engine & Combat Mode
       const renderCharacter = (
@@ -1034,50 +1441,75 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       if (nearestPromptObj && !isDialogueOpen) {
-        const promptX = nearestPromptObj.x - camX;
-        const promptY = GROUND_Y - 120;
+        const isMonsterFighting =
+          nearestPromptObj.id === "panci_misterius" &&
+          monsterRef.current.isActive &&
+          !monsterRef.current.isDefeated;
 
-        ctx.save();
-        ctx.fillStyle = "rgba(9, 11, 16, 0.9)";
-        ctx.strokeStyle = "rgba(245, 158, 11, 0.8)";
-        ctx.lineWidth = 2;
-        const text = `[E] ${nearestPromptObj.prompt}`;
-        ctx.font = "bold 13px 'Courier New', monospace";
-        const textWidth = ctx.measureText(text).width;
-        const padX = 14;
-        const padY = 7;
-        const bubbleW = textWidth + padX * 2;
-        const bubbleH = 28;
+        if (!isMonsterFighting) {
+          const promptX = nearestPromptObj.x - camX;
+          const promptY = GROUND_Y - 120;
 
-        // Rounded bubble
-        ctx.beginPath();
-        ctx.roundRect(promptX - bubbleW / 2, promptY - bubbleH / 2, bubbleW, bubbleH, 12);
-        ctx.fill();
-        ctx.stroke();
+          ctx.save();
+          ctx.fillStyle = "rgba(9, 11, 16, 0.9)";
+          ctx.strokeStyle = "rgba(245, 158, 11, 0.8)";
+          ctx.lineWidth = 2;
+          const promptText =
+            nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated
+              ? "Panci Purba (Siluman Telah Tunduk)"
+              : nearestPromptObj.prompt;
+          const text = `[E] ${promptText}`;
+          ctx.font = "bold 13px 'Courier New', monospace";
+          const textWidth = ctx.measureText(text).width;
+          const padX = 14;
+          const padY = 7;
+          const bubbleW = textWidth + padX * 2;
+          const bubbleH = 28;
 
-        // Small indicator triangle
-        ctx.fillStyle = "rgba(245, 158, 11, 0.9)";
-        ctx.beginPath();
-        ctx.moveTo(promptX - 5, promptY + bubbleH / 2);
-        ctx.lineTo(promptX + 5, promptY + bubbleH / 2);
-        ctx.lineTo(promptX, promptY + bubbleH / 2 + 6);
-        ctx.closePath();
-        ctx.fill();
+          // Rounded bubble
+          ctx.beginPath();
+          ctx.roundRect(promptX - bubbleW / 2, promptY - bubbleH / 2, bubbleW, bubbleH, 12);
+          ctx.fill();
+          ctx.stroke();
 
-        ctx.fillStyle = "#fef3c7";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(text, promptX, promptY);
-        ctx.restore();
+          // Small indicator triangle
+          ctx.fillStyle = "rgba(245, 158, 11, 0.9)";
+          ctx.beginPath();
+          ctx.moveTo(promptX - 5, promptY + bubbleH / 2);
+          ctx.lineTo(promptX + 5, promptY + bubbleH / 2);
+          ctx.lineTo(promptX, promptY + bubbleH / 2 + 6);
+          ctx.closePath();
+          ctx.fill();
 
-        // Handle trigger
-        if (isInteract) {
-          keysRef.current.interact = false;
-          sound.playInteract();
-          if (nearestPromptObj.id === "cat_oyen") {
-            sound.playPurr();
+          ctx.fillStyle = "#fef3c7";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, promptX, promptY);
+          ctx.restore();
+
+          // Handle trigger
+          if (isInteract) {
+            keysRef.current.interact = false;
+            sound.playInteract();
+            if (nearestPromptObj.id === "cat_oyen") {
+              sound.playPurr();
+            }
+            if (nearestPromptObj.id === "panci_misterius") {
+              if (!monsterRef.current.isActive) {
+                monsterRef.current.isActive = true;
+                monsterRef.current.isEmerging = true;
+                monsterRef.current.emergeFrame = 0;
+                monsterRef.current.emergeTimer = 0;
+                screenShakeRef.current = 12;
+                sound.playStomp();
+              }
+            }
+            const targetDialogue =
+              nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated
+                ? "panci_defeat"
+                : nearestPromptObj.dialogueId;
+            onTriggerDialogue(targetDialogue);
           }
-          onTriggerDialogue(nearestPromptObj.dialogueId);
         }
       }
 
@@ -1109,6 +1541,64 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.textBaseline = "middle";
         ctx.fillStyle = combo >= 10 ? "#f87171" : combo >= 5 ? "#fbbf24" : "#7dd3fc";
         ctx.fillText(comboText, 0, 0);
+        ctx.restore();
+      }
+
+      // Layer 7.6: Grand Boss Monster HP Bar (Top Center HUD)
+      const boss = monsterRef.current;
+      if (boss.isActive && !boss.isDefeated) {
+        ctx.save();
+        const barW = 340;
+        const barH = 14;
+        const centerX = CANVAS_W / 2;
+        const barY = 24;
+        const hpRatio = Math.max(0, boss.hp / boss.maxHp);
+
+        // Frame / Banner Background
+        ctx.fillStyle = "rgba(10, 12, 22, 0.94)";
+        ctx.strokeStyle = "#eab308";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(centerX - barW / 2 - 14, barY - 16, barW + 28, barH + 32, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Monster Title & Icon
+        ctx.font = "bold 11px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fde047";
+        ctx.fillText("👹 BATARA SILUMAN PANCI PURBA 👹", centerX, barY - 4);
+
+        // Sub-caption
+        ctx.font = "italic 8px 'Courier New', monospace";
+        ctx.fillStyle = "#c084fc";
+        ctx.fillText("★ ANCIENT MYTHICAL CAULDRON BEAST ★", centerX, barY + 22);
+
+        // Health Bar Track
+        ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
+        ctx.fillRect(centerX - barW / 2, barY, barW, barH);
+
+        // Health Bar Fill
+        const barGrad = ctx.createLinearGradient(centerX - barW / 2, barY, centerX + barW / 2, barY);
+        barGrad.addColorStop(0, "#dc2626");
+        barGrad.addColorStop(0.5, "#9333ea");
+        barGrad.addColorStop(1, "#c084fc");
+        ctx.fillStyle = barGrad;
+        ctx.fillRect(centerX - barW / 2, barY, barW * hpRatio, barH);
+
+        // Golden divider notches
+        ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+        for (let seg = 1; seg < 5; seg++) {
+          ctx.fillRect(centerX - barW / 2 + (barW * seg) / 5, barY, 1.5, barH);
+        }
+
+        // HP Numbers Overlay
+        ctx.font = "bold 9px 'Courier New', monospace";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${boss.hp} / ${boss.maxHp} HP`, centerX, barY + barH / 2);
+
         ctx.restore();
       }
 

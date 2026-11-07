@@ -170,6 +170,33 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     text: "Di sanalah tempat perahu Pinisi berlayar menembus ombak. Ayo kita jaga setiap kenangan manis perjalanan kita ini!",
     emotion: "happy",
   },
+
+  // PANCI MISTERIUS & MONSTER SUMMON
+  panci_1: {
+    id: "panci_1",
+    speaker: "narator",
+    speakerName: "Misteri Pesisir Losari",
+    portrait: "/jihan-portrait.png",
+    text: "Panci besi hitam kuno bergetar dahsyat di atas batu karang! Asap ungu magis menyembur dari sela-sela tutupnya...",
+    emotion: "thoughtful",
+    nextId: "panci_2",
+  },
+  panci_2: {
+    id: "panci_2",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Awas Dani! Hawa dingin dan aura siluman purba merayap keluar dari kuali ini! Siapkan bilah katanamu!",
+    emotion: "surprised",
+  },
+  panci_defeat: {
+    id: "panci_defeat",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Alhamdulillah! Batara Siluman Panci Purba berjaya ditumpaskan berkat paduan tebasan Katana kita berdua!",
+    emotion: "happy",
+  },
 };
 
 // Legacy backwards compatibility
