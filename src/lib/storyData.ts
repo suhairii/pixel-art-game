@@ -1,3 +1,178 @@
+import { DialogueLine } from "./gameTypes";
+
+export const DIALOGUES: Record<string, DialogueLine> = {
+  // INTRO DIALOGUE (When game starts)
+  intro_1: {
+    id: "intro_1",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Alhamdulillah... Senja di anjungan Pantai Losari selalu menenangkan hati. Angin selat Makassar membawa aroma laut yang begitu khas.",
+    emotion: "warm",
+    nextId: "intro_2",
+  },
+  intro_2: {
+    id: "intro_2",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Betul tu, Jihan! Cantik sungguh panorama matahari terbenam kat sini. Jauh beza dengan hiruk-pikuk Kuala Lumpur. Rasa macam dalam lukisan!",
+    emotion: "happy",
+    nextId: "intro_3",
+  },
+  intro_3: {
+    id: "intro_3",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Yuk, kita telusuri dermaga kayu ini. Di sana ada kucing ramah Si Oyen, gerobak Pisang Epe bakar, dan Warkop Daeng Rauf yang legendaris!",
+    emotion: "happy",
+  },
+
+  // CAT INTERACTION
+  cat_1: {
+    id: "cat_1",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Wah, lihat Dani! Ada Si Oyen lagi tidur melingkar di atas papan dermaga. Gemas sekali!",
+    emotion: "warm",
+    nextId: "cat_2",
+  },
+  cat_2: {
+    id: "cat_2",
+    speaker: "kucing_oyen",
+    speakerName: "Si Oyen • Kucing Dermaga",
+    portrait: "/jihan-portrait.png",
+    text: "Purrr... Nyaaa~ (Si Oyen membuka mata perlahan, menguap lebar, lalu menyandarkan kepalanya ke tanganmu dengan manja)",
+    emotion: "happy",
+    nextId: "cat_3",
+  },
+  cat_3: {
+    id: "cat_3",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Comelnya! Bulu tiga warna dia berkilat di bawah cahaya senja. Saya nak lukis Oyen dalam buku jurnal kembara saya nanti!",
+    emotion: "happy",
+  },
+
+  // PISANG EPE & SARABA INTERACTION
+  pisang_1: {
+    id: "pisang_1",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Nah Dani, ini dia kuliner wajib tepi Pantai Losari: Pisang Epe bakar saus gula merah durian dan secangkir Saraba jahe hangat!",
+    emotion: "warm",
+    nextId: "pisang_2",
+  },
+  pisang_2: {
+    id: "pisang_2",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Mmm! Harumnya bau pisang bakar berkaramel ni! Rasa dia manis legit, bila hirup Saraba terus rasa hangat satu badan. Sedap betul!",
+    emotion: "happy",
+    nextId: "pisang_3",
+  },
+  pisang_3: {
+    id: "pisang_3",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Kalau di Malaysia mirip jajanan apa biasanya, Dani?",
+    emotion: "thoughtful",
+    choices: [
+      { text: "Mirip Pisang Goreng Madu & Teh Tarik Kaw!", nextId: "pisang_choice_a" },
+      { text: "Lebih istimewa Pisang Epe ni, kuah dia unik sangat!", nextId: "pisang_choice_b" },
+    ],
+  },
+  pisang_choice_a: {
+    id: "pisang_choice_a",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Ha'ah! Konsep pisang manis dengan minuman berempah, dua-dua negeri serumpun ada sentuhan rasa yang saling melengkapi!",
+    emotion: "happy",
+  },
+  pisang_choice_b: {
+    id: "pisang_choice_b",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Betul! Tekstur pisang bakar yang dipenyet leper ni memang lain dari yang lain. Nanti bila Jihan ke Malaysia, saya belanja Karipap Bonda pula ya!",
+    emotion: "happy",
+  },
+
+  // WARKOP LOSARI INTERACTION
+  warkop_1: {
+    id: "warkop_1",
+    speaker: "daeng_rauf",
+    speakerName: "Daeng Rauf • Pemilik Warkop",
+    portrait: "/jihan-portrait.png",
+    text: "Tabe' Jihan! Wah, bawa kawan jauh rupanya ya? Selamat datang ke Makassar, Nak!",
+    emotion: "warm",
+    nextId: "warkop_2",
+  },
+  warkop_2: {
+    id: "warkop_2",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Terima kasih, Daeng! Mesranya orang-orang kat sini. Kedai kayu atas air ni tenang sangat, dengar desiran ombak.",
+    emotion: "happy",
+    nextId: "warkop_3",
+  },
+  warkop_3: {
+    id: "warkop_3",
+    speaker: "daeng_rauf",
+    speakerName: "Daeng Rauf • Pemilik Warkop",
+    portrait: "/jihan-portrait.png",
+    text: "Kopi Toraja panas sudah siap. Nikmatilah senja, anak muda. Pelaut Bugis zaman dulu mengarungi samudra sampai ke semenanjung dengan doa dan ketabahan.",
+    emotion: "thoughtful",
+  },
+
+  // BENCH SUNSET INTERACTION
+  bench_1: {
+    id: "bench_1",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Duduk di bangku kayu ini sambil menatap cakrawala... Dani, terima kasih sudah sudi datang menjelajah ke Sulawesi.",
+    emotion: "warm",
+    nextId: "bench_2",
+  },
+  bench_2: {
+    id: "bench_2",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Sama-sama, Jihan! Persahabatan kita bukti walau terpisah laut yang luas, cerita dan hati kita tetap satu rentak. Kembara kita baru sahaja bermula!",
+    emotion: "happy",
+  },
+
+  // PIER WEST EDGE
+  pier_1: {
+    id: "pier_1",
+    speaker: "dani",
+    speakerName: "Dani • Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Hujung dermaga kayu ni menghadap Selat Makassar. Angin laut dia meniup lembut... terasa lapang dada.",
+    emotion: "thoughtful",
+    nextId: "pier_2",
+  },
+  pier_2: {
+    id: "pier_2",
+    speaker: "jihan",
+    speakerName: "Jihan • Sulawesi",
+    portrait: "/jihan-portrait.png",
+    text: "Di sanalah tempat perahu Pinisi berlayar menembus ombak. Ayo kita jaga setiap kenangan manis perjalanan kita ini!",
+    emotion: "happy",
+  },
+};
+
+// Legacy backwards compatibility
 export interface StoryBeat {
   chapter: number;
   location: string;
@@ -13,56 +188,18 @@ export interface StoryBeat {
 export const DANI_STORY: Record<number, StoryBeat> = {
   0: {
     chapter: 1,
-    location: "KAMPUNG WARISAN • PANTAI TIMUR",
-    badge: "BABAK 1: PERMULAAN LANGKAH",
-    quote: "“Biar lambat asalkan selamat, tapi bila melangkah, biarlah dengan tekad.”",
-    introTitle: "Teratak Bonda & Harum Karipap",
+    location: "PANTAI LOSARI • SULAWESI",
+    badge: "BABAK 1: KEMBARA DUA SAHABAT",
+    quote: "“Dua negeri serumpun, disatukan oleh indahnya senja dan hangatnya rasa.”",
+    introTitle: "Anjungan Senja Pantai Losari",
     introText: [
-      "Bismillah! Pagi yang hening di Kampung Warisan, bayu laut menyapa lembut pepohon kelapa dan rumah panggung kayu.",
-      "Dani, seorang anak gadis berhijab yang penuh impian, mengikat kemas kasut trekking miliknya.",
-      "Kutip Karipap Emas panas dan nikmati secawan Teh Tarik kaw untuk mengumpul tenaga sebelum menuju ke stesen keretapi!",
+      "Bismillah! Senja keemasan menyapa lembut dermaga kayu Pantai Losari, Makassar.",
+      "Jihan dan Dani berjalan berdampingan menikmati aroma laut dan jajanan tradisional.",
     ],
-    clearTitle: "Tahniah! Langkah Pertama Berjaya!",
+    clearTitle: "Tahniah! Eksplorasi Berjaya!",
     clearText: [
-      "Alhamdulillah! Seluruh bekalan di kampung telah siap dikumpul.",
-      "Lambaian tangan bonda mengiringi langkah Dani menaiki keretapi malam menuju ke ibu kota Kuala Lumpur.",
+      "Alhamdulillah! Seluruh jejak kenangan di dermaga telah siap dijelajahi.",
     ],
-    motivationalNote: "Pencapaian: Jiwa Warisan Terpahat",
-  },
-  1: {
-    chapter: 2,
-    location: "LEMBAH KLCC • KUALA LUMPUR",
-    badge: "BABAK 2: KOTA METROPOLITAN",
-    quote: "“Di celah rimba batu konkrit, jiwa anak watan tetap tidak akan goyah.”",
-    introTitle: "Gemerlap Menara Berkembar",
-    introText: [
-      "Kuala Lumpur menyambut Dani dengan kilauan neon Menara Berkembar Petronas yang megah menembus awan.",
-      "Kini laluannya lebih mencabar — melompat merentasi lintasan monorail, bumbung pencakar langit, dan menghindari dron keselamatan siber!",
-      "Kumpulkan Bunga Raya kebangsaan untuk mengekalkan fokus dan stamina Dani!",
-    ],
-    clearTitle: "Lembah Metropolitan Ditakluki!",
-    clearText: [
-      "Hebat sekali! Dani berjaya melepasi labirin pencakar langit ibu kota.",
-      "Kini penerbangan terus ke Sabah telah sedia berlepas. Matlamat terakhir: Puncak Tertinggi Asia Tenggara!",
-    ],
-    motivationalNote: "Pencapaian: Ketangkasan Kota Metropolitan",
-  },
-  2: {
-    chapter: 3,
-    location: "BANJARAN CROCKER • GUNUNG KINABALU",
-    badge: "BABAK 3: PUNCAK AWAN KINABALU",
-    quote: "“Setinggi mana pun gunung yang didaki, tunduklah sujud pada Ilahi.”",
-    introTitle: "Menuju Puncak Low's Peak (4,095M)",
-    introText: [
-      "Suhu dingin mencucuk tulang di lereng granit Gunung Kinabalu. Kabut mistik berarak ditiup angin kencang gunung.",
-      "Tebing-tebing batu yang licin memerlukan ketepatan lompatan dan keberanian yang jitu.",
-      "Kibarkan semangat kembara, kutip bintang puncak, dan gapai tiang kejayaan di puncak Kinabalu!",
-    ],
-    clearTitle: "SUBHANALLAH! PUNCAK KINABALU DITAWAN!",
-    clearText: [
-      "Angin dingin membisikkan rasa syukur yang tak terhingga. Dani berdiri di Puncak Kinabalu memandang lautan awan yang keemasan.",
-      "Perjalanan ribuan batu dari desa nelayan hingga ke puncak tertinggi membuktikan: Tiada impian yang mustahil bagi yang berusaha!",
-    ],
-    motivationalNote: "Pencapaian: Ratu Puncak Kinabalu",
+    motivationalNote: "Pencapaian: Persahabatan Sejati",
   },
 };

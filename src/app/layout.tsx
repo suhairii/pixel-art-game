@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kembara Dani • Perjalanan Gadis Berhijab Asal Malaysia",
-  description: "Sebuah pengalaman game 2D Pixel Art platformer bercerita tentang kembara seorang gadis berhijab asal Malaysia dari Kampung Warisan ke Puncak Kinabalu. Dibangun dengan Next.js 14, Canvas 2D, dan Web Audio API.",
+  title: "Kembara: Kisah Dani & Jihan • Petualangan Naratif Dua Sahabat Lintas Selat",
+  description: "Sebuah pengalaman game 2D Pixel Art petualangan naratif bergaya A Space for the Unbound, menceritakan persahabatan Dani (Malaysia) dan Jihan (Sulawesi) di pesisir hangat Pantai Losari.",
 };
 
 export const viewport: Viewport = {
