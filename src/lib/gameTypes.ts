@@ -32,9 +32,9 @@ export interface DialogueChoice {
 
 export interface DialogueLine {
   id: string;
-  speaker: "jihan" | "dani" | "daeng_rauf" | "kucing_oyen" | "narator";
+  speaker: "jihan" | "dani" | "daeng_rauf" | "kucing_oyen" | "narator" | "adif" | "hairi";
   speakerName: string;
-  portrait: "/jihan-portrait.png" | "/dani-portrait.png";
+  portrait: string;
   text: string;
   emotion?: "happy" | "warm" | "surprised" | "thoughtful";
   choices?: DialogueChoice[];

@@ -14,6 +14,7 @@ interface GameCanvasProps {
   onSwitchCharacter: () => void;
   onTriggerDialogue: (dialogueId: string) => void;
   isDialogueOpen: boolean;
+  currentDialogueId?: string | null;
   scanlines: boolean;
   virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean };
 }
@@ -23,6 +24,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   onSwitchCharacter,
   onTriggerDialogue,
   isDialogueOpen,
+  currentDialogueId,
   scanlines,
   virtualInput,
 }) => {
@@ -153,6 +155,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     panciProp: HTMLImageElement | null;
     cauldronEmergence: HTMLImageElement | null;
     monsterMaster: HTMLImageElement | null;
+    towerListrik: HTMLImageElement | null;
+    adifMaster: HTMLImageElement | null;
+    hairiMaster: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -167,7 +172,86 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     panciProp: null,
     cauldronEmergence: null,
     monsterMaster: null,
+    towerListrik: null,
+    adifMaster: null,
+    hairiMaster: null,
   });
+
+  // Adif (Brown Cowboy on Tower) State
+  const adifRef = useRef<{
+    onTower: boolean;
+    isRappelling: boolean;
+    x: number;
+    y: number;
+    vx: number;
+    facingLeft: boolean;
+    state: "climb" | "rappel" | "idle" | "run" | "combat" | "defeated";
+    animFrame: number;
+    animTimer: number;
+    hp: number;
+    maxHp: number;
+    hitFlash: number;
+    shake: number;
+    attackCooldown: number;
+    isAttacking: boolean;
+  }>({
+    onTower: true,
+    isRappelling: false,
+    x: 1420,
+    y: GROUND_Y - 240,
+    vx: 0,
+    facingLeft: true,
+    state: "climb",
+    animFrame: 0,
+    animTimer: 0,
+    hp: 300,
+    maxHp: 300,
+    hitFlash: 0,
+    shake: 0,
+    attackCooldown: 60,
+    isAttacking: false,
+  });
+
+  // Hairi (Angry Gray Shirt Guy with Red Face) State
+  const hairiRef = useRef<{
+    x: number;
+    y: number;
+    vx: number;
+    facingLeft: boolean;
+    state: "walk_angry" | "idle_angry" | "combat" | "hurt" | "defeated";
+    animFrame: number;
+    animTimer: number;
+    hp: number;
+    maxHp: number;
+    hitFlash: number;
+    shake: number;
+    attackCooldown: number;
+    isAttacking: boolean;
+  }>({
+    x: 1560,
+    y: GROUND_Y,
+    vx: -1.0,
+    facingLeft: true,
+    state: "walk_angry",
+    animFrame: 0,
+    animTimer: 0,
+    hp: 300,
+    maxHp: 300,
+    hitFlash: 0,
+    shake: 0,
+    attackCooldown: 45,
+    isAttacking: false,
+  });
+
+  // Dual Battle State (Dani & Jihan vs Adif & Hairi)
+  const battleAdifHairiRef = useRef<{
+    inCombat: boolean;
+    isDefeated: boolean;
+  }>({
+    inCombat: false,
+    isDefeated: false,
+  });
+  const pendingBattleRef = useRef(false);
 
   // Boss Monster State (Summoned from Panci at Far Right)
   const monsterRef = useRef<{
@@ -259,6 +343,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       dialogueId: "pisang_1",
     },
     {
+      id: "adif_tower",
+      type: "pier_edge",
+      x: 1420,
+      y: GROUND_Y - 140,
+      width: 100,
+      height: 180,
+      prompt: "Panggil Adif di Atas Tower Listrik",
+      interacted: false,
+      dialogueId: "adif_tower_1",
+    },
+    {
       id: "warkop_losari",
       type: "warkop",
       x: 1680,
@@ -316,8 +411,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/panci_prop.png"),
       loadImage("/cauldron_emergence_sheet.png"),
       loadImage("/monster_master_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster };
+      loadImage("/tower_listrik.png"),
+      loadImage("/adif_master_sheet.png"),
+      loadImage("/hairi_master_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, hairiMaster]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, hairiMaster };
     });
   }, []);
 
@@ -371,6 +469,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [onSwitchCharacter]);
+
+  useEffect(() => {
+    if (currentDialogueId === "adif_hairi_battle_start") {
+      pendingBattleRef.current = true;
+    }
+    if (!currentDialogueId && pendingBattleRef.current) {
+      pendingBattleRef.current = false;
+      battleAdifHairiRef.current.inCombat = true;
+      adifRef.current.state = "combat";
+      hairiRef.current.state = "combat";
+      sound.playHitImpact();
+      screenShakeRef.current = 8;
+    }
+  }, [currentDialogueId]);
 
   // Main Game Loop
   useEffect(() => {
@@ -500,7 +612,116 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
 
-          // 2. Check training dummies if monster not hit
+          // 1.5. Check Adif & Hairi if duel battle is active
+          const duel = battleAdifHairiRef.current;
+          const adifBoss = adifRef.current;
+          const hairiBoss = hairiRef.current;
+          if (duel.inCombat && !duel.isDefeated && !attack.hasHit) {
+            // Check Adif hit
+            if (adifBoss.hp > 0 && !adifBoss.onTower) {
+              const facingMatches = active.facingLeft ? adifBoss.x <= active.x : adifBoss.x >= active.x;
+              const dist = Math.abs(active.x - adifBoss.x);
+              if (dist < 95 && facingMatches) {
+                attack.hasHit = true;
+                sound.playHitImpact();
+                screenShakeRef.current = 6;
+                adifBoss.hitFlash = 16;
+                adifBoss.shake = 12;
+                comboRef.current.count++;
+                comboRef.current.timer = 120;
+                const isCrit = Math.random() < 0.35;
+                const baseDmg = isCrit ? Math.floor(75 + Math.random() * 35) : Math.floor(35 + Math.random() * 25);
+                adifBoss.hp = Math.max(0, adifBoss.hp - baseDmg);
+                damageNumbersRef.current.push({
+                  x: adifBoss.x,
+                  y: adifBoss.y - 85,
+                  text: isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`,
+                  color: isCrit ? "#f59e0b" : "#fbbf24",
+                  life: 35,
+                  maxLife: 35,
+                  vy: -1.8,
+                  isCrit,
+                });
+                for (let p = 0; p < 12; p++) {
+                  combatParticlesRef.current.push({
+                    x: adifBoss.x,
+                    y: adifBoss.y - 50 + (Math.random() - 0.5) * 20,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: -1.5 - Math.random() * 3,
+                    color: p % 2 === 0 ? "#f59e0b" : "#ffffff",
+                    size: 3,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+              }
+            }
+
+            // Check Hairi hit
+            if (!attack.hasHit && hairiBoss.hp > 0) {
+              const facingMatches = active.facingLeft ? hairiBoss.x <= active.x : hairiBoss.x >= active.x;
+              const dist = Math.abs(active.x - hairiBoss.x);
+              if (dist < 95 && facingMatches) {
+                attack.hasHit = true;
+                sound.playHitImpact();
+                screenShakeRef.current = 7;
+                hairiBoss.hitFlash = 16;
+                hairiBoss.shake = 14;
+                hairiBoss.state = "hurt";
+                comboRef.current.count++;
+                comboRef.current.timer = 120;
+                const isCrit = Math.random() < 0.35;
+                const baseDmg = isCrit ? Math.floor(80 + Math.random() * 40) : Math.floor(38 + Math.random() * 25);
+                hairiBoss.hp = Math.max(0, hairiBoss.hp - baseDmg);
+                damageNumbersRef.current.push({
+                  x: hairiBoss.x,
+                  y: hairiBoss.y - 85,
+                  text: isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`,
+                  color: isCrit ? "#f59e0b" : "#ef4444",
+                  life: 35,
+                  maxLife: 35,
+                  vy: -1.8,
+                  isCrit,
+                });
+                for (let p = 0; p < 12; p++) {
+                  combatParticlesRef.current.push({
+                    x: hairiBoss.x,
+                    y: hairiBoss.y - 50 + (Math.random() - 0.5) * 20,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: -1.5 - Math.random() * 3,
+                    color: p % 2 === 0 ? "#ef4444" : "#3b82f6",
+                    size: 3,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+              }
+            }
+
+            // Check if both Adif and Hairi defeated
+            if (adifBoss.hp <= 0 && hairiBoss.hp <= 0 && !duel.isDefeated) {
+              duel.isDefeated = true;
+              duel.inCombat = false;
+              adifBoss.state = "defeated";
+              hairiBoss.state = "defeated";
+              sound.playWin();
+              sound.playCoin();
+              screenShakeRef.current = 10;
+              damageNumbersRef.current.push({
+                x: (adifBoss.x + hairiBoss.x) / 2,
+                y: GROUND_Y - 110,
+                text: "✨ DUEL SELESAI • PERSAHABATAN TERJALIN! ✨",
+                color: "#fbbf24",
+                life: 75,
+                maxLife: 75,
+                vy: -1.0,
+                isCrit: true,
+              });
+              onTriggerDialogue("adif_hairi_defeat");
+            }
+          }
+
+          // 2. Check training dummies if monster and duel enemies not hit
           if (!attack.hasHit) {
             for (const dummy of trainingDummiesRef.current) {
               const facingMatches = active.facingLeft ? dummy.x <= active.x : dummy.x >= active.x;
@@ -692,6 +913,140 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
+      // 2.8 Adif & Hairi AI & State Updates
+      const adifState = adifRef.current;
+      const hairiState = hairiRef.current;
+      const duelState = battleAdifHairiRef.current;
+
+      // Adif Rappel & State logic
+      if (adifState.isRappelling) {
+        adifState.y += 2.8;
+        adifState.animTimer++;
+        if (adifState.animTimer % 4 === 0) {
+          adifState.animFrame = Math.min(7, adifState.animFrame + 1);
+        }
+        if (adifState.y >= GROUND_Y) {
+          adifState.y = GROUND_Y;
+          adifState.onTower = false;
+          adifState.isRappelling = false;
+          adifState.state = "idle";
+          adifState.animFrame = 0;
+          sound.playStomp();
+          screenShakeRef.current = 6;
+          onTriggerDialogue("adif_tower_2");
+        }
+      } else if (!adifState.onTower) {
+        adifState.animTimer++;
+        if (adifState.hitFlash > 0) adifState.hitFlash--;
+        if (adifState.shake > 0) adifState.shake *= 0.85;
+        if (adifState.attackCooldown > 0) adifState.attackCooldown--;
+
+        if (duelState.inCombat && !duelState.isDefeated) {
+          adifState.facingLeft = active.x < adifState.x;
+          const dist = Math.abs(active.x - adifState.x);
+          if (dist > 70 && dist < 600) {
+            adifState.state = "run";
+            adifState.vx = adifState.facingLeft ? -1.3 : 1.3;
+            adifState.x += adifState.vx;
+            if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+          } else if (dist <= 70 && adifState.attackCooldown <= 0) {
+            adifState.state = "combat";
+            if (adifState.animTimer % 4 === 0) {
+              adifState.animFrame++;
+              if (adifState.animFrame === 4) {
+                sound.playStomp();
+                active.vx = adifState.facingLeft ? -3.5 : 3.5;
+                active.x += active.vx;
+              }
+              if (adifState.animFrame >= 8) {
+                adifState.animFrame = 0;
+                adifState.attackCooldown = 70;
+              }
+            }
+          } else {
+            adifState.state = "idle";
+            if (adifState.animTimer % 6 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+          }
+        } else {
+          // Calm idle
+          adifState.state = "idle";
+          adifState.vx = 0;
+          if (adifState.animTimer % 7 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+        }
+      }
+
+      // Hairi AI & Pacing logic
+      hairiState.animTimer++;
+      if (hairiState.hitFlash > 0) hairiState.hitFlash--;
+      if (hairiState.shake > 0) hairiState.shake *= 0.85;
+      if (hairiState.attackCooldown > 0) hairiState.attackCooldown--;
+
+      if (duelState.inCombat && !duelState.isDefeated) {
+        hairiState.facingLeft = active.x < hairiState.x;
+        const dist = Math.abs(active.x - hairiState.x);
+        if (hairiState.state === "hurt") {
+          if (hairiState.animTimer > 15) {
+            hairiState.state = "combat";
+            hairiState.animTimer = 0;
+          }
+        } else if (dist > 65 && dist < 600) {
+          hairiState.state = "combat";
+          hairiState.vx = hairiState.facingLeft ? -1.4 : 1.4;
+          hairiState.x += hairiState.vx;
+          if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+        } else if (dist <= 65 && hairiState.attackCooldown <= 0) {
+          hairiState.state = "combat";
+          if (hairiState.animTimer % 4 === 0) {
+            hairiState.animFrame++;
+            if (hairiState.animFrame === 4) {
+              sound.playHitImpact();
+              screenShakeRef.current = 5;
+              active.vx = hairiState.facingLeft ? -4 : 4;
+              active.x += active.vx;
+            }
+            if (hairiState.animFrame >= 8) {
+              hairiState.animFrame = 0;
+              hairiState.attackCooldown = 60;
+            }
+          }
+        } else {
+          hairiState.state = "combat";
+          if (hairiState.animTimer % 5 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+        }
+      } else if (!duelState.isDefeated) {
+        // Pacing back and forth angrily with red face
+        hairiState.state = "walk_angry";
+        hairiState.x += hairiState.vx;
+        if (hairiState.x > 1660) {
+          hairiState.vx = -1.1;
+          hairiState.facingLeft = true;
+        } else if (hairiState.x < 1470) {
+          hairiState.vx = 1.1;
+          hairiState.facingLeft = false;
+        }
+        if (hairiState.animTimer % 4 === 0) {
+          hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+        }
+        // Angry steam puff every 28 ticks
+        if (hairiState.animTimer % 28 === 0) {
+          combatParticlesRef.current.push({
+            x: hairiState.x + (Math.random() - 0.5) * 12,
+            y: GROUND_Y - 95,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: -1.2,
+            color: "#fecdd3",
+            size: 3.5,
+            life: 22,
+            maxLife: 22,
+          });
+        }
+      } else {
+        // Defeated / cooled down
+        hairiState.state = "defeated";
+        hairiState.vx = 0;
+        hairiState.animFrame = 7;
+      }
+
       // 3. Update Active Character Physics
       if (!isDialogueOpen && !attack.isAttacking) {
         const speed = isRun ? 4.8 : 2.6;
@@ -809,6 +1164,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         panciProp: panciPropImg,
         cauldronEmergence: cauldronEmergenceImg,
         monsterMaster: monsterMasterImg,
+        towerListrik: towerListrikImg,
+        adifMaster: adifMasterImg,
+        hairiMaster: hairiMasterImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -883,9 +1241,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const bikeX = 890 - camX;
         ctx.drawImage(propsImg, 720, 350, 280, 170, bikeX, GROUND_Y - 60, 110, 70);
 
-        // Utility Pole
+        // Utility Tower ("Tower Listrik")
         const poleX = 1420 - camX;
-        ctx.drawImage(propsImg, 20, 300, 280, 450, poleX, GROUND_Y - 220, 120, 230);
+        if (towerListrikImg) {
+          const tW = 150;
+          const tH = 265;
+          ctx.drawImage(towerListrikImg, poleX - tW / 2, GROUND_Y + 16 - tH, tW, tH);
+        } else {
+          ctx.drawImage(propsImg, 20, 300, 280, 450, poleX - 60, GROUND_Y - 220, 120, 230);
+        }
 
         // Coconut Palms
         const palm1X = 100 - camX;
@@ -1090,6 +1454,158 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fill();
 
           ctx.drawImage(panciPropImg, 0, 0, 200, 200, drawX, drawY, destW, destH);
+          ctx.restore();
+        }
+      }
+
+      // Layer 5.62: Adif (Sang Koboi Menara)
+      if (adifMasterImg) {
+        const destW = 86;
+        const destH = 126;
+        const frameW = 150;
+        const frameH = 224;
+
+        if (adifState.onTower) {
+          const towerScreenX = 1420 - camX;
+          if (adifState.isRappelling) {
+            // Draw cowboy rope from tower top to Adif
+            ctx.save();
+            ctx.strokeStyle = "#92400e";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(towerScreenX - 5, GROUND_Y - 240);
+            ctx.lineTo(towerScreenX - 5, adifState.y - 40);
+            ctx.stroke();
+            ctx.restore();
+
+            // Adif rappelling down on rope (Row 3)
+            const sx = (adifState.animFrame % 8) * frameW;
+            const sy = 3 * frameH;
+            const drawX = towerScreenX - destW / 2 - 5;
+            const drawY = adifState.y - destH * (219 / 224);
+            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, drawX, drawY, destW, destH);
+          } else {
+            // Adif perched on top of Tower Listrik platform (Row 3, Frame 0)
+            const drawX = towerScreenX - destW / 2 + 5;
+            const drawY = GROUND_Y - 248;
+            ctx.drawImage(adifMasterImg, 0, 3 * frameH, frameW, frameH, drawX, drawY, destW, destH);
+          }
+        } else {
+          // Adif on Ground
+          let aRow = 0;
+          if (duelState.inCombat && !duelState.isDefeated) {
+            aRow = 2; // Combat with lasso & punch
+          } else if (adifState.state === "run") {
+            aRow = 1; // Run
+          } else if (adifState.state === "defeated") {
+            aRow = 3; // Friendly salute
+          } else {
+            aRow = 0; // Idle (no weapons)
+          }
+
+          const aCol = adifState.animFrame % 8;
+          const sx = aCol * frameW;
+          const sy = aRow * frameH;
+          const drawY = adifState.y + 18 - destH * (219 / 224);
+          const aScreenX = adifState.x - camX + (adifState.shake > 0 ? (Math.random() - 0.5) * adifState.shake : 0);
+
+          ctx.save();
+          // Ground shadow
+          ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+          ctx.beginPath();
+          ctx.ellipse(aScreenX, adifState.y + 16, 24, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (adifState.hitFlash > 0 && Math.floor(adifState.hitFlash / 2) % 2 === 0) {
+            ctx.filter = "brightness(2.2)";
+          }
+
+          if (adifState.facingLeft) {
+            ctx.translate(aScreenX, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+          } else {
+            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, aScreenX - destW / 2, drawY, destW, destH);
+          }
+          ctx.restore();
+
+          // In-Combat Mini HP Bar over Adif
+          if (duelState.inCombat && !duelState.isDefeated && adifState.hp > 0) {
+            const barW = 60;
+            const barH = 5;
+            const hpRatio = Math.max(0, adifState.hp / adifState.maxHp);
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillRect(aScreenX - barW / 2 - 1, drawY - 14, barW + 2, barH + 2);
+            ctx.fillStyle = "#f59e0b";
+            ctx.fillRect(aScreenX - barW / 2, drawY - 13, barW * hpRatio, barH);
+            ctx.font = "bold 8px 'Courier New', monospace";
+            ctx.fillStyle = "#fef3c7";
+            ctx.textAlign = "center";
+            ctx.fillText("ADIF", aScreenX, drawY - 16);
+            ctx.restore();
+          }
+        }
+      }
+
+      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu Marah)
+      if (hairiMasterImg) {
+        const destW = 92;
+        const destH = 118;
+        const frameW = 172;
+        const frameH = 192;
+
+        let hRow = 0;
+        if (duelState.inCombat && !duelState.isDefeated) {
+          hRow = 2; // Combat mode with Blue XL Shield + Red Boxing Glove!
+        } else if (hairiState.state === "walk_angry") {
+          hRow = 1; // Angry stomping walk with red face (no weapons)
+        } else if (hairiState.state === "defeated") {
+          hRow = 3; // Cool down, peaceful face
+        } else {
+          hRow = 0; // Idle angry with red face & clenched fists (no weapons)
+        }
+
+        const hCol = hairiState.animFrame % 8;
+        const sx = hCol * frameW;
+        const sy = hRow * frameH;
+        const drawY = hairiState.y + 18 - destH * (190 / 192);
+        const hScreenX = hairiState.x - camX + (hairiState.shake > 0 ? (Math.random() - 0.5) * hairiState.shake : 0);
+
+        ctx.save();
+        // Ground shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(hScreenX, hairiState.y + 16, 24, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (hairiState.hitFlash > 0 && Math.floor(hairiState.hitFlash / 2) % 2 === 0) {
+          ctx.filter = "brightness(2.2)";
+        }
+
+        if (hairiState.facingLeft) {
+          ctx.translate(hScreenX, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(hairiMasterImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+        } else {
+          ctx.drawImage(hairiMasterImg, sx, sy, frameW, frameH, hScreenX - destW / 2, drawY, destW, destH);
+        }
+        ctx.restore();
+
+        // In-Combat Mini HP Bar over Hairi
+        if (duelState.inCombat && !duelState.isDefeated && hairiState.hp > 0) {
+          const barW = 60;
+          const barH = 5;
+          const hpRatio = Math.max(0, hairiState.hp / hairiState.maxHp);
+          ctx.save();
+          ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+          ctx.fillRect(hScreenX - barW / 2 - 1, drawY - 14, barW + 2, barH + 2);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(hScreenX - barW / 2, drawY - 13, barW * hpRatio, barH);
+          ctx.font = "bold 8px 'Courier New', monospace";
+          ctx.fillStyle = "#fef2f2";
+          ctx.textAlign = "center";
+          ctx.fillText("HAIRI", hScreenX, drawY - 16);
           ctx.restore();
         }
       }
@@ -1445,8 +1961,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           nearestPromptObj.id === "panci_misterius" &&
           monsterRef.current.isActive &&
           !monsterRef.current.isDefeated;
+        const isDuelFighting =
+          nearestPromptObj.id === "adif_tower" &&
+          duelState.inCombat &&
+          !duelState.isDefeated;
 
-        if (!isMonsterFighting) {
+        if (!isMonsterFighting && !isDuelFighting) {
           const promptX = nearestPromptObj.x - camX;
           const promptY = GROUND_Y - 120;
 
@@ -1454,10 +1974,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillStyle = "rgba(9, 11, 16, 0.9)";
           ctx.strokeStyle = "rgba(245, 158, 11, 0.8)";
           ctx.lineWidth = 2;
-          const promptText =
-            nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated
-              ? "Panci Purba (Siluman Telah Tunduk)"
-              : nearestPromptObj.prompt;
+          let promptText = nearestPromptObj.prompt;
+          if (nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated) {
+            promptText = "Panci Purba (Siluman Telah Tunduk)";
+          } else if (nearestPromptObj.id === "adif_tower") {
+            if (adifState.isRappelling) {
+              promptText = "Adif Sedang Meluncur Turun...";
+            } else if (duelState.isDefeated) {
+              promptText = "Mengobrol dengan Adif & Hairi";
+            }
+          }
           const text = `[E] ${promptText}`;
           ctx.font = "bold 13px 'Courier New', monospace";
           const textWidth = ctx.measureText(text).width;
@@ -1494,6 +2020,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             if (nearestPromptObj.id === "cat_oyen") {
               sound.playPurr();
             }
+            if (nearestPromptObj.id === "adif_tower") {
+              if (adifState.onTower && !adifState.isRappelling) {
+                adifState.isRappelling = true;
+                adifState.y = GROUND_Y - 225;
+                onTriggerDialogue("adif_tower_1");
+                return;
+              }
+            }
             if (nearestPromptObj.id === "panci_misterius") {
               if (!monsterRef.current.isActive) {
                 monsterRef.current.isActive = true;
@@ -1504,10 +2038,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 sound.playStomp();
               }
             }
-            const targetDialogue =
-              nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated
-                ? "panci_defeat"
-                : nearestPromptObj.dialogueId;
+            let targetDialogue = nearestPromptObj.dialogueId;
+            if (nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated) {
+              targetDialogue = "panci_defeat";
+            } else if (nearestPromptObj.id === "adif_tower" && duelState.isDefeated) {
+              targetDialogue = "adif_hairi_defeat_2";
+            }
             onTriggerDialogue(targetDialogue);
           }
         }
@@ -1598,6 +2134,64 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(`${boss.hp} / ${boss.maxHp} HP`, centerX, barY + barH / 2);
+
+        ctx.restore();
+      }
+
+      // Layer 7.65: Dual Boss Bar HUD (Adif & Hairi)
+      if (duelState.inCombat && !duelState.isDefeated) {
+        ctx.save();
+        const barW = 340;
+        const barH = 14;
+        const centerX = CANVAS_W / 2;
+        const barY = 24;
+
+        // Banner Frame
+        ctx.fillStyle = "rgba(10, 12, 22, 0.94)";
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(centerX - barW / 2 - 14, barY - 16, barW + 28, barH + 34, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Title
+        ctx.font = "bold 11px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fef08a";
+        ctx.fillText("⚔️ DUEL PERSAHABATAN: ADIF & HAIRI ⚔️", centerX, barY - 4);
+
+        // Half width for each
+        const halfW = (barW - 10) / 2;
+
+        // Adif (Cowboy) HP Bar - Left
+        const adifRatio = Math.max(0, adifState.hp / adifState.maxHp);
+        ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
+        ctx.fillRect(centerX - barW / 2, barY, halfW, barH);
+        const adifGrad = ctx.createLinearGradient(centerX - barW / 2, barY, centerX - barW / 2 + halfW, barY);
+        adifGrad.addColorStop(0, "#d97706");
+        adifGrad.addColorStop(1, "#fbbf24");
+        ctx.fillStyle = adifGrad;
+        ctx.fillRect(centerX - barW / 2, barY, halfW * adifRatio, barH);
+        ctx.font = "bold 8px 'Courier New', monospace";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText(`🤠 ADIF ${adifState.hp}/300`, centerX - barW / 2 + halfW / 2, barY + barH / 2 + 3);
+
+        // Hairi (XL Shield) HP Bar - Right
+        const hairiRatio = Math.max(0, hairiState.hp / hairiState.maxHp);
+        const rightX = centerX + 5;
+        ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
+        ctx.fillRect(rightX, barY, halfW, barH);
+        const hairiGrad = ctx.createLinearGradient(rightX, barY, rightX + halfW, barY);
+        hairiGrad.addColorStop(0, "#dc2626");
+        hairiGrad.addColorStop(1, "#3b82f6");
+        ctx.fillStyle = hairiGrad;
+        ctx.fillRect(rightX, barY, halfW * hairiRatio, barH);
+        ctx.font = "bold 8px 'Courier New', monospace";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText(`🛡️ HAIRI ${hairiState.hp}/300`, rightX + halfW / 2, barY + barH / 2 + 3);
 
         ctx.restore();
       }

@@ -36,12 +36,14 @@ export const AwwwardsShell: React.FC = () => {
     warkopVisited: boolean;
     sunsetWatched: boolean;
     monsterDefeated: boolean;
+    adifHairiDefeated: boolean;
   }>({
     catPetted: false,
     pisangEaten: false,
     warkopVisited: false,
     sunsetWatched: false,
     monsterDefeated: false,
+    adifHairiDefeated: false,
   });
 
   const [virtualInput, setVirtualInput] = useState<{
@@ -86,6 +88,8 @@ export const AwwwardsShell: React.FC = () => {
       setDiscoveries((prev) => ({ ...prev, sunsetWatched: true }));
     } else if (dialogueId === "panci_defeat") {
       setDiscoveries((prev) => ({ ...prev, monsterDefeated: true }));
+    } else if (dialogueId === "adif_hairi_defeat" || dialogueId === "adif_hairi_defeat_2") {
+      setDiscoveries((prev) => ({ ...prev, adifHairiDefeated: true }));
     }
   };
 
@@ -162,8 +166,8 @@ export const AwwwardsShell: React.FC = () => {
           {/* Discovery Tracker Pill */}
           <div className="hidden sm:flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 shadow-md text-xs font-mono">
             <span className="text-white/50">EKSPLORASI:</span>
-            <span className="font-bold text-amber-400">{totalDiscoveries}/5 Misi</span>
-            {totalDiscoveries === 5 && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}
+            <span className="font-bold text-amber-400">{totalDiscoveries}/6 Misi</span>
+            {totalDiscoveries === 6 && <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />}
           </div>
         </div>
 
@@ -205,6 +209,7 @@ export const AwwwardsShell: React.FC = () => {
               onSwitchCharacter={handleSwitchCharacter}
               onTriggerDialogue={handleTriggerDialogue}
               isDialogueOpen={Boolean(currentDialogueId)}
+              currentDialogueId={currentDialogueId}
               scanlines={scanlines}
               virtualInput={virtualInput}
             />
