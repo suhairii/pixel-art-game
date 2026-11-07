@@ -10,7 +10,7 @@ interface TouchControlsProps {
 
 export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentInput }) => {
   return (
-    <div className="flex md:hidden w-full max-w-4xl mx-auto items-center justify-between px-4 py-3 select-none touch-none">
+    <div className="flex w-full max-w-4xl mx-auto items-center justify-between px-2 py-2 select-none touch-none">
       {/* Directional Pad */}
       <div className="flex items-center gap-3">
         <button
@@ -25,10 +25,10 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentIn
           }}
           onMouseDown={() => onInput({ ...currentInput, left: true })}
           onMouseUp={() => onInput({ ...currentInput, left: false })}
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
+          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer ${
             currentInput.left
-              ? "bg-cyan-500/30 border border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.4)]"
-              : "bg-white/5 border border-white/10 text-white/70 backdrop-blur-md"
+              ? "bg-rose-500/30 border border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.4)]"
+              : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 backdrop-blur-md"
           }`}
           aria-label="Move Left"
         >
@@ -47,10 +47,10 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentIn
           }}
           onMouseDown={() => onInput({ ...currentInput, right: true })}
           onMouseUp={() => onInput({ ...currentInput, right: false })}
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
+          className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer ${
             currentInput.right
-              ? "bg-cyan-500/30 border border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.4)]"
-              : "bg-white/5 border border-white/10 text-white/70 backdrop-blur-md"
+              ? "bg-rose-500/30 border border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.4)]"
+              : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 backdrop-blur-md"
           }`}
           aria-label="Move Right"
         >
@@ -72,15 +72,15 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ onInput, currentIn
           }}
           onMouseDown={() => onInput({ ...currentInput, jump: true })}
           onMouseUp={() => onInput({ ...currentInput, jump: false })}
-          className={`w-20 h-14 rounded-2xl flex items-center justify-center gap-1.5 font-mono text-xs uppercase font-bold tracking-wider transition-all duration-150 active:scale-95 ${
+          className={`w-24 h-14 sm:w-28 sm:h-16 rounded-2xl flex items-center justify-center gap-2 font-mono text-xs uppercase font-bold tracking-wider transition-all duration-150 active:scale-95 cursor-pointer ${
             currentInput.jump
-              ? "bg-emerald-500/30 border border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
-              : "bg-white/5 border border-white/10 text-white/70 backdrop-blur-md"
+              ? "bg-rose-500/30 border border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.4)]"
+              : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 backdrop-blur-md"
           }`}
           aria-label="Jump"
         >
           <ArrowUp className="w-5 h-5" />
-          <span>JUMP</span>
+          <span>LOMPAT</span>
         </button>
       </div>
     </div>
