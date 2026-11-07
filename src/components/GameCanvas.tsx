@@ -6,7 +6,7 @@ import { CharacterId, CharacterPose, InteractiveObject, CloudLayer, FlyingBird }
 
 const CANVAS_W = 960;
 const CANVAS_H = 540;
-const WORLD_W = 2400;
+const WORLD_W = 3000;
 const GROUND_Y = 430;
 
 interface GameCanvasProps {
@@ -194,10 +194,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     shake: number;
     attackCooldown: number;
     isAttacking: boolean;
+    lassoActive: boolean;
+    lassoTargetX: number;
+    lassoTargetY: number;
+    lassoTimer: number;
+    evasionTimer: number;
   }>({
     onTower: true,
     isRappelling: false,
-    x: 1420,
+    x: 2700,
     y: GROUND_Y - 240,
     vx: 0,
     facingLeft: true,
@@ -210,6 +215,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     shake: 0,
     attackCooldown: 60,
     isAttacking: false,
+    lassoActive: false,
+    lassoTargetX: 0,
+    lassoTargetY: 0,
+    lassoTimer: 0,
+    evasionTimer: 0,
   });
 
   // Hairi (Angry Gray Shirt Guy with Red Face) State
@@ -227,8 +237,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     shake: number;
     attackCooldown: number;
     isAttacking: boolean;
+    isShieldBlocking: boolean;
+    shieldBlockFlash: number;
+    isEnraged: boolean;
+    enragedTriggered: boolean;
+    bashShockwave: { active: boolean; x: number; y: number; dir: number; timer: number } | null;
   }>({
-    x: 1560,
+    x: 2620,
     y: GROUND_Y,
     vx: -1.0,
     facingLeft: true,
@@ -241,6 +256,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     shake: 0,
     attackCooldown: 45,
     isAttacking: false,
+    isShieldBlocking: false,
+    shieldBlockFlash: 0,
+    isEnraged: false,
+    enragedTriggered: false,
+    bashShockwave: null,
   });
 
   // Dual Battle State (Dani & Jihan vs Adif & Hairi)
@@ -345,9 +365,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     {
       id: "adif_tower",
       type: "pier_edge",
-      x: 1420,
+      x: 2700,
       y: GROUND_Y - 140,
-      width: 100,
+      width: 120,
       height: 180,
       prompt: "Panggil Adif di Atas Tower Listrik",
       interacted: false,
@@ -471,6 +491,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   }, [onSwitchCharacter]);
 
   useEffect(() => {
+    if (currentDialogueId === "adif_tower_2" && adifRef.current.onTower && !adifRef.current.isRappelling) {
+      adifRef.current.isRappelling = true;
+      adifRef.current.y = GROUND_Y - 225;
+    }
     if (currentDialogueId === "adif_hairi_battle_start") {
       pendingBattleRef.current = true;
     }
@@ -533,7 +557,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (attack.frame >= 2 && attack.frame <= 4) {
           const lungeSpeed = isJihanActive ? 1.6 : 1.2;
           active.x += active.facingLeft ? -lungeSpeed : lungeSpeed;
-          active.x = Math.max(100, Math.min(WORLD_W - 120, active.x));
+          active.x = Math.max(100, Math.min(WORLD_W - 80, active.x));
         }
 
         // Hit detection on crescent slash (frames 3 & 4)
@@ -632,26 +656,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 const isCrit = Math.random() < 0.35;
                 const baseDmg = isCrit ? Math.floor(75 + Math.random() * 35) : Math.floor(35 + Math.random() * 25);
                 adifBoss.hp = Math.max(0, adifBoss.hp - baseDmg);
+
+                // Adif nimble backstep evasion upon receiving hit
+                adifBoss.vx = adifBoss.facingLeft ? 4.2 : -4.2;
+                adifBoss.evasionTimer = 12;
+
                 damageNumbersRef.current.push({
                   x: adifBoss.x,
                   y: adifBoss.y - 85,
-                  text: isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`,
+                  text: isCrit ? `CRIT! ⭐ -${baseDmg}` : `-${baseDmg}`,
                   color: isCrit ? "#f59e0b" : "#fbbf24",
                   life: 35,
                   maxLife: 35,
                   vy: -1.8,
                   isCrit,
                 });
-                for (let p = 0; p < 12; p++) {
+                for (let p = 0; p < 14; p++) {
                   combatParticlesRef.current.push({
-                    x: adifBoss.x,
+                    x: adifBoss.x + (Math.random() - 0.5) * 16,
                     y: adifBoss.y - 50 + (Math.random() - 0.5) * 20,
-                    vx: (Math.random() - 0.5) * 5,
-                    vy: -1.5 - Math.random() * 3,
-                    color: p % 2 === 0 ? "#f59e0b" : "#ffffff",
-                    size: 3,
-                    life: 20,
-                    maxLife: 20,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: -1.5 - Math.random() * 3.5,
+                    color: p % 2 === 0 ? "#f59e0b" : "#fef08a",
+                    size: 3.5,
+                    life: 22,
+                    maxLife: 22,
                   });
                 }
               }
@@ -663,37 +692,82 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const dist = Math.abs(active.x - hairiBoss.x);
               if (dist < 95 && facingMatches) {
                 attack.hasHit = true;
-                sound.playHitImpact();
-                screenShakeRef.current = 7;
-                hairiBoss.hitFlash = 16;
-                hairiBoss.shake = 14;
-                hairiBoss.state = "hurt";
+                const isCrit = Math.random() < 0.35;
+                const baseDmg = isCrit ? Math.floor(80 + Math.random() * 40) : Math.floor(40 + Math.random() * 25);
                 comboRef.current.count++;
                 comboRef.current.timer = 120;
-                const isCrit = Math.random() < 0.35;
-                const baseDmg = isCrit ? Math.floor(80 + Math.random() * 40) : Math.floor(38 + Math.random() * 25);
-                hairiBoss.hp = Math.max(0, hairiBoss.hp - baseDmg);
-                damageNumbersRef.current.push({
-                  x: hairiBoss.x,
-                  y: hairiBoss.y - 85,
-                  text: isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`,
-                  color: isCrit ? "#f59e0b" : "#ef4444",
-                  life: 35,
-                  maxLife: 35,
-                  vy: -1.8,
-                  isCrit,
-                });
-                for (let p = 0; p < 12; p++) {
-                  combatParticlesRef.current.push({
+
+                // XL Shield Block Stance Check
+                const isHairiFacingPlayer = hairiBoss.facingLeft ? active.x <= hairiBoss.x : active.x >= hairiBoss.x;
+                const isShieldStance = hairiBoss.state === "combat" && (hairiBoss.animFrame <= 2 || hairiBoss.animFrame === 7);
+
+                if (isHairiFacingPlayer && isShieldStance) {
+                  // SHIELD DEFLECTION & ABSORPTION!
+                  sound.playStomp();
+                  screenShakeRef.current = 4;
+                  hairiBoss.shieldBlockFlash = 22;
+                  hairiBoss.shake = 8;
+                  const blockedDmg = Math.max(6, Math.floor(baseDmg * 0.25));
+                  hairiBoss.hp = Math.max(0, hairiBoss.hp - blockedDmg);
+
+                  // Recoil push back on active player
+                  active.vx = active.facingLeft ? 4.2 : -4.2;
+
+                  damageNumbersRef.current.push({
                     x: hairiBoss.x,
-                    y: hairiBoss.y - 50 + (Math.random() - 0.5) * 20,
-                    vx: (Math.random() - 0.5) * 5,
-                    vy: -1.5 - Math.random() * 3,
-                    color: p % 2 === 0 ? "#ef4444" : "#3b82f6",
-                    size: 3,
-                    life: 20,
-                    maxLife: 20,
+                    y: hairiBoss.y - 85,
+                    text: `🛡️ BLOCKED! -${blockedDmg}`,
+                    color: "#38bdf8",
+                    life: 38,
+                    maxLife: 38,
+                    vy: -1.6,
+                    isCrit: false,
                   });
+
+                  // Electric Cyan / Blue Shield Barrier sparks
+                  for (let p = 0; p < 16; p++) {
+                    combatParticlesRef.current.push({
+                      x: hairiBoss.x + (hairiBoss.facingLeft ? -15 : 15),
+                      y: hairiBoss.y - 50 + (Math.random() - 0.5) * 28,
+                      vx: (hairiBoss.facingLeft ? -1 : 1) * (1.5 + Math.random() * 4),
+                      vy: (Math.random() - 0.5) * 5,
+                      color: p % 2 === 0 ? "#38bdf8" : "#ffffff",
+                      size: 3.5,
+                      life: 20,
+                      maxLife: 20,
+                    });
+                  }
+                } else {
+                  // DIRECT FULL DAMAGE HIT!
+                  sound.playHitImpact();
+                  screenShakeRef.current = 8;
+                  hairiBoss.hitFlash = 16;
+                  hairiBoss.shake = 14;
+                  hairiBoss.state = "hurt";
+                  hairiBoss.hp = Math.max(0, hairiBoss.hp - baseDmg);
+
+                  damageNumbersRef.current.push({
+                    x: hairiBoss.x,
+                    y: hairiBoss.y - 85,
+                    text: isCrit ? `CRIT! 💥 -${baseDmg}` : `-${baseDmg}`,
+                    color: isCrit ? "#f59e0b" : "#ef4444",
+                    life: 35,
+                    maxLife: 35,
+                    vy: -1.8,
+                    isCrit,
+                  });
+                  for (let p = 0; p < 14; p++) {
+                    combatParticlesRef.current.push({
+                      x: hairiBoss.x,
+                      y: hairiBoss.y - 50 + (Math.random() - 0.5) * 20,
+                      vx: (Math.random() - 0.5) * 6,
+                      vy: -1.5 - Math.random() * 3,
+                      color: p % 2 === 0 ? "#ef4444" : "#f97316",
+                      size: 3.5,
+                      life: 22,
+                      maxLife: 22,
+                    });
+                  }
                 }
               }
             }
@@ -920,7 +994,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Adif Rappel & State logic
       if (adifState.isRappelling) {
-        adifState.y += 2.8;
+        adifState.y += 3.2;
         adifState.animTimer++;
         if (adifState.animTimer % 4 === 0) {
           adifState.animFrame = Math.min(7, adifState.animFrame + 1);
@@ -940,33 +1014,133 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (adifState.hitFlash > 0) adifState.hitFlash--;
         if (adifState.shake > 0) adifState.shake *= 0.85;
         if (adifState.attackCooldown > 0) adifState.attackCooldown--;
+        if (adifState.lassoTimer > 0) adifState.lassoTimer--;
+        if (adifState.lassoTimer <= 0) adifState.lassoActive = false;
+
+        // Evasion backward slide physics
+        if (adifState.evasionTimer > 0) {
+          adifState.evasionTimer--;
+          adifState.x += adifState.vx;
+          adifState.vx *= 0.88;
+          if (adifState.animTimer % 2 === 0) {
+            combatParticlesRef.current.push({
+              x: adifState.x + (Math.random() - 0.5) * 10,
+              y: GROUND_Y + 12,
+              vx: (Math.random() - 0.5) * 1.5,
+              vy: -0.6,
+              color: "#d97706",
+              size: 2.5,
+              life: 14,
+              maxLife: 14,
+            });
+          }
+        }
 
         if (duelState.inCombat && !duelState.isDefeated) {
           adifState.facingLeft = active.x < adifState.x;
           const dist = Math.abs(active.x - adifState.x);
-          if (dist > 70 && dist < 600) {
-            adifState.state = "run";
-            adifState.vx = adifState.facingLeft ? -1.3 : 1.3;
-            adifState.x += adifState.vx;
-            if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
-          } else if (dist <= 70 && adifState.attackCooldown <= 0) {
+
+          if (dist >= 75 && dist <= 180 && adifState.attackCooldown <= 0) {
+            // Mid-Range Cowboy Lasso Whip Attack
             adifState.state = "combat";
             if (adifState.animTimer % 4 === 0) {
               adifState.animFrame++;
               if (adifState.animFrame === 4) {
-                sound.playStomp();
-                active.vx = adifState.facingLeft ? -3.5 : 3.5;
-                active.x += active.vx;
+                // Whip crack forward!
+                adifState.lassoActive = true;
+                adifState.lassoTargetX = active.x;
+                adifState.lassoTargetY = active.y - 35;
+                adifState.lassoTimer = 18;
+                sound.playWhip();
+                screenShakeRef.current = 5;
+
+                // Pull player inward towards Adif
+                active.x += (adifState.x - active.x) * 0.22;
+                active.vx = (adifState.x - active.x) * 0.05;
+
+                damageNumbersRef.current.push({
+                  x: active.x,
+                  y: active.y - 75,
+                  text: "💥 LASSO HOOK!",
+                  color: "#f59e0b",
+                  life: 32,
+                  maxLife: 32,
+                  vy: -1.5,
+                  isCrit: true,
+                });
+
+                for (let p = 0; p < 10; p++) {
+                  combatParticlesRef.current.push({
+                    x: active.x + (Math.random() - 0.5) * 16,
+                    y: active.y - 40 + (Math.random() - 0.5) * 16,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    color: p % 2 === 0 ? "#fbbf24" : "#ffffff",
+                    size: 3,
+                    life: 18,
+                    maxLife: 18,
+                  });
+                }
               }
               if (adifState.animFrame >= 8) {
                 adifState.animFrame = 0;
-                adifState.attackCooldown = 70;
+                adifState.attackCooldown = 75;
               }
             }
+          } else if (dist < 75 && adifState.attackCooldown <= 0) {
+            // Close-Range Knuckle Rush Combo
+            adifState.state = "combat";
+            if (adifState.animTimer % 4 === 0) {
+              adifState.animFrame++;
+              if (adifState.animFrame === 5) {
+                sound.playStomp();
+                screenShakeRef.current = 6;
+                active.vx = adifState.facingLeft ? -4.5 : 4.5;
+                active.x += active.vx;
+
+                damageNumbersRef.current.push({
+                  x: active.x,
+                  y: active.y - 75,
+                  text: "⭐ KNUCKLE RUSH!",
+                  color: "#fbbf24",
+                  life: 30,
+                  maxLife: 30,
+                  vy: -1.4,
+                  isCrit: true,
+                });
+
+                for (let p = 0; p < 12; p++) {
+                  combatParticlesRef.current.push({
+                    x: active.x + (Math.random() - 0.5) * 16,
+                    y: active.y - 45 + (Math.random() - 0.5) * 16,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: -1.2 - Math.random() * 3,
+                    color: p % 2 === 0 ? "#f59e0b" : "#fde68a",
+                    size: 3.5,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+              }
+              if (adifState.animFrame >= 8) {
+                // Nimble back-flip / back-step leap
+                adifState.vx = adifState.facingLeft ? 4.2 : -4.2;
+                adifState.evasionTimer = 10;
+                adifState.animFrame = 0;
+                adifState.attackCooldown = 65;
+              }
+            }
+          } else if (dist > 180 && dist < 650) {
+            adifState.state = "run";
+            adifState.vx = adifState.facingLeft ? -1.6 : 1.6;
+            adifState.x += adifState.vx;
+            if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
           } else {
             adifState.state = "idle";
             if (adifState.animTimer % 6 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
           }
+
+          adifState.x = Math.max(2200, Math.min(2950, adifState.x));
         } else {
           // Calm idle
           adifState.state = "idle";
@@ -975,70 +1149,189 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Hairi AI & Pacing logic
+      // Hairi AI, Rage Mode, Shield & Flurry logic
       hairiState.animTimer++;
       if (hairiState.hitFlash > 0) hairiState.hitFlash--;
       if (hairiState.shake > 0) hairiState.shake *= 0.85;
       if (hairiState.attackCooldown > 0) hairiState.attackCooldown--;
+      if (hairiState.shieldBlockFlash > 0) hairiState.shieldBlockFlash--;
+
+      // Rage Mode Activation at HP <= 150
+      if (duelState.inCombat && hairiState.hp <= 150 && !hairiState.enragedTriggered) {
+        hairiState.isEnraged = true;
+        hairiState.enragedTriggered = true;
+        screenShakeRef.current = 10;
+        sound.playHitImpact();
+        damageNumbersRef.current.push({
+          x: hairiState.x,
+          y: hairiState.y - 95,
+          text: "🔥 HAIRI ENRAGED! 🔥",
+          color: "#ef4444",
+          life: 55,
+          maxLife: 55,
+          vy: -1.2,
+          isCrit: true,
+        });
+      }
+
+      const hairiSpeedMult = hairiState.isEnraged ? 1.35 : 1.0;
+      const hairiCdMult = hairiState.isEnraged ? 0.65 : 1.0;
+
+      // Boiling steam puffs from angry face / rage aura
+      const steamInterval = hairiState.isEnraged ? 8 : 24;
+      if (hairiState.animTimer % steamInterval === 0) {
+        combatParticlesRef.current.push({
+          x: hairiState.x + (Math.random() - 0.5) * 14,
+          y: GROUND_Y - 95,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: hairiState.isEnraged ? -1.8 : -1.2,
+          color: hairiState.isEnraged ? "#fca5a5" : "#fecdd3",
+          size: hairiState.isEnraged ? 4.5 : 3.5,
+          life: 24,
+          maxLife: 24,
+        });
+      }
+
+      // Shockwave forward propagation & hit detection
+      if (hairiState.bashShockwave && hairiState.bashShockwave.active) {
+        const sw = hairiState.bashShockwave;
+        sw.x += sw.dir * 5.8;
+        sw.timer--;
+
+        // Shockwave trail particles
+        if (sw.timer % 3 === 0) {
+          combatParticlesRef.current.push({
+            x: sw.x,
+            y: GROUND_Y + 10,
+            vx: -sw.dir * 1.5,
+            vy: -0.8,
+            color: "#38bdf8",
+            size: 3,
+            life: 14,
+            maxLife: 14,
+          });
+        }
+
+        if (Math.abs(sw.x - active.x) < 35) {
+          // Shockwave hits player!
+          sound.playHitImpact();
+          screenShakeRef.current = 8;
+          active.vx = sw.dir * 5.2;
+          active.x += active.vx;
+          damageNumbersRef.current.push({
+            x: active.x,
+            y: active.y - 80,
+            text: "🌊 SHIELD BASH!",
+            color: "#38bdf8",
+            life: 32,
+            maxLife: 32,
+            vy: -1.6,
+            isCrit: true,
+          });
+          sw.active = false;
+        }
+
+        if (sw.timer <= 0) sw.active = false;
+      }
 
       if (duelState.inCombat && !duelState.isDefeated) {
         hairiState.facingLeft = active.x < hairiState.x;
         const dist = Math.abs(active.x - hairiState.x);
+
         if (hairiState.state === "hurt") {
-          if (hairiState.animTimer > 15) {
+          if (hairiState.animTimer > 14) {
             hairiState.state = "combat";
             hairiState.animTimer = 0;
           }
-        } else if (dist > 65 && dist < 600) {
+        } else if (dist >= 60 && dist <= 145 && hairiState.attackCooldown <= 0) {
+          // Shield Bash Charge with Shockwave release
           hairiState.state = "combat";
-          hairiState.vx = hairiState.facingLeft ? -1.4 : 1.4;
+          hairiState.vx = (hairiState.facingLeft ? -3.0 : 3.0) * hairiSpeedMult;
           hairiState.x += hairiState.vx;
-          if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
-        } else if (dist <= 65 && hairiState.attackCooldown <= 0) {
+
+          if (hairiState.animTimer % 4 === 0) {
+            hairiState.animFrame++;
+            if (hairiState.animFrame === 6) {
+              sound.playStomp();
+              screenShakeRef.current = 7;
+              hairiState.bashShockwave = {
+                active: true,
+                x: hairiState.x + (hairiState.facingLeft ? -22 : 22),
+                y: GROUND_Y - 20,
+                dir: hairiState.facingLeft ? -1 : 1,
+                timer: 24,
+              };
+            }
+            if (hairiState.animFrame >= 8) {
+              hairiState.animFrame = 0;
+              hairiState.attackCooldown = Math.floor(65 * hairiCdMult);
+            }
+          }
+        } else if (dist < 60 && hairiState.attackCooldown <= 0) {
+          // Devastating Red Boxing Glove 1-2 Hook
           hairiState.state = "combat";
           if (hairiState.animTimer % 4 === 0) {
             hairiState.animFrame++;
             if (hairiState.animFrame === 4) {
               sound.playHitImpact();
-              screenShakeRef.current = 5;
-              active.vx = hairiState.facingLeft ? -4 : 4;
+              screenShakeRef.current = 7;
+              active.vx = (hairiState.facingLeft ? -4.8 : 4.8) * hairiSpeedMult;
               active.x += active.vx;
+
+              damageNumbersRef.current.push({
+                x: active.x,
+                y: active.y - 75,
+                text: "🥊 RED KNOCKOUT!",
+                color: "#dc2626",
+                life: 32,
+                maxLife: 32,
+                vy: -1.6,
+                isCrit: true,
+              });
+
+              for (let p = 0; p < 14; p++) {
+                combatParticlesRef.current.push({
+                  x: active.x + (Math.random() - 0.5) * 16,
+                  y: active.y - 45 + (Math.random() - 0.5) * 18,
+                  vx: (Math.random() - 0.5) * 6,
+                  vy: -1.5 - Math.random() * 3,
+                  color: p % 2 === 0 ? "#dc2626" : "#f97316",
+                  size: 3.5,
+                  life: 22,
+                  maxLife: 22,
+                });
+              }
             }
             if (hairiState.animFrame >= 8) {
               hairiState.animFrame = 0;
-              hairiState.attackCooldown = 60;
+              hairiState.attackCooldown = Math.floor(50 * hairiCdMult);
             }
           }
+        } else if (dist > 145 && dist < 650) {
+          // Approach in defensive shield stance
+          hairiState.state = "combat";
+          hairiState.vx = (hairiState.facingLeft ? -1.4 : 1.4) * hairiSpeedMult;
+          hairiState.x += hairiState.vx;
+          if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
         } else {
           hairiState.state = "combat";
           if (hairiState.animTimer % 5 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
         }
+
+        hairiState.x = Math.max(2200, Math.min(2950, hairiState.x));
       } else if (!duelState.isDefeated) {
-        // Pacing back and forth angrily with red face
+        // Pacing back and forth angrily with red face at Far End Arena (x = 2520 to 2840)
         hairiState.state = "walk_angry";
         hairiState.x += hairiState.vx;
-        if (hairiState.x > 1660) {
+        if (hairiState.x > 2840) {
           hairiState.vx = -1.1;
           hairiState.facingLeft = true;
-        } else if (hairiState.x < 1470) {
+        } else if (hairiState.x < 2520) {
           hairiState.vx = 1.1;
           hairiState.facingLeft = false;
         }
         if (hairiState.animTimer % 4 === 0) {
           hairiState.animFrame = (hairiState.animFrame + 1) % 8;
-        }
-        // Angry steam puff every 28 ticks
-        if (hairiState.animTimer % 28 === 0) {
-          combatParticlesRef.current.push({
-            x: hairiState.x + (Math.random() - 0.5) * 12,
-            y: GROUND_Y - 95,
-            vx: (Math.random() - 0.5) * 0.8,
-            vy: -1.2,
-            color: "#fecdd3",
-            size: 3.5,
-            life: 22,
-            maxLife: 22,
-          });
         }
       } else {
         // Defeated / cooled down
@@ -1061,7 +1354,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         active.x += active.vx;
-        active.x = Math.max(100, Math.min(WORLD_W - 120, active.x));
+        active.x = Math.max(100, Math.min(WORLD_W - 80, active.x));
 
         // Companion follow logic (gently follows active player)
         const targetDist = active.facingLeft ? 70 : -70;
@@ -1183,7 +1476,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // Layer 1: Background Panorama with Parallax
       if (bgImg) {
         const bgParallaxX = -camX * 0.45;
-        ctx.drawImage(bgImg, bgParallaxX, 0, WORLD_W * 0.75, CANVAS_H);
+        ctx.drawImage(bgImg, bgParallaxX, 0, WORLD_W * 0.85, CANVAS_H);
       } else {
         // Fallback Sunset Gradient
         const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
@@ -1241,21 +1534,25 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const bikeX = 890 - camX;
         ctx.drawImage(propsImg, 720, 350, 280, 170, bikeX, GROUND_Y - 60, 110, 70);
 
-        // Utility Tower ("Tower Listrik")
+        // Classic Vintage Wooden Pole at Warkop district (x = 1420)
         const poleX = 1420 - camX;
+        ctx.drawImage(propsImg, 20, 300, 280, 450, poleX - 60, GROUND_Y - 220, 120, 230);
+
+        // High Voltage Transmission Tower ("Tower Listrik") at Far End Arena (x = 2700)
+        const towerX = 2700 - camX;
         if (towerListrikImg) {
-          const tW = 150;
-          const tH = 265;
-          ctx.drawImage(towerListrikImg, poleX - tW / 2, GROUND_Y + 16 - tH, tW, tH);
-        } else {
-          ctx.drawImage(propsImg, 20, 300, 280, 450, poleX - 60, GROUND_Y - 220, 120, 230);
+          const tW = 165;
+          const tH = 285;
+          ctx.drawImage(towerListrikImg, towerX - tW / 2, GROUND_Y + 16 - tH, tW, tH);
         }
 
-        // Coconut Palms
+        // Coconut Palms along Pantai Losari
         const palm1X = 100 - camX;
         ctx.drawImage(propsImg, 1020, 150, 335, 600, palm1X, GROUND_Y - 260, 140, 270);
         const palm2X = 2050 - camX;
         ctx.drawImage(propsImg, 1020, 150, 335, 600, palm2X, GROUND_Y - 260, 140, 270);
+        const palm3X = 2920 - camX;
+        ctx.drawImage(propsImg, 1020, 150, 335, 600, palm3X, GROUND_Y - 260, 140, 270);
 
         // Potted Plants
         const plant1X = 680 - camX;
@@ -1466,7 +1763,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const frameH = 224;
 
         if (adifState.onTower) {
-          const towerScreenX = 1420 - camX;
+          const towerScreenX = 2700 - camX;
           if (adifState.isRappelling) {
             // Draw cowboy rope from tower top to Adif
             ctx.save();
@@ -1520,6 +1817,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.filter = "brightness(2.2)";
           }
 
+          // Overhead Spinning Lasso Loop (Frames 0-3 in Combat)
+          if (duelState.inCombat && !duelState.isDefeated && aRow === 2 && aCol <= 3) {
+            ctx.save();
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 2.5;
+            const lassoPivotX = aScreenX + (adifState.facingLeft ? -12 : 12);
+            const lassoPivotY = drawY + 15;
+            ctx.beginPath();
+            ctx.ellipse(lassoPivotX, lassoPivotY, 20, 7, globalTimer * 0.3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
           if (adifState.facingLeft) {
             ctx.translate(aScreenX, 0);
             ctx.scale(-1, 1);
@@ -1528,6 +1838,30 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, aScreenX - destW / 2, drawY, destW, destH);
           }
           ctx.restore();
+
+          // Lasso Whip Crack Visual Beam / Arc
+          if (adifState.lassoActive && adifState.lassoTimer > 0) {
+            ctx.save();
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 3;
+            const startX = aScreenX + (adifState.facingLeft ? -20 : 20);
+            const startY = drawY + 45;
+            const endX = adifState.lassoTargetX - camX;
+            const endY = adifState.lassoTargetY;
+            const midX = (startX + endX) / 2;
+            const midY = Math.min(startY, endY) - 35;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.quadraticCurveTo(midX, midY, endX, endY);
+            ctx.stroke();
+
+            // Star spark tip
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(endX, endY, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
 
           // In-Combat Mini HP Bar over Adif
           if (duelState.inCombat && !duelState.isDefeated && adifState.hp > 0) {
@@ -1573,6 +1907,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const hScreenX = hairiState.x - camX + (hairiState.shake > 0 ? (Math.random() - 0.5) * hairiState.shake : 0);
 
         ctx.save();
+
+        // Enraged Flaming Red Aura
+        if (hairiState.isEnraged && !duelState.isDefeated) {
+          const auraPulse = 0.4 + Math.sin(globalTimer * 0.2) * 0.2;
+          const aura = ctx.createRadialGradient(hScreenX, drawY + 60, 10, hScreenX, drawY + 60, 68);
+          aura.addColorStop(0, `rgba(239, 68, 68, ${auraPulse * 0.8})`);
+          aura.addColorStop(0.6, `rgba(249, 115, 22, ${auraPulse * 0.4})`);
+          aura.addColorStop(1, "rgba(239, 68, 68, 0)");
+          ctx.fillStyle = aura;
+          ctx.beginPath();
+          ctx.arc(hScreenX, drawY + 60, 68, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
         // Ground shadow
         ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
         ctx.beginPath();
@@ -1592,6 +1940,60 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         ctx.restore();
 
+        // Electric Cyan Hexagonal Shield Force-Field Barrier FX
+        if (hairiState.shieldBlockFlash > 0) {
+          const shieldBarrierX = hairiState.facingLeft ? hScreenX - 35 : hScreenX + 35;
+          const shieldBarrierY = drawY + 58;
+          ctx.save();
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.95)";
+          ctx.fillStyle = "rgba(14, 165, 233, 0.28)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          const hexR = 34;
+          for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI) / 3;
+            const hx = shieldBarrierX + hexR * Math.cos(angle);
+            const hy = shieldBarrierY + hexR * Math.sin(angle);
+            if (i === 0) ctx.moveTo(hx, hy);
+            else ctx.lineTo(hx, hy);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Inner hexagon core
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI) / 3;
+            const hx = shieldBarrierX + (hexR * 0.55) * Math.cos(angle);
+            const hy = shieldBarrierY + (hexR * 0.55) * Math.sin(angle);
+            if (i === 0) ctx.moveTo(hx, hy);
+            else ctx.lineTo(hx, hy);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Shield Bash Shockwave FX
+        if (hairiState.bashShockwave && hairiState.bashShockwave.active) {
+          const sw = hairiState.bashShockwave;
+          const swScreenX = sw.x - camX;
+          ctx.save();
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.95)";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          if (sw.dir < 0) {
+            ctx.arc(swScreenX + 15, sw.y, 28, Math.PI * 0.6, Math.PI * 1.4);
+          } else {
+            ctx.arc(swScreenX - 15, sw.y, 28, -Math.PI * 0.4, Math.PI * 0.4);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
         // In-Combat Mini HP Bar over Hairi
         if (duelState.inCombat && !duelState.isDefeated && hairiState.hp > 0) {
           const barW = 60;
@@ -1600,12 +2002,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.save();
           ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
           ctx.fillRect(hScreenX - barW / 2 - 1, drawY - 14, barW + 2, barH + 2);
-          ctx.fillStyle = "#ef4444";
+          ctx.fillStyle = hairiState.isEnraged ? "#ef4444" : "#f87171";
           ctx.fillRect(hScreenX - barW / 2, drawY - 13, barW * hpRatio, barH);
           ctx.font = "bold 8px 'Courier New', monospace";
           ctx.fillStyle = "#fef2f2";
           ctx.textAlign = "center";
-          ctx.fillText("HAIRI", hScreenX, drawY - 16);
+          ctx.fillText(hairiState.isEnraged ? "HAIRI 🔥" : "HAIRI", hScreenX, drawY - 16);
           ctx.restore();
         }
       }
@@ -2178,20 +2580,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.textAlign = "center";
         ctx.fillText(`🤠 ADIF ${adifState.hp}/300`, centerX - barW / 2 + halfW / 2, barY + barH / 2 + 3);
 
-        // Hairi (XL Shield) HP Bar - Right
+        // Hairi (XL Shield & Boxing Glove) HP Bar - Right
         const hairiRatio = Math.max(0, hairiState.hp / hairiState.maxHp);
         const rightX = centerX + 5;
         ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
         ctx.fillRect(rightX, barY, halfW, barH);
         const hairiGrad = ctx.createLinearGradient(rightX, barY, rightX + halfW, barY);
-        hairiGrad.addColorStop(0, "#dc2626");
-        hairiGrad.addColorStop(1, "#3b82f6");
+        if (hairiState.isEnraged) {
+          hairiGrad.addColorStop(0, "#ef4444");
+          hairiGrad.addColorStop(0.5, "#f97316");
+          hairiGrad.addColorStop(1, "#fbbf24");
+        } else {
+          hairiGrad.addColorStop(0, "#dc2626");
+          hairiGrad.addColorStop(1, "#3b82f6");
+        }
         ctx.fillStyle = hairiGrad;
         ctx.fillRect(rightX, barY, halfW * hairiRatio, barH);
         ctx.font = "bold 8px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.fillText(`🛡️ HAIRI ${hairiState.hp}/300`, rightX + halfW / 2, barY + barH / 2 + 3);
+        const hairiLabel = hairiState.isEnraged ? `🔥 HAIRI ${hairiState.hp}/300` : `🛡️ HAIRI ${hairiState.hp}/300`;
+        ctx.fillText(hairiLabel, rightX + halfW / 2, barY + barH / 2 + 3);
 
         ctx.restore();
       }
