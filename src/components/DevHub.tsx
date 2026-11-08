@@ -283,18 +283,24 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                 <span>🚉 ZONA 3: STASIUN KAMPUNG MENARA</span>
                 <span className="text-[10px] text-slate-400">JALUR 1 COMMUTER</span>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
-                  onClick={() => actions?.warpZone("stasiun_menara", 140)}
-                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all"
+                  onClick={() => actions?.warpZone("stasiun_menara", 180)}
+                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all text-xs"
                 >
-                  🌀 Portal Keluar (x: 140)
+                  🌀 Portal (x: 180)
                 </button>
                 <button
-                  onClick={() => actions?.warpZone("stasiun_menara", 620)}
-                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all font-bold text-yellow-300"
+                  onClick={() => actions?.warpZone("stasiun_menara", 1100)}
+                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all text-xs"
                 >
-                  🚪 KRL ke Bekasi (x: 620)
+                  🏛️ Aula (x: 1100)
+                </button>
+                <button
+                  onClick={() => actions?.warpZone("stasiun_menara", 2200)}
+                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all font-bold text-yellow-300 text-xs"
+                >
+                  🚪 KRL (x: 2200)
                 </button>
               </div>
             </div>
@@ -305,18 +311,24 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                 <span>🚉 ZONA 4: STASIUN BEKASI</span>
                 <span className="text-[10px] text-slate-400">BKS +19M</span>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   onClick={() => actions?.warpZone("stasiun_bekasi", 550)}
-                  className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-left transition-all font-bold text-yellow-300"
+                  className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-left transition-all font-bold text-yellow-300 text-xs"
                 >
-                  🚪 KRL ke Menara (x: 550)
+                  🚪 KRL (x: 550)
                 </button>
                 <button
-                  onClick={() => actions?.warpZone("stasiun_bekasi", 1050)}
-                  className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-left transition-all font-bold text-pink-300"
+                  onClick={() => actions?.warpZone("stasiun_bekasi", 1450)}
+                  className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-left transition-all text-xs"
                 >
-                  🚪 Pintu Keluar Stasiun (x: 1050)
+                  🏛️ Aula (x: 1450)
+                </button>
+                <button
+                  onClick={() => actions?.warpZone("stasiun_bekasi", 2500)}
+                  className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-left transition-all font-bold text-pink-300 text-xs"
+                >
+                  🚪 Keluar (x: 2500)
                 </button>
               </div>
             </div>
