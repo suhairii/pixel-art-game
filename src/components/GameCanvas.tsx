@@ -263,6 +263,33 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     { x: 1100, y: 150, vx: 1.2, vy: 0.05, frame: 1, timer: 10 },
   ]);
 
+  // Bekasi Scavenger Birds (Crows & White Egrets in Bantar Gebang)
+  const bekasiBirdsRef = useRef<
+    Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      type: "crow_flying" | "crow_pecking" | "egret_flying" | "egret_standing";
+      frame: number;
+      timer: number;
+      isStartled?: boolean;
+    }>
+  >([
+    // Flying Crows & Egrets in the sky
+    { x: 300, y: 70, vx: 1.8, vy: 0.1, type: "crow_flying", frame: 0, timer: 0 },
+    { x: 750, y: 95, vx: 1.5, vy: -0.15, type: "crow_flying", frame: 2, timer: 12 },
+    { x: 1200, y: 60, vx: 1.7, vy: 0.08, type: "egret_flying", frame: 1, timer: 5 },
+    { x: 1850, y: 85, vx: 1.4, vy: -0.1, type: "crow_flying", frame: 4, timer: 20 },
+    { x: 2350, y: 110, vx: 1.6, vy: 0.12, type: "egret_flying", frame: 3, timer: 15 },
+    // Ground / Perched Crows & Egrets
+    { x: 620, y: GROUND_Y - 14, vx: 0, vy: 0, type: "crow_pecking", frame: 0, timer: 0 },
+    { x: 980, y: GROUND_Y - 14, vx: 0, vy: 0, type: "crow_pecking", frame: 2, timer: 8 },
+    { x: 1350, y: GROUND_Y - 24, vx: 0, vy: 0, type: "egret_standing", frame: 1, timer: 4 },
+    { x: 1720, y: GROUND_Y - 14, vx: 0, vy: 0, type: "crow_pecking", frame: 3, timer: 14 },
+    { x: 2050, y: GROUND_Y - 24, vx: 0, vy: 0, type: "egret_standing", frame: 4, timer: 18 },
+  ]);
+
   const catAnimRef = useRef({ frame: 0, timer: 0 });
 
   // Loaded images cache
@@ -293,6 +320,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     envBekasi: HTMLImageElement | null;
     keyMaster: HTMLImageElement | null;
     keyCombat: HTMLImageElement | null;
+    bekasiBirds: HTMLImageElement | null;
+    bekasiTruckProps: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -320,6 +349,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     envBekasi: null,
     keyMaster: null,
     keyCombat: null,
+    bekasiBirds: null,
+    bekasiTruckProps: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara Sinyal vs Bekasi Bantar Gebang)
@@ -704,15 +735,63 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           dialogueId: "",
         },
         {
+          id: "truk_sampah_dlh",
+          type: "warkop",
+          x: 750,
+          y: GROUND_Y - 80,
+          width: 180,
+          height: 140,
+          prompt: "🚛 Sapa Pak Bambang (Supir Truk Sampah DLH)",
+          interacted: false,
+          dialogueId: "supir_truk_1",
+        },
+        {
+          id: "gundukan_sampah_harta",
+          type: "pisang_epe",
+          x: 1100,
+          y: GROUND_Y - 60,
+          width: 130,
+          height: 90,
+          prompt: "🗑️ Mengais Tumpukan Sampah Antik (Cari Harta Karun)",
+          interacted: false,
+          dialogueId: "gundukan_sampah_1",
+        },
+        {
+          id: "kucing_garong",
+          type: "cat",
+          x: 1160,
+          y: GROUND_Y - 30,
+          width: 70,
+          height: 50,
+          prompt: "🐱 Elus Si Belang (Kucing Garong Bantar Gebang)",
+          interacted: false,
+          dialogueId: "kucing_garong_1",
+        },
+        {
           id: "key_encounter",
           type: "pier_edge",
           x: 1450,
           y: GROUND_Y - 80,
           width: 120,
           height: 140,
-          prompt: battleKeyRef.current.isDefeated ? "Bicara dengan Key (Mage Bantar Gebang)" : "Tantang Key • Penguasa Sampah Bantar Gebang",
+          prompt: keyRef.current.isFriend
+            ? "Ngobrol dengan Key (Sahabat Bekasi)"
+            : (battleKeyRef.current.isDefeated ? "Ajak Key Menjadi Sahabat Petualang" : "Tantang Key • Penguasa Sampah Bantar Gebang"),
           interacted: false,
-          dialogueId: battleKeyRef.current.isDefeated ? "key_defeat" : "key_encounter_1",
+          dialogueId: keyRef.current.isFriend
+            ? "key_friend_chat"
+            : (battleKeyRef.current.isDefeated ? "key_defeat" : "key_encounter_1"),
+        },
+        {
+          id: "kawanan_burung",
+          type: "bench",
+          x: 1850,
+          y: GROUND_Y - 70,
+          width: 130,
+          height: 90,
+          prompt: "🦅 Amati Kawanan Burung Gagak & Bangau TPST",
+          interacted: false,
+          dialogueId: "burung_bantar_1",
         },
       ];
       return objs;
@@ -766,8 +845,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/env_bekasi_bantar_gebang.png"),
       loadImage("/key_master_sheet.png"),
       loadImage("/key_combat_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, krlStation, envBekasi, keyMaster, keyCombat]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, krlStation, envBekasi, keyMaster, keyCombat };
+      loadImage("/bekasi_scavenger_birds_sheet.png"),
+      loadImage("/bekasi_truck_props_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, krlStation, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, krlStation, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps };
     });
   }, []);
 
@@ -881,7 +962,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     if (currentDialogueId === "key_encounter_3") {
       pendingKeyBattleRef.current = true;
     }
-    if (currentDialogueId === "key_defeat") {
+    if (currentDialogueId === "key_defeat" || currentDialogueId === "key_defeat_2" || currentDialogueId === "key_defeat_3" || currentDialogueId === "key_defeat_4") {
       battleKeyRef.current.inCombat = false;
       battleKeyRef.current.isDefeated = true;
       keyRef.current.state = "idle";
@@ -2588,24 +2669,96 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         keyState.x = Math.max(200, Math.min(2800, keyState.x));
       } else if (keyState.isFriend) {
         // Friendly companion state in Bekasi or wherever squad travels
-        const pDist = Math.abs(active.x - keyState.x);
-        keyState.facingLeft = active.x < keyState.x;
+        const monster = monsterRef.current;
+        if (monster.isActive && !monster.isDefeated && monster.hp > 0) {
+          // Key attacks monster from long-range with magic!
+          const mDist = Math.abs(monster.x - keyState.x);
+          keyState.facingLeft = monster.x < keyState.x;
 
-        if (pDist > 250) {
-          keyState.state = "run";
-          keyState.vx = active.x < keyState.x ? -3.2 : 3.2;
-          keyState.x += keyState.vx;
-          if (keyState.animTimer % 4 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
-        } else if (pDist > 110) {
-          keyState.state = "walk";
-          keyState.vx = active.x < keyState.x ? -1.6 : 1.6;
-          keyState.x += keyState.vx;
-          if (keyState.animTimer % 5 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          if (mDist > 240) {
+            keyState.state = "run";
+            keyState.vx = (monster.x < keyState.x ? -3.4 : 3.4);
+            keyState.x += keyState.vx;
+            if (keyState.animTimer % 4 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          } else {
+            keyState.state = "combat";
+            keyState.vx = 0;
+            if (keyState.animTimer % 4 === 0) {
+              keyState.animFrame++;
+              if (keyState.animFrame === 4 && keyState.attackCooldown <= 0) {
+                sound.playTrashThrow();
+                screenShakeRef.current = 5;
+                monster.hp = Math.max(0, monster.hp - 45);
+                monster.hitFlash = 16;
+                monster.shake = 12;
+
+                damageNumbersRef.current.push({
+                  x: monster.x,
+                  y: monster.y - 120,
+                  text: "🔮 KEY MAGE BLAST! -45",
+                  color: "#c084fc",
+                  life: 38,
+                  maxLife: 38,
+                  vy: -1.6,
+                  isCrit: true,
+                });
+
+                for (let p = 0; p < 16; p++) {
+                  combatParticlesRef.current.push({
+                    x: monster.x + (Math.random() - 0.5) * 20,
+                    y: monster.y - 80 + (Math.random() - 0.5) * 20,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    color: p % 2 === 0 ? "#c084fc" : "#10b981",
+                    size: 3.5,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+                keyState.attackCooldown = 55;
+              }
+              if (keyState.animFrame >= 8) keyState.animFrame = 0;
+            }
+          }
         } else {
-          keyState.state = "idle";
-          keyState.vx = 0;
-          if (keyState.animTimer % 7 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          // Peacefully follow the party at offset ~220px (Dani, Jihan, Hairi, Adif, Key)
+          const targetDist = active.facingLeft ? 220 : -220;
+          const targetX = active.x + targetDist;
+          const compDiff = targetX - keyState.x;
+          keyState.facingLeft = compDiff < 0;
+
+          if (Math.abs(compDiff) > 260) {
+            keyState.state = "run";
+            keyState.vx = Math.sign(compDiff) * 3.4;
+            keyState.x += keyState.vx;
+            if (keyState.animTimer % 4 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          } else if (Math.abs(compDiff) > 40) {
+            keyState.state = "walk";
+            keyState.vx = Math.sign(compDiff) * 1.8;
+            keyState.x += keyState.vx;
+            if (keyState.animTimer % 5 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          } else {
+            keyState.state = "idle";
+            keyState.vx = 0;
+            keyState.facingLeft = active.facingLeft;
+            if (keyState.animTimer % 7 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          }
+
+          // Purple staff sparkle trail while traveling
+          if (keyState.animTimer % 4 === 0) {
+            combatParticlesRef.current.push({
+              x: keyState.x + (keyState.facingLeft ? -15 : 15),
+              y: keyState.y - 45 + (Math.random() - 0.5) * 10,
+              vx: (Math.random() - 0.5) * 1.2,
+              vy: -0.8 - Math.random() * 1.2,
+              color: Math.random() < 0.5 ? "#c084fc" : "#a855f7",
+              size: 3,
+              life: 16,
+              maxLife: 16,
+            });
+          }
         }
+        keyState.x = Math.max(100, Math.min(2900, keyState.x));
       } else {
         // Idle waiting for challenge
         keyState.state = "idle";
@@ -2758,6 +2911,55 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (b.x > WORLD_W + 100) b.x = -100;
       });
 
+      // Update Bekasi Scavenger Birds (Crows & White Egrets in Bantar Gebang)
+      if (zoneRef.current === "bekasi") {
+        bekasiBirdsRef.current.forEach((b) => {
+          b.timer++;
+
+          if (b.type === "crow_flying" || b.type === "egret_flying") {
+            // Flying birds move horizontally with gentle wave
+            b.x += b.vx;
+            b.y += Math.sin(b.timer * 0.05) * 0.35;
+            // Cycle 6-frame flapping animation
+            if (b.timer % 6 === 0) {
+              b.frame = (b.frame + 1) % 6;
+            }
+            // Loop across world
+            if (b.x > WORLD_W + 150) {
+              b.x = -100;
+              b.y = 50 + Math.random() * 80;
+            }
+          } else {
+            // Perched / standing birds
+            // Cycle 6-frame pecking/looking animation
+            if (b.timer % 8 === 0) {
+              b.frame = (b.frame + 1) % 6;
+            }
+
+            // Startle check: If active player gets within 85px, bird takes off!
+            const distToPlayer = Math.abs(active.x - b.x);
+            if (distToPlayer < 85 && !b.isStartled) {
+              b.isStartled = true;
+              b.type = b.type === "crow_pecking" ? "crow_flying" : "egret_flying";
+              b.vx = active.facingLeft ? -2.8 : 2.8;
+              b.vy = -2.2;
+              sound.playWhoosh();
+            }
+
+            // If startled, ascend into sky
+            if (b.isStartled) {
+              b.x += b.vx;
+              b.y += b.vy;
+              b.vy += 0.02; // gradual level off
+              if (b.y < 80) {
+                b.vy = 0;
+                b.isStartled = false;
+              }
+            }
+          }
+        });
+      }
+
       // Update clouds
       cloudsRef.current.forEach((c) => {
         c.x += c.speed;
@@ -2800,6 +3002,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         envBekasi: envBekasiImg,
         keyMaster: keyMasterImg,
         keyCombat: keyCombatImg,
+        bekasiBirds: bekasiBirdsImg,
+        bekasiTruckProps: bekasiTruckPropsImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -3471,6 +3675,208 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillText("PINTU KELUAR TPST BANTAR GEBANG", krlDrawX + krlDestW / 2, krlDrawY + 0);
           ctx.restore();
         }
+
+        // Layer 4.6: Landfill Props & Scavenger World Elements (Truk Sampah DLH, Gerobak, Gundukan)
+        if (bekasiTruckPropsImg) {
+          // 1. Truk Sampah Oranye DKI / DLH Bantar Gebang (4-frame animated at x = 750)
+          const truckX = 750;
+          const truckScreenX = truckX - camX;
+          if (truckScreenX > -250 && truckScreenX < CANVAS_W + 250) {
+            const truckFrames = [
+              { sx: 42, sy: 55, w: 312, h: 188 },
+              { sx: 376, sy: 55, w: 308, h: 188 },
+              { sx: 698, sy: 55, w: 323, h: 188 },
+              { sx: 1038, sy: 55, w: 308, h: 188 },
+            ];
+            const tf = truckFrames[Math.floor(globalTimer / 10) % 4];
+            const tDestW = 210;
+            const tDestH = 126;
+            const tDrawX = truckScreenX - tDestW / 2;
+            const tDrawY = GROUND_Y + 16 - tDestH;
+
+            ctx.save();
+            // Truck Ground Shadow
+            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.beginPath();
+            ctx.ellipse(truckScreenX, GROUND_Y + 14, 95, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Headlight beam glow on hot asphalt
+            const lightGlow = ctx.createRadialGradient(tDrawX + tDestW, GROUND_Y, 5, tDrawX + tDestW + 65, GROUND_Y, 80);
+            lightGlow.addColorStop(0, "rgba(254, 240, 138, 0.45)");
+            lightGlow.addColorStop(1, "rgba(254, 240, 138, 0)");
+            ctx.fillStyle = lightGlow;
+            ctx.beginPath();
+            ctx.ellipse(tDrawX + tDestW + 35, GROUND_Y + 4, 60, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Truck Sprite
+            ctx.drawImage(bekasiTruckPropsImg, tf.sx, tf.sy, tf.w, tf.h, tDrawX, tDrawY, tDestW, tDestH);
+
+            // Blinking Amber Emergency Warning Light on Truck Cab
+            const beaconOn = Math.floor(globalTimer / 12) % 2 === 0;
+            if (beaconOn) {
+              ctx.fillStyle = "rgba(245, 158, 11, 0.9)";
+              ctx.beginPath();
+              ctx.arc(tDrawX + tDestW * 0.72, tDrawY + 16, 7, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // Exhaust Smoke Puff
+            if (globalTimer % 8 === 0) {
+              combatParticlesRef.current.push({
+                x: truckX - tDestW / 2 + 15,
+                y: GROUND_Y - 20,
+                vx: -1.2 - Math.random() * 0.8,
+                vy: -0.6 - Math.random() * 0.5,
+                color: Math.random() < 0.5 ? "rgba(100, 116, 139, 0.5)" : "rgba(148, 163, 184, 0.4)",
+                size: 3.5 + Math.random() * 2,
+                life: 20,
+                maxLife: 20,
+              });
+            }
+
+            // Truck Signboard Badge
+            ctx.font = "bold 8px 'Courier New', monospace";
+            ctx.fillStyle = "#fef08a";
+            ctx.textAlign = "center";
+            ctx.fillText("🚛 TRUK SAMPAH DLH • ARMADA 07", truckScreenX, tDrawY - 6);
+            ctx.restore();
+          }
+
+          // 2. Traditional Scavenger Cart (Gerobak Pemulung at x = 1050)
+          const cartScreenX = 1050 - camX;
+          if (cartScreenX > -150 && cartScreenX < CANVAS_W + 150) {
+            const cDestW = 92;
+            const cDestH = 72;
+            const cDrawX = cartScreenX - cDestW / 2;
+            const cDrawY = GROUND_Y + 16 - cDestH;
+
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+            ctx.beginPath();
+            ctx.ellipse(cartScreenX, GROUND_Y + 14, 40, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.drawImage(bekasiTruckPropsImg, 45, 280, 281, 216, cDrawX, cDrawY, cDestW, cDestH);
+            ctx.restore();
+          }
+
+          // 3. Landfill Treasure Mounds (Gundukan Sampah Berharta at x = 1100 and x = 1880)
+          [
+            { x: 1100, sx: 206, sy: 513, w: 202, h: 124, dw: 85, dh: 55 },
+            { x: 1880, sx: 870, sy: 513, w: 185, h: 124, dw: 90, dh: 60 },
+          ].forEach((mound) => {
+            const mScreenX = mound.x - camX;
+            if (mScreenX < -150 || mScreenX > CANVAS_W + 150) return;
+            const mDrawX = mScreenX - mound.dw / 2;
+            const mDrawY = GROUND_Y + 16 - mound.dh;
+
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.beginPath();
+            ctx.ellipse(mScreenX, GROUND_Y + 14, mound.dw * 0.45, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.drawImage(bekasiTruckPropsImg, mound.sx, mound.sy, mound.w, mound.h, mDrawX, mDrawY, mound.dw, mound.dh);
+
+            // Shimmering treasure sparkle Cling! ✨
+            if ((globalTimer + mound.x) % 40 < 10) {
+              const spX = mDrawX + 25 + ((globalTimer * 7) % (mound.dw - 40));
+              const spY = mDrawY + 15 + ((globalTimer * 5) % (mound.dh - 25));
+              ctx.fillStyle = "#fef08a";
+              ctx.beginPath();
+              ctx.arc(spX, spY, 2.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          });
+
+          // 4. Scavenger Landfill Stray Animals (Kucing Garong & Tikus Got)
+          // Kucing Garong Belang at x = 1160
+          const catScreenX = 1160 - camX;
+          if (catScreenX > -80 && catScreenX < CANVAS_W + 80) {
+            const catW = 52;
+            const catH = 28;
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+            ctx.beginPath();
+            ctx.ellipse(catScreenX, GROUND_Y + 14, 20, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.drawImage(bekasiTruckPropsImg, 45, 661, 163, 85, catScreenX - catW / 2, GROUND_Y + 16 - catH, catW, catH);
+            ctx.restore();
+          }
+
+          // Tikus Got Gemuk at x = 2200
+          const ratScreenX = 2200 - camX;
+          if (ratScreenX > -80 && ratScreenX < CANVAS_W + 80) {
+            const ratW = 42;
+            const ratH = 22;
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+            ctx.beginPath();
+            ctx.ellipse(ratScreenX, GROUND_Y + 14, 16, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.drawImage(bekasiTruckPropsImg, 715, 661, 164, 85, ratScreenX - ratW / 2, GROUND_Y + 16 - ratH, ratW, ratH);
+            ctx.restore();
+          }
+        }
+
+        // Layer 4.7: Swarm of Tiny Buzzing Flies near Trash Piles
+        [750, 1100, 1880].forEach((pileX, pIdx) => {
+          const swarmScreenX = pileX - camX;
+          if (swarmScreenX < -60 || swarmScreenX > CANVAS_W + 60) return;
+          for (let f = 0; f < 6; f++) {
+            const flyOffX = Math.sin(globalTimer * 0.16 + f * 1.4 + pIdx) * 26;
+            const flyOffY = Math.cos(globalTimer * 0.22 + f * 2.2) * 15;
+            ctx.fillStyle = f % 2 === 0 ? "#1e293b" : "#10b981";
+            ctx.fillRect(swarmScreenX + flyOffX, GROUND_Y - 32 + flyOffY, 2, 2);
+          }
+        });
+
+        // Layer 4.8: Scavenger Birds of Bantar Gebang (Flying Crows & Egrets)
+        if (bekasiBirdsImg) {
+          bekasiBirdsRef.current.forEach((b) => {
+            const bScreenX = b.x - camX;
+            if (bScreenX < -80 || bScreenX > CANVAS_W + 80) return;
+
+            let row = 0;
+            let destW = 46;
+            let destH = 46;
+
+            if (b.type === "crow_flying") {
+              row = 0;
+              destW = 46;
+              destH = 46;
+            } else if (b.type === "crow_pecking") {
+              row = 1;
+              destW = 42;
+              destH = 42;
+            } else if (b.type === "egret_flying") {
+              row = 2;
+              destW = 54;
+              destH = 54;
+            } else {
+              row = 3;
+              destW = 48;
+              destH = 48;
+            }
+
+            const frameW = 210;
+            const frameH = 212;
+            const sx = (b.frame % 6) * frameW;
+            const sy = row * frameH;
+
+            ctx.save();
+            // Facing direction
+            if (b.vx < 0) {
+              ctx.translate(bScreenX + destW / 2, b.y);
+              ctx.scale(-1, 1);
+              ctx.drawImage(bekasiBirdsImg, sx, sy, frameW, frameH, -destW / 2, 0, destW, destH);
+            } else {
+              ctx.drawImage(bekasiBirdsImg, sx, sy, frameW, frameH, bScreenX - destW / 2, b.y, destW, destH);
+            }
+            ctx.restore();
+          });
+        }
       }
 
       // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone or Befriended Companion
@@ -3928,7 +4334,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.font = "bold 9px 'Courier New', monospace";
           ctx.fillStyle = "#c084fc";
           ctx.textAlign = "center";
-          ctx.fillText("KEY 🤝 REKAN", kScreenX, drawY - 14);
+          ctx.fillText("KEY 💜 SAHABAT BEKASI", kScreenX, drawY - 14);
           ctx.restore();
         }
       }
@@ -4434,6 +4840,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 adifState.facingLeft = false;
                 adifState.y = GROUND_Y;
               }
+              if (keyState.isFriend) {
+                keyState.x = 160;
+                keyState.vx = 0;
+                keyState.facingLeft = false;
+                keyState.y = GROUND_Y;
+              }
               cameraXRef.current = 0;
               zoneBannerRef.current = {
                 title: "PERKAMPUNGAN MENARA SINYAL",
@@ -4474,6 +4886,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 adifState.facingLeft = true;
                 adifState.y = GROUND_Y;
               }
+              if (keyState.isFriend) {
+                keyState.x = 2050;
+                keyState.vx = 0;
+                keyState.facingLeft = true;
+                keyState.y = GROUND_Y;
+              }
               cameraXRef.current = 1500;
               zoneBannerRef.current = {
                 title: "PANTAI LOSARI, MAKASSAR",
@@ -4512,6 +4930,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               hairiState.vx = 0;
               adifState.x = 2520;
               adifState.vx = 0;
+              if (keyState.isFriend) {
+                keyState.x = 2460;
+                keyState.vx = 0;
+                keyState.facingLeft = true;
+                keyState.y = GROUND_Y;
+              }
               cameraXRef.current = 2200;
               zoneBannerRef.current = {
                 title: "PERKAMPUNGAN MENARA SINYAL",

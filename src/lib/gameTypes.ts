@@ -32,7 +32,7 @@ export interface DialogueChoice {
 
 export interface DialogueLine {
   id: string;
-  speaker: "jihan" | "dani" | "daeng_rauf" | "kucing_oyen" | "narator" | "adif" | "hairi" | "key";
+  speaker: "jihan" | "dani" | "daeng_rauf" | "kucing_oyen" | "narator" | "adif" | "hairi" | "key" | "supir_truk" | "kucing_garong";
   speakerName: string;
   portrait: string;
   text: string;

@@ -469,6 +469,99 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     portrait: "/jihan_portrait.png",
     text: "Benar sekali! Mulai dari pesisir Pantai Losari, menara sinyal perkampungan, hingga Gunung Sampah Bantar Gebang di Bekasi... persahabatan kita melintasi batas samudra dan pulau!",
     emotion: "warm",
+    nextId: "key_defeat_4",
+  },
+  key_defeat_4: {
+    id: "key_defeat_4",
+    speaker: "key",
+    speakerName: "Key • Sahabat Bekasi",
+    portrait: "/key_portrait.png",
+    text: "Asikkk! Mulai hari ini gue resmi gabung jadi tim kalian berlima! Kalau kalian butuh sihir tembakan proyektil atau teleportasi cepat pas ketemu monster baru nanti, gue siap tempur di garis depan bareng kalian!",
+    emotion: "happy",
+  },
+
+  // DIALOG INTERAKTIF DUNIA BEKASI (TPST BANTAR GEBANG)
+  key_friend_chat: {
+    id: "key_friend_chat",
+    speaker: "key",
+    speakerName: "Key • Sahabat Bekasi",
+    portrait: "/key_portrait.png",
+    text: "Gimana pemandangan Bantar Gebang? Keren kan gunung sampahnya! Mau jalan-jalan naik KRL lagi atau mau lanjut latihan sihir bareng gue?",
+    emotion: "happy",
+    choices: [
+      { text: "Ayo kita jelajahi Bantar Gebang bareng-bareng!", nextId: "key_friend_chat_2" },
+      { text: "Boleh dong ajari rahasia sihir teleportasimu yang keren itu!", nextId: "key_friend_chat_3" },
+    ],
+  },
+  key_friend_chat_2: {
+    id: "key_friend_chat_2",
+    speaker: "key",
+    speakerName: "Key • Sahabat Bekasi",
+    portrait: "/key_portrait.png",
+    text: "Siap meluncur! Jangan lupa sapa Pak Supir Truk Sampah Oranye di depan ya, dia baik banget sering bagi-bagi gorengan hangat!",
+    emotion: "warm",
+  },
+  key_friend_chat_3: {
+    id: "key_friend_chat_3",
+    speaker: "key",
+    speakerName: "Key • Sahabat Bekasi",
+    portrait: "/key_portrait.png",
+    text: "Kuncinya fokus pada pusaran kristal tongkat ungu dan jangan takut kena debu Bantar Gebang! Hahaha!",
+    emotion: "happy",
+  },
+
+  supir_truk_1: {
+    id: "supir_truk_1",
+    speaker: "supir_truk",
+    speakerName: "Pak Bambang • Supir Truk DLH",
+    portrait: "/key_portrait.png",
+    text: "Halo adik-adik petualang! Wah ramai sekali berlima! Kalian naik KRL dari jauh ya? Saya baru saja sampai bawa armada truk sampah oranye dari Jakarta Barat.",
+    emotion: "happy",
+    nextId: "supir_truk_2",
+  },
+  supir_truk_2: {
+    id: "supir_truk_2",
+    speaker: "supir_truk",
+    speakerName: "Pak Bambang • Supir Truk DLH",
+    portrait: "/key_portrait.png",
+    text: "Di Bantar Gebang ini memang panasnya menyengat, tapi para pemulung dan pekerjanya berhati mulia dan ramah! Tetap semangat ya jalan-jalannya!",
+    emotion: "warm",
+  },
+
+  gundukan_sampah_1: {
+    id: "gundukan_sampah_1",
+    speaker: "narator",
+    speakerName: "Eksplorasi Gundukan Sampah",
+    portrait: "/jihan_portrait.png",
+    text: "Kalian berlima mengais timbunan sampah antik... *SREK SREK*... Cling! ✨ Menemukan helm ojol hijau vintage edisi langka 2018 dan radio kaset tape transistor tua yang masih bisa menyala!",
+    emotion: "surprised",
+    nextId: "gundukan_sampah_2",
+  },
+  gundukan_sampah_2: {
+    id: "gundukan_sampah_2",
+    speaker: "hairi",
+    speakerName: "Hairi • Sahabat Karib",
+    portrait: "/hairi_portrait.png",
+    text: "Wah gila! Kaset tape ini lagu Benyamin Sueb! Bisa gua colok ke speaker menara perkampungan nanti pas kita nongkrong bareng Adif!",
+    emotion: "happy",
+  },
+
+  kucing_garong_1: {
+    id: "kucing_garong_1",
+    speaker: "kucing_garong",
+    speakerName: "Si Belang • Kucing Garong Bantar Gebang",
+    portrait: "/kucing-portrait.png",
+    text: "Meoowwrr! *menggosokkan kepala ke kaki kalian sambil mendengkur purr purr*. Kucing garong ini tampak kenyang dan menyukai rombongan kalian!",
+    emotion: "warm",
+  },
+
+  burung_bantar_1: {
+    id: "burung_bantar_1",
+    speaker: "narator",
+    speakerName: "Kawanan Burung TPST",
+    portrait: "/dani-portrait.png",
+    text: "Kawanan burung gagak hitam dan bangau putih mengepakkan sayapnya anggun di atas puncak gunung sampah Bantar Gebang, berputar-putar di langit terik Bekasi.",
+    emotion: "thoughtful",
   },
 };
 

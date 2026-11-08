@@ -72,12 +72,14 @@ export const StoryDialog: React.FC<StoryDialogProps> = ({
   const isAdif = dialogue.speaker === "adif";
   const isHairi = dialogue.speaker === "hairi";
   const isKey = dialogue.speaker === "key";
+  const isSupir = dialogue.speaker === "supir_truk";
+  const isGarong = dialogue.speaker === "kucing_garong";
 
   const speakerBadge = isJihan
     ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
     : isDani
     ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
-    : isCat
+    : isCat || isGarong
     ? "bg-orange-500/20 text-orange-300 border-orange-500/40"
     : isAdif
     ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
@@ -85,6 +87,8 @@ export const StoryDialog: React.FC<StoryDialogProps> = ({
     ? "bg-red-500/20 text-red-300 border-red-500/40"
     : isKey
     ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+    : isSupir
+    ? "bg-amber-600/20 text-amber-400 border-amber-600/40"
     : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40";
 
   const portraitBorder = isJihan
@@ -97,6 +101,8 @@ export const StoryDialog: React.FC<StoryDialogProps> = ({
     ? "from-red-500 via-orange-500 to-amber-500"
     : isKey
     ? "from-purple-500 via-fuchsia-500 to-emerald-400"
+    : isSupir
+    ? "from-orange-500 via-amber-500 to-yellow-500"
     : "from-amber-500 to-orange-500";
 
   return (
