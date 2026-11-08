@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { sound } from "@/lib/sound";
 import { CharacterId, CharacterPose, InteractiveObject, CloudLayer, FlyingBird } from "@/lib/gameTypes";
 
@@ -8,6 +8,131 @@ const CANVAS_W = 960;
 const CANVAS_H = 540;
 const WORLD_W = 3000;
 const GROUND_Y = 430;
+
+// Helper: Animated Dimensional Portal with swirling galaxy vortex & runestone glow
+function drawPortal(
+  ctx: CanvasRenderingContext2D,
+  screenX: number,
+  groundY: number,
+  globalTimer: number,
+  label: string
+) {
+  ctx.save();
+  const portalY = groundY - 65;
+
+  // 1. Swirling Outer Nebula Glow
+  const pulse = 0.7 + Math.sin(globalTimer * 0.08) * 0.25;
+  const glow = ctx.createRadialGradient(screenX, portalY, 12, screenX, portalY, 80);
+  glow.addColorStop(0, `rgba(168, 85, 247, ${pulse * 0.85})`);
+  glow.addColorStop(0.4, `rgba(59, 130, 246, ${pulse * 0.5})`);
+  glow.addColorStop(0.8, `rgba(236, 72, 153, ${pulse * 0.25})`);
+  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(screenX, portalY, 65, 90, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Vertical Rift Light Beam
+  const beam = ctx.createLinearGradient(screenX - 16, 0, screenX + 16, 0);
+  beam.addColorStop(0, "rgba(56, 189, 248, 0)");
+  beam.addColorStop(0.5, `rgba(255, 255, 255, ${0.45 + Math.sin(globalTimer * 0.12) * 0.2})`);
+  beam.addColorStop(1, "rgba(56, 189, 248, 0)");
+  ctx.fillStyle = beam;
+  ctx.fillRect(screenX - 16, portalY - 95, 32, 165);
+
+  // 3. Rotating Dimensional Rings
+  for (let r = 0; r < 3; r++) {
+    const rot = globalTimer * (0.035 + r * 0.015) * (r % 2 === 0 ? 1 : -1);
+    ctx.save();
+    ctx.translate(screenX, portalY);
+    ctx.rotate(rot);
+    ctx.strokeStyle = r === 0 ? "#c084fc" : r === 1 ? "#38bdf8" : "#f472b6";
+    ctx.lineWidth = 2.2 - r * 0.4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 28 + r * 12, 48 + r * 15, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 4. Dark Celestial Core (Event Horizon)
+  const coreGrad = ctx.createRadialGradient(screenX, portalY, 4, screenX, portalY, 30);
+  coreGrad.addColorStop(0, "#030712");
+  coreGrad.addColorStop(0.7, "#1e1b4b");
+  coreGrad.addColorStop(1, "#6366f1");
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath();
+  ctx.ellipse(screenX, portalY, 24, 44, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Floating Sparkle Runes
+  for (let i = 0; i < 7; i++) {
+    const orbitSpeed = globalTimer * 0.06 + (i * Math.PI) / 3.5;
+    const orbitR = 34 + Math.sin(globalTimer * 0.12 + i) * 8;
+    const px = screenX + Math.cos(orbitSpeed) * orbitR * 0.75;
+    const py = portalY + Math.sin(orbitSpeed) * orbitR * 1.35;
+    ctx.fillStyle = i % 2 === 0 ? "#fde047" : "#38bdf8";
+    ctx.fillRect(px - 2, py - 2, 4, 4);
+  }
+
+  // 6. Ground Energy Ripple
+  ctx.fillStyle = "rgba(168, 85, 247, 0.45)";
+  ctx.beginPath();
+  ctx.ellipse(screenX, groundY + 14, 40, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 7. Floating Portal Runestone Label Banner
+  ctx.font = "bold 9px 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fef08a";
+  ctx.fillText(label, screenX, portalY - 72);
+
+  ctx.restore();
+}
+
+// Helper: Interconnected catenary sagging cable with traveling electric/signal pulse
+function drawCatenaryCable(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  sag: number,
+  mainColor: string,
+  glowColor: string,
+  lineWidth: number,
+  globalTimer: number,
+  pulseSpeed: number,
+  pulseOffset: number
+) {
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2 + sag;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(midX, midY, x2, y2);
+  ctx.strokeStyle = mainColor;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+
+  // Animated traveling signal pulse (glowing data packet)
+  const t = ((globalTimer * pulseSpeed + pulseOffset) % 100) / 100;
+  const oneMinusT = 1 - t;
+  const px = oneMinusT * oneMinusT * x1 + 2 * oneMinusT * t * midX + t * t * x2;
+  const py = oneMinusT * oneMinusT * y1 + 2 * oneMinusT * t * midY + t * t * y2;
+
+  const grad = ctx.createRadialGradient(px, py, 1, px, py, 6);
+  grad.addColorStop(0, glowColor);
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(px, py, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
+  ctx.restore();
+}
 
 interface GameCanvasProps {
   activeCharacter: CharacterId;
@@ -181,6 +306,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     hairiCombat: null,
   });
 
+  // Zone & Map State (Losari vs Perkampungan Menara Sinyal)
+  const zoneRef = useRef<"losari" | "perkampungan">("losari");
+  const [, setCurrentZone] = useState<"losari" | "perkampungan">("losari");
+  const zoneBannerRef = useRef<{ title: string; subtitle: string; timer: number }>({
+    title: "",
+    subtitle: "",
+    timer: 0,
+  });
+  const teleportFlashRef = useRef<number>(0);
+
   // Adif (Brown Cowboy on Tower) State
   const adifRef = useRef<{
     onTower: boolean;
@@ -207,7 +342,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   }>({
     onTower: true,
     isRappelling: false,
-    x: 2700,
+    x: 1710,
     y: GROUND_Y - 240,
     vx: 0,
     facingLeft: true,
@@ -250,7 +385,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     isFriend: boolean;
     bashShockwave: { active: boolean; x: number; y: number; dir: number; timer: number } | null;
   }>({
-    x: 2620,
+    x: 1620,
     y: GROUND_Y,
     vx: -1.0,
     facingLeft: true,
@@ -324,86 +459,126 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     dissolveTimer: 0,
   });
 
-  // Interactive Objects
-  const interactiveObjects: InteractiveObject[] = [
-    {
-      id: "pier_west",
-      type: "pier_edge",
-      x: 140,
-      y: GROUND_Y - 40,
-      width: 80,
-      height: 80,
-      prompt: "Amati Ombak & Cakrawala",
-      interacted: false,
-      dialogueId: "pier_1",
-    },
-    {
-      id: "cat_oyen",
-      type: "cat",
-      x: 430,
-      y: GROUND_Y - 20,
-      width: 70,
-      height: 50,
-      prompt: "Elus Si Oyen",
-      interacted: false,
-      dialogueId: "cat_1",
-    },
-    {
-      id: "bench_sunset",
-      type: "bench",
-      x: 770,
-      y: GROUND_Y - 40,
-      width: 100,
-      height: 60,
-      prompt: "Duduk Memandang Senja",
-      interacted: false,
-      dialogueId: "bench_1",
-    },
-    {
-      id: "pisang_epe",
-      type: "pisang_epe",
-      x: 1180,
-      y: GROUND_Y - 60,
-      width: 120,
-      height: 90,
-      prompt: "Cicipi Pisang Epe & Saraba",
-      interacted: false,
-      dialogueId: "pisang_1",
-    },
-    {
-      id: "adif_tower",
-      type: "pier_edge",
-      x: 2700,
-      y: GROUND_Y - 140,
-      width: 120,
-      height: 180,
-      prompt: "Panggil Adif di Atas Tower Listrik",
-      interacted: false,
-      dialogueId: "adif_tower_1",
-    },
-    {
-      id: "warkop_losari",
-      type: "warkop",
-      x: 1680,
-      y: GROUND_Y - 80,
-      width: 140,
-      height: 100,
-      prompt: "Mengobrol di Warkop Daeng Rauf",
-      interacted: false,
-      dialogueId: "warkop_1",
-    },
-    {
-      id: "panci_misterius",
-      type: "pier_edge",
-      x: 2150,
-      y: GROUND_Y - 45,
-      width: 90,
-      height: 90,
-      prompt: "Buka Tutup Panci Misterius",
-      interacted: false,
-      dialogueId: "panci_1",
-    },
-  ];
+  // Dynamic Interactive Objects Filtered by Current Zone
+  const getInteractiveObjects = (
+    zone: "losari" | "perkampungan",
+    monsterDefeated: boolean,
+    duelDefeated: boolean,
+    hairiFriend: boolean
+  ): InteractiveObject[] => {
+    if (zone === "losari") {
+      const objs: InteractiveObject[] = [
+        {
+          id: "pier_west",
+          type: "pier_edge",
+          x: 140,
+          y: GROUND_Y - 40,
+          width: 80,
+          height: 80,
+          prompt: "Amati Ombak & Cakrawala",
+          interacted: false,
+          dialogueId: "pier_1",
+        },
+        {
+          id: "cat_oyen",
+          type: "cat",
+          x: 430,
+          y: GROUND_Y - 20,
+          width: 70,
+          height: 50,
+          prompt: "Elus Si Oyen",
+          interacted: false,
+          dialogueId: "cat_1",
+        },
+        {
+          id: "bench_sunset",
+          type: "bench",
+          x: 770,
+          y: GROUND_Y - 40,
+          width: 100,
+          height: 60,
+          prompt: "Duduk Memandang Senja",
+          interacted: false,
+          dialogueId: "bench_1",
+        },
+        {
+          id: "pisang_epe",
+          type: "pisang_epe",
+          x: 1180,
+          y: GROUND_Y - 60,
+          width: 120,
+          height: 90,
+          prompt: "Cicipi Pisang Epe & Saraba",
+          interacted: false,
+          dialogueId: "pisang_1",
+        },
+        {
+          id: "warkop_losari",
+          type: "warkop",
+          x: 1680,
+          y: GROUND_Y - 80,
+          width: 140,
+          height: 100,
+          prompt: "Mengobrol di Warkop Daeng Rauf",
+          interacted: false,
+          dialogueId: "warkop_1",
+        },
+        {
+          id: "panci_misterius",
+          type: "pier_edge",
+          x: 2150,
+          y: GROUND_Y - 45,
+          width: 90,
+          height: 90,
+          prompt: monsterDefeated ? "Panci Purba (Siluman Telah Tunduk)" : "Buka Tutup Panci Misterius",
+          interacted: false,
+          dialogueId: monsterDefeated ? "panci_defeat" : "panci_1",
+        },
+      ];
+      if (monsterDefeated) {
+        objs.push({
+          id: "portal_to_kampung",
+          type: "pier_edge",
+          x: 2240,
+          y: GROUND_Y - 50,
+          width: 90,
+          height: 120,
+          prompt: "🌀 Masuk Portal Dimensi ke Perkampungan Menara Sinyal",
+          interacted: false,
+          dialogueId: "",
+        });
+      }
+      return objs;
+    } else {
+      // Perkampungan zone
+      return [
+        {
+          id: "portal_to_losari",
+          type: "pier_edge",
+          x: 180,
+          y: GROUND_Y - 50,
+          width: 90,
+          height: 120,
+          prompt: "🌀 Kembali ke Pantai Losari melalui Portal Dimensi",
+          interacted: false,
+          dialogueId: "",
+        },
+        {
+          id: "adif_tower",
+          type: "pier_edge",
+          x: 1710,
+          y: GROUND_Y - 140,
+          width: 120,
+          height: 180,
+          prompt: duelDefeated
+            ? (hairiFriend ? "Mengobrol dengan Sahabat Adif & Hairi" : "Ajak Hairi Menjadi Sahabat & Rekan Bertarung")
+            : "Panggil Adif di Atas Tower Menara Sinyal",
+          interacted: false,
+          dialogueId: duelDefeated ? "adif_hairi_defeat_2" : "adif_tower_1",
+        },
+      ];
+    }
+  };
 
   // Preload Images
   useEffect(() => {
@@ -1166,7 +1341,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             if (adifState.animTimer % 6 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
           }
 
-          adifState.x = Math.max(2200, Math.min(2950, adifState.x));
+          adifState.x = Math.max(300, Math.min(2700, adifState.x));
         } else {
           // Calm idle
           adifState.state = "idle";
@@ -1346,15 +1521,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        hairiState.x = Math.max(2200, Math.min(2950, hairiState.x));
+        hairiState.x = Math.max(300, Math.min(2700, hairiState.x));
       } else if (!duelState.isDefeated) {
-        // Pre-combat pacing
+        // Pre-combat pacing between Tower 2 (1080) and Tower 3 (1710)
         hairiState.state = "walk_angry";
         hairiState.x += hairiState.vx;
-        if (hairiState.x > 2840) {
+        if (hairiState.x > 1850) {
           hairiState.vx = -1.1;
           hairiState.facingLeft = true;
-        } else if (hairiState.x < 2520) {
+        } else if (hairiState.x < 1450) {
           hairiState.vx = 1.1;
           hairiState.facingLeft = false;
         }
@@ -1505,229 +1680,222 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.save();
       ctx.translate(shakeX, shakeY);
 
-      // Layer 1: Background Panorama with Parallax
-      if (bgImg) {
-        const bgParallaxX = -camX * 0.45;
-        ctx.drawImage(bgImg, bgParallaxX, 0, WORLD_W * 0.85, CANVAS_H);
-      } else {
-        // Fallback Sunset Gradient
-        const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-        grad.addColorStop(0, "#3b1e54");
-        grad.addColorStop(0.4, "#9b4444");
-        grad.addColorStop(0.7, "#e58934");
-        grad.addColorStop(1, "#f7d070");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      }
+      const currentZone = zoneRef.current;
 
-      // Layer 2: Drifting Clouds (Micro sheet)
-      if (microImg) {
-        cloudsRef.current.forEach((c) => {
-          const cloudScreenX = c.x - camX * 0.3;
-          let sx = 40,
-            sy = 280,
-            sw = 600,
-            sh = 200;
-          if (c.variant === 1) {
-            sx = 670;
-            sy = 330;
-            sw = 390;
-            sh = 130;
-          } else if (c.variant === 2) {
-            sx = 1100;
-            sy = 350;
-            sw = 240;
-            sh = 100;
-          }
-          ctx.drawImage(microImg, sx, sy, sw, sh, cloudScreenX, c.y, sw * 0.35 * c.scale, sh * 0.35 * c.scale);
-        });
-      }
+      if (currentZone === "losari") {
+        // ==========================================
+        // ZONE 1: PANTAI LOSARI (PESISIR & DERMAGA)
+        // ==========================================
 
-      // Layer 3: Flying Swallows
-      if (microImg) {
-        birdsRef.current.forEach((b) => {
-          const birdScreenX = b.x - camX * 0.85;
-          const sx = 40 + b.frame * 200;
-          ctx.drawImage(microImg, sx, 560, 180, 180, birdScreenX, b.y, 36, 36);
-        });
-      }
-
-      // Layer 4: Street Props & Buildings (Behind Characters)
-      if (propsImg) {
-        // Warkop Losari facade
-        const warkopX = 1600 - camX;
-        ctx.drawImage(propsImg, 680, 20, 340, 300, warkopX, GROUND_Y - 145, 180, 160);
-
-        // Rustic Wooden Bench
-        const benchX = 750 - camX;
-        ctx.drawImage(propsImg, 350, 350, 280, 170, benchX, GROUND_Y - 65, 120, 75);
-
-        // Vintage Bicycle
-        const bikeX = 890 - camX;
-        ctx.drawImage(propsImg, 720, 350, 280, 170, bikeX, GROUND_Y - 60, 110, 70);
-
-        // Classic Vintage Wooden Pole at Warkop district (x = 1420)
-        const poleX = 1420 - camX;
-        ctx.drawImage(propsImg, 20, 300, 280, 450, poleX - 60, GROUND_Y - 220, 120, 230);
-
-        // High Voltage Transmission Tower ("Tower Listrik") at Far End Arena (x = 2700)
-        const towerX = 2700 - camX;
-        if (towerListrikImg) {
-          const tW = 165;
-          const tH = 285;
-          ctx.drawImage(towerListrikImg, towerX - tW / 2, GROUND_Y + 16 - tH, tW, tH);
-        }
-
-        // Coconut Palms along Pantai Losari
-        const palm1X = 100 - camX;
-        ctx.drawImage(propsImg, 1020, 150, 335, 600, palm1X, GROUND_Y - 260, 140, 270);
-        const palm2X = 2050 - camX;
-        ctx.drawImage(propsImg, 1020, 150, 335, 600, palm2X, GROUND_Y - 260, 140, 270);
-        const palm3X = 2920 - camX;
-        ctx.drawImage(propsImg, 1020, 150, 335, 600, palm3X, GROUND_Y - 260, 140, 270);
-
-        // Potted Plants
-        const plant1X = 680 - camX;
-        ctx.drawImage(propsImg, 330, 530, 160, 220, plant1X, GROUND_Y - 55, 45, 60);
-        const plant2X = 1350 - camX;
-        ctx.drawImage(propsImg, 550, 530, 160, 220, plant2X, GROUND_Y - 55, 45, 60);
-      }
-
-      // Layer 4.5: Gerobak Pisang Epe & Saraba (24-Frame Micro-Animation Sheet)
-      const gerobakX = 1120 - camX;
-      if (gerobakImg) {
-        // 24 frames arranged in 6 cols x 4 rows with stabilized integer 210x212 grid
-        const gFrame = Math.floor(globalTimer / 3) % 24;
-        const gCol = gFrame % 6;
-        const gRow = Math.floor(gFrame / 6);
-        const gFrameW = 210;
-        const gFrameH = 212;
-        const gSx = gCol * gFrameW;
-        const gSy = gRow * gFrameH;
-        ctx.drawImage(gerobakImg, gSx, gSy, gFrameW, gFrameH, gerobakX, GROUND_Y - 138, 225, 150);
-
-        // Subtle warm glow halo around the lantern
-        ctx.save();
-        const lanternGlow = ctx.createRadialGradient(
-          gerobakX + 45,
-          GROUND_Y - 85,
-          10,
-          gerobakX + 45,
-          GROUND_Y - 85,
-          45
-        );
-        lanternGlow.addColorStop(0, "rgba(251, 191, 36, 0.25)");
-        lanternGlow.addColorStop(1, "rgba(251, 191, 36, 0)");
-        ctx.fillStyle = lanternGlow;
-        ctx.fillRect(gerobakX, GROUND_Y - 130, 90, 90);
-        ctx.restore();
-      } else if (propsImg) {
-        ctx.drawImage(propsImg, 140, 50, 480, 270, gerobakX, GROUND_Y - 120, 210, 130);
-      }
-
-      // Layer 5: Kucing Oyen (Interactive Cat)
-      if (microImg) {
-        const catX = 430 - camX;
-        const catFrame = catAnimRef.current.frame;
-        const sx = 40 + catFrame * 220;
-        ctx.drawImage(microImg, sx, 30, 200, 200, catX, GROUND_Y - 45, 52, 52);
-      }
-
-      // Layer 5.5: Training Dummies / Targets (Sparring Posts at Pantai Losari)
-      trainingDummiesRef.current.forEach((dummy) => {
-        const dummyScreenX = dummy.x - camX;
-        if (dummyScreenX < -100 || dummyScreenX > CANVAS_W + 100) return;
-
-        // Wobble physics on hit
-        if (dummy.hitTimer > 0) {
-          dummy.hitTimer--;
-          dummy.shake *= 0.88;
+        // Layer 1: Background Panorama with Parallax
+        if (bgImg) {
+          const bgParallaxX = -camX * 0.45;
+          ctx.drawImage(bgImg, bgParallaxX, 0, WORLD_W * 0.85, CANVAS_H);
         } else {
-          dummy.shake = 0;
+          // Fallback Sunset Gradient
+          const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+          grad.addColorStop(0, "#3b1e54");
+          grad.addColorStop(0.4, "#9b4444");
+          grad.addColorStop(0.7, "#e58934");
+          grad.addColorStop(1, "#f7d070");
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
         }
-        const wobbleAngle = (Math.sin(globalTimer * 0.9) * dummy.shake * Math.PI) / 180;
 
-        ctx.save();
-        ctx.translate(dummyScreenX, dummy.y);
-        ctx.rotate(wobbleAngle);
+        // Layer 2: Drifting Clouds (Micro sheet)
+        if (microImg) {
+          cloudsRef.current.forEach((c) => {
+            const cloudScreenX = c.x - camX * 0.3;
+            let sx = 40,
+              sy = 280,
+              sw = 600,
+              sh = 200;
+            if (c.variant === 1) {
+              sx = 670;
+              sy = 330;
+              sw = 390;
+              sh = 130;
+            } else if (c.variant === 2) {
+              sx = 1100;
+              sy = 350;
+              sw = 240;
+              sh = 100;
+            }
+            ctx.drawImage(microImg, sx, sy, sw, sh, cloudScreenX, c.y, sw * 0.35 * c.scale, sh * 0.35 * c.scale);
+          });
+        }
 
-        // Ground shadow
-        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-        ctx.beginPath();
-        ctx.ellipse(0, 10, 24, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Layer 3: Flying Swallows
+        if (microImg) {
+          birdsRef.current.forEach((b) => {
+            const birdScreenX = b.x - camX * 0.85;
+            const sx = 40 + b.frame * 200;
+            ctx.drawImage(microImg, sx, 560, 180, 180, birdScreenX, b.y, 36, 36);
+          });
+        }
 
-        // Wooden cross-base
-        ctx.fillStyle = "#3e2723";
-        ctx.fillRect(-22, 2, 44, 8);
-        ctx.fillStyle = "#5d4037";
-        ctx.fillRect(-18, 0, 36, 4);
+        // Layer 4: Street Props & Buildings (Behind Characters)
+        if (propsImg) {
+          // Warkop Losari facade
+          const warkopX = 1600 - camX;
+          ctx.drawImage(propsImg, 680, 20, 340, 300, warkopX, GROUND_Y - 145, 180, 160);
 
-        // Main trunk (wooden pillar / pole)
-        const isHitFlash = dummy.hitTimer > 14;
-        ctx.fillStyle = isHitFlash ? "#fef08a" : "#795548";
-        ctx.fillRect(-8, -85, 16, 90);
-        ctx.fillStyle = isHitFlash ? "#ffffff" : "#8d6e63";
-        ctx.fillRect(-6, -85, 5, 90);
+          // Rustic Wooden Bench
+          const benchX = 750 - camX;
+          ctx.drawImage(propsImg, 350, 350, 280, 170, benchX, GROUND_Y - 65, 120, 75);
 
-        // Straw rope bindings around chest & waist
-        ctx.fillStyle = isHitFlash ? "#ffffff" : "#d97706";
-        ctx.fillRect(-10, -68, 20, 14);
-        ctx.fillRect(-10, -42, 20, 10);
-        ctx.fillStyle = "#fef3c7";
-        ctx.fillRect(-9, -65, 18, 2);
-        ctx.fillRect(-9, -60, 18, 2);
-        ctx.fillRect(-9, -39, 18, 2);
+          // Vintage Bicycle
+          const bikeX = 890 - camX;
+          ctx.drawImage(propsImg, 720, 350, 280, 170, bikeX, GROUND_Y - 60, 110, 70);
 
-        // Wooden sparring cross-arms
-        ctx.fillStyle = isHitFlash ? "#fef08a" : "#5d4037";
-        ctx.fillRect(-32, -62, 64, 8);
-        ctx.fillStyle = "#8d6e63";
-        ctx.fillRect(-30, -62, 60, 3);
-        // Red cloth wraps on arm tips
-        ctx.fillStyle = "#dc2626";
-        ctx.fillRect(-32, -62, 7, 8);
-        ctx.fillRect(25, -62, 7, 8);
+          // Classic Vintage Wooden Pole at Warkop district (x = 1420)
+          const poleX = 1420 - camX;
+          ctx.drawImage(propsImg, 20, 300, 280, 450, poleX - 60, GROUND_Y - 220, 120, 230);
 
-        // Head target (straw helmet)
-        ctx.fillStyle = isHitFlash ? "#ffffff" : "#b45309";
-        ctx.beginPath();
-        ctx.arc(0, -96, 14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#d97706";
-        ctx.beginPath();
-        ctx.arc(-2, -98, 10, 0, Math.PI * 2);
-        ctx.fill();
+          // Coconut Palms along Pantai Losari
+          const palm1X = 100 - camX;
+          ctx.drawImage(propsImg, 1020, 150, 335, 600, palm1X, GROUND_Y - 260, 140, 270);
+          const palm2X = 2050 - camX;
+          ctx.drawImage(propsImg, 1020, 150, 335, 600, palm2X, GROUND_Y - 260, 140, 270);
+          const palm3X = 2850 - camX;
+          ctx.drawImage(propsImg, 1020, 150, 335, 600, palm3X, GROUND_Y - 260, 140, 270);
 
-        // Bullseye Emblem
-        ctx.fillStyle = "#dc2626";
-        ctx.beginPath();
-        ctx.arc(0, -55, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(0, -55, 3, 0, Math.PI * 2);
-        ctx.fill();
+          // Potted Plants
+          const plant1X = 680 - camX;
+          ctx.drawImage(propsImg, 330, 530, 160, 220, plant1X, GROUND_Y - 55, 45, 60);
+          const plant2X = 1350 - camX;
+          ctx.drawImage(propsImg, 550, 530, 160, 220, plant2X, GROUND_Y - 55, 45, 60);
+        }
 
-        ctx.restore();
+        // Layer 4.5: Gerobak Pisang Epe & Saraba (24-Frame Micro-Animation Sheet)
+        const gerobakX = 1120 - camX;
+        if (gerobakImg) {
+          const gFrame = Math.floor(globalTimer / 3) % 24;
+          const gCol = gFrame % 6;
+          const gRow = Math.floor(gFrame / 6);
+          const gFrameW = 210;
+          const gFrameH = 212;
+          const gSx = gCol * gFrameW;
+          const gSy = gRow * gFrameH;
+          ctx.drawImage(gerobakImg, gSx, gSy, gFrameW, gFrameH, gerobakX, GROUND_Y - 138, 225, 150);
 
-        // Label above dummy
-        ctx.save();
-        ctx.font = "bold 10px 'Courier New', monospace";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-        ctx.fillText(dummy.label, dummyScreenX, dummy.y - 120);
-        ctx.restore();
-      });
+          ctx.save();
+          const lanternGlow = ctx.createRadialGradient(
+            gerobakX + 45,
+            GROUND_Y - 85,
+            10,
+            gerobakX + 45,
+            GROUND_Y - 85,
+            45
+          );
+          lanternGlow.addColorStop(0, "rgba(251, 191, 36, 0.25)");
+          lanternGlow.addColorStop(1, "rgba(251, 191, 36, 0)");
+          ctx.fillStyle = lanternGlow;
+          ctx.fillRect(gerobakX, GROUND_Y - 130, 90, 90);
+          ctx.restore();
+        } else if (propsImg) {
+          ctx.drawImage(propsImg, 140, 50, 480, 270, gerobakX, GROUND_Y - 120, 210, 130);
+        }
 
-      // Layer 5.6: Ancient Cauldron ("Panci Misterius") & Emergence Sequence
-      const panciObj = interactiveObjects.find((o) => o.id === "panci_misterius");
-      if (panciObj) {
-        const panciScreenX = panciObj.x - camX;
-        const panciScreenY = panciObj.y;
+        // Layer 5: Kucing Oyen (Interactive Cat)
+        if (microImg) {
+          const catX = 430 - camX;
+          const catFrame = catAnimRef.current.frame;
+          const sx = 40 + catFrame * 220;
+          ctx.drawImage(microImg, sx, 30, 200, 200, catX, GROUND_Y - 45, 52, 52);
+        }
+
+        // Layer 5.5: Training Dummies / Targets (Sparring Posts at Pantai Losari)
+        trainingDummiesRef.current.forEach((dummy) => {
+          const dummyScreenX = dummy.x - camX;
+          if (dummyScreenX < -100 || dummyScreenX > CANVAS_W + 100) return;
+
+          if (dummy.hitTimer > 0) {
+            dummy.hitTimer--;
+            dummy.shake *= 0.88;
+          } else {
+            dummy.shake = 0;
+          }
+          const wobbleAngle = (Math.sin(globalTimer * 0.9) * dummy.shake * Math.PI) / 180;
+
+          ctx.save();
+          ctx.translate(dummyScreenX, dummy.y);
+          ctx.rotate(wobbleAngle);
+
+          // Ground shadow
+          ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+          ctx.beginPath();
+          ctx.ellipse(0, 10, 24, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Wooden cross-base
+          ctx.fillStyle = "#3e2723";
+          ctx.fillRect(-22, 2, 44, 8);
+          ctx.fillStyle = "#5d4037";
+          ctx.fillRect(-18, 0, 36, 4);
+
+          // Main trunk (wooden pillar / pole)
+          const isHitFlash = dummy.hitTimer > 14;
+          ctx.fillStyle = isHitFlash ? "#fef08a" : "#795548";
+          ctx.fillRect(-8, -85, 16, 90);
+          ctx.fillStyle = isHitFlash ? "#ffffff" : "#8d6e63";
+          ctx.fillRect(-6, -85, 5, 90);
+
+          // Straw rope bindings around chest & waist
+          ctx.fillStyle = isHitFlash ? "#ffffff" : "#d97706";
+          ctx.fillRect(-10, -68, 20, 14);
+          ctx.fillRect(-10, -42, 20, 10);
+          ctx.fillStyle = "#fef3c7";
+          ctx.fillRect(-9, -65, 18, 2);
+          ctx.fillRect(-9, -60, 18, 2);
+          ctx.fillRect(-9, -39, 18, 2);
+
+          // Wooden sparring cross-arms
+          ctx.fillStyle = isHitFlash ? "#fef08a" : "#5d4037";
+          ctx.fillRect(-32, -62, 64, 8);
+          ctx.fillStyle = "#8d6e63";
+          ctx.fillRect(-30, -62, 60, 3);
+          // Red cloth wraps on arm tips
+          ctx.fillStyle = "#dc2626";
+          ctx.fillRect(-32, -62, 7, 8);
+          ctx.fillRect(25, -62, 7, 8);
+
+          // Head target (straw helmet)
+          ctx.fillStyle = isHitFlash ? "#ffffff" : "#b45309";
+          ctx.beginPath();
+          ctx.arc(0, -96, 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#d97706";
+          ctx.beginPath();
+          ctx.arc(-2, -98, 10, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bullseye Emblem
+          ctx.fillStyle = "#dc2626";
+          ctx.beginPath();
+          ctx.arc(0, -55, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(0, -55, 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+
+          // Label above dummy
+          ctx.save();
+          ctx.font = "bold 10px 'Courier New', monospace";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+          ctx.fillText(dummy.label, dummyScreenX, dummy.y - 120);
+          ctx.restore();
+        });
+
+        // Layer 5.6: Ancient Cauldron ("Panci Misterius") & Emergence Sequence
+        const panciScreenX = 2150 - camX;
+        const panciScreenY = GROUND_Y - 45;
 
         if (monster.isActive && monster.isEmerging && cauldronEmergenceImg) {
-          // Play 6-frame emergence animation
           const eFrame = Math.min(5, Math.max(0, monster.emergeFrame));
           const frameW = 200;
           const frameH = 200;
@@ -1738,7 +1906,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const drawY = panciScreenY - 65;
 
           ctx.save();
-          // Violet shockwave halo
           const shock = ctx.createRadialGradient(
             panciScreenX,
             drawY + 70,
@@ -1758,7 +1925,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.drawImage(cauldronEmergenceImg, sx, sy, frameW, frameH, panciScreenX - destW / 2, drawY, destW, destH);
           ctx.restore();
         } else if (panciPropImg) {
-          // Resting ancient iron pot with purple simmering steam
           const destW = 75;
           const destH = 75;
           const drawX = panciScreenX - destW / 2;
@@ -1785,17 +1951,263 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.drawImage(panciPropImg, 0, 0, 200, 200, drawX, drawY, destW, destH);
           ctx.restore();
         }
+
+        // Dimensional Portal Emergence (Spawns after defeating Batara Siluman Panci)
+        if (monster.isDefeated) {
+          drawPortal(ctx, 2240 - camX, GROUND_Y, globalTimer, "🌀 PORTAL PERKAMPUNGAN");
+        }
+      } else {
+        // ==============================================================
+        // ZONE 2: PERKAMPUNGAN MENARA SINYAL (JARINGAN TRANSMISI KABEL)
+        // ==============================================================
+
+        // Layer 1: Atmospheric Twilight Sky Gradient
+        const duskSky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+        duskSky.addColorStop(0, "#080c16");
+        duskSky.addColorStop(0.28, "#1e1338");
+        duskSky.addColorStop(0.55, "#4c1d95");
+        duskSky.addColorStop(0.78, "#b45309");
+        duskSky.addColorStop(0.92, "#f59e0b");
+        duskSky.addColorStop(1, "#fef08a");
+        ctx.fillStyle = duskSky;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Layer 1.5: Twinkling Evening Stars & Satellites
+        for (let s = 0; s < 22; s++) {
+          const sx = ((s * 157 + 35) - camX * 0.08 + WORLD_W) % CANVAS_W;
+          const sy = 20 + (s * 43) % 115;
+          const starBlink = (Math.sin(globalTimer * 0.09 + s) + 1) * 0.5;
+          ctx.fillStyle = `rgba(254, 240, 138, ${0.35 + starBlink * 0.6})`;
+          ctx.fillRect(sx, sy, 2, 2);
+        }
+
+        // Layer 2: Distant Silhouettes of Perkampungan Houses & Gable Roofs (Parallax 0.35)
+        const bgHouseParallax = -camX * 0.35;
+        ctx.save();
+        ctx.translate(bgHouseParallax, 0);
+        for (let h = 0; h < 24; h++) {
+          const hX = h * 135 - 50;
+          const hW = 120 + ((h * 31) % 40);
+          const hH = 85 + ((h * 47) % 60);
+          const hY = GROUND_Y - hH + 16;
+
+          // Sloping kampung zinc/tile roof silhouette
+          ctx.fillStyle = "#1e1338";
+          ctx.beginPath();
+          ctx.moveTo(hX, hY + 35);
+          ctx.lineTo(hX + hW / 2, hY);
+          ctx.lineTo(hX + hW, hY + 35);
+          ctx.lineTo(hX + hW, GROUND_Y + 16);
+          ctx.lineTo(hX, GROUND_Y + 16);
+          ctx.closePath();
+          ctx.fill();
+
+          // Wooden walls of kampung house
+          ctx.fillStyle = "#140c26";
+          ctx.fillRect(hX + 10, hY + 35, hW - 20, hH - 35);
+
+          // Warm evening window glow
+          if (h % 2 === 0) {
+            const winX = hX + hW / 2 - 10;
+            const winY = hY + 44;
+            ctx.fillStyle = ((globalTimer + h * 20) % 120 < 110) ? "#fde047" : "#eab308";
+            ctx.fillRect(winX, winY, 14, 16);
+            ctx.fillStyle = "#1e1338";
+            ctx.fillRect(winX + 6, winY, 2, 16);
+            ctx.fillRect(winX, winY + 7, 14, 2);
+          }
+
+          // Rooftop TV antenna & bamboo flagpoles
+          if (h % 3 === 0) {
+            ctx.strokeStyle = "#312e81";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(hX + hW / 2, hY);
+            ctx.lineTo(hX + hW / 2, hY - 26);
+            ctx.moveTo(hX + hW / 2 - 10, hY - 18);
+            ctx.lineTo(hX + hW / 2 + 10, hY - 18);
+            ctx.moveTo(hX + hW / 2 - 6, hY - 10);
+            ctx.lineTo(hX + hW / 2 + 6, hY - 10);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+
+        // Layer 3: Midground Perkampungan Elements (Pos Ronda, Street Lamps, Bamboos)
+        // Pos Ronda / Gardu Siskamling at x = 880
+        const posRondaX = 880 - camX;
+        ctx.save();
+        // Roof
+        ctx.fillStyle = "#7c2d12";
+        ctx.beginPath();
+        ctx.moveTo(posRondaX - 60, GROUND_Y - 95);
+        ctx.lineTo(posRondaX, GROUND_Y - 135);
+        ctx.lineTo(posRondaX + 60, GROUND_Y - 95);
+        ctx.closePath();
+        ctx.fill();
+        // Pillars & Platform
+        ctx.fillStyle = "#451a03";
+        ctx.fillRect(posRondaX - 50, GROUND_Y - 95, 8, 95);
+        ctx.fillRect(posRondaX + 42, GROUND_Y - 95, 8, 95);
+        ctx.fillRect(posRondaX - 52, GROUND_Y - 30, 104, 32);
+        // Kentongan Bamboo Chime
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(posRondaX - 6, GROUND_Y - 80, 12, 36);
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(posRondaX - 2, GROUND_Y - 74, 4, 24);
+        // Pos Ronda Banner
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(posRondaX - 35, GROUND_Y - 88, 70, 7);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(posRondaX - 35, GROUND_Y - 81, 70, 7);
+        ctx.font = "bold 8px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fef08a";
+        ctx.fillText("POS RONDA RW 03", posRondaX, GROUND_Y - 98);
+        ctx.restore();
+
+        // Vintage Kampung Street Lamps (x = 1380, x = 2050)
+        [1380, 2050].forEach((lx) => {
+          const lampScreenX = lx - camX;
+          ctx.save();
+          // Pole
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(lampScreenX - 4, GROUND_Y - 180, 8, 180);
+          // Lamp arm
+          ctx.fillRect(lampScreenX - 4, GROUND_Y - 185, 28, 6);
+          // Lamp shade
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(lampScreenX + 16, GROUND_Y - 188, 18, 5);
+          // Bulb
+          ctx.fillStyle = "#fef08a";
+          ctx.beginPath();
+          ctx.arc(lampScreenX + 25, GROUND_Y - 180, 5, 0, Math.PI * 2);
+          ctx.fill();
+          // Cone of street light
+          const cone = ctx.createRadialGradient(
+            lampScreenX + 25,
+            GROUND_Y - 170,
+            10,
+            lampScreenX + 25,
+            GROUND_Y,
+            120
+          );
+          cone.addColorStop(0, "rgba(254, 240, 138, 0.28)");
+          cone.addColorStop(0.7, "rgba(251, 191, 36, 0.08)");
+          cone.addColorStop(1, "rgba(251, 191, 36, 0)");
+          ctx.fillStyle = cone;
+          ctx.beginPath();
+          ctx.moveTo(lampScreenX + 25, GROUND_Y - 180);
+          ctx.lineTo(lampScreenX - 60, GROUND_Y + 16);
+          ctx.lineTo(lampScreenX + 110, GROUND_Y + 16);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        });
+
+        // Layer 4: Interconnected Catenary Cables Across the Sky
+        const TOWER_COORDS = [450, 1080, 1710, 2340];
+        const tW = 165;
+        const tH = 285;
+        const topY = GROUND_Y + 16 - tH;
+
+        // Draw Cables spanning between towers and offscreen margins
+        const allPoles = [-180, ...TOWER_COORDS, 2980];
+        for (let s = 0; s < allPoles.length - 1; s++) {
+          const x1 = allPoles[s] - camX;
+          const x2 = allPoles[s + 1] - camX;
+          if (Math.max(x1, x2) < -120 || Math.min(x1, x2) > CANVAS_W + 120) continue;
+
+          // Cable 1: Top lightning/shield wire (sag: 38)
+          drawCatenaryCable(ctx, x1, topY + 32, x2, topY + 32, 38, "#1e293b", "#38bdf8", 1.8, globalTimer, 0.007, s * 22);
+
+          // Cable 2: Upper Left transmission arm (sag: 48)
+          drawCatenaryCable(ctx, x1 - 44, topY + 82, x2 - 44, topY + 82, 48, "#0f172a", "#facc15", 2.0, globalTimer, 0.009, s * 31 + 10);
+
+          // Cable 3: Upper Right transmission arm (sag: 52)
+          drawCatenaryCable(ctx, x1 + 44, topY + 82, x2 + 44, topY + 82, 52, "#0f172a", "#38bdf8", 2.0, globalTimer, 0.008, s * 17 + 25);
+
+          // Cable 4: Lower optical ground & distribution line (sag: 60)
+          drawCatenaryCable(ctx, x1, topY + 130, x2, topY + 130, 60, "#334155", "#4ade80", 1.8, globalTimer, 0.006, s * 28 + 40);
+        }
+
+        // Layer 4.5: Duplicated Signal Transmission Towers
+        if (towerListrikImg) {
+          TOWER_COORDS.forEach((tx, idx) => {
+            const tScreenX = tx - camX;
+            if (tScreenX < -150 || tScreenX > CANVAS_W + 150) return;
+
+            // Draw duplicated tower sprite
+            ctx.drawImage(towerListrikImg, tScreenX - tW / 2, topY, tW, tH);
+
+            // Aviation red warning beacon blinking on pinnacle
+            const beaconOn = (globalTimer + tx) % 50 < 25;
+            ctx.save();
+            if (beaconOn) {
+              const bGlow = ctx.createRadialGradient(tScreenX, topY + 8, 1, tScreenX, topY + 8, 14);
+              bGlow.addColorStop(0, "rgba(239, 68, 68, 0.95)");
+              bGlow.addColorStop(0.5, "rgba(220, 38, 38, 0.35)");
+              bGlow.addColorStop(1, "rgba(220, 38, 38, 0)");
+              ctx.fillStyle = bGlow;
+              ctx.beginPath();
+              ctx.arc(tScreenX, topY + 8, 14, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillStyle = beaconOn ? "#fecaca" : "#7f1d1d";
+            ctx.beginPath();
+            ctx.arc(tScreenX, topY + 8, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tower designation label badge
+            ctx.font = "bold 9px 'Courier New', monospace";
+            ctx.fillStyle = "rgba(254, 240, 138, 0.85)";
+            ctx.textAlign = "center";
+            ctx.fillText(idx === 2 ? "TOWER 03 • POS ADIF" : `TOWER 0${idx + 1} • TRANSMISI`, tScreenX, GROUND_Y + 12);
+            ctx.restore();
+          });
+        }
+
+        // Layer 5: Paving Block Ground of Perkampungan Gang
+        ctx.save();
+        ctx.fillStyle = "#27272a";
+        ctx.fillRect(0, GROUND_Y + 16, CANVAS_W, CANVAS_H - (GROUND_Y + 16));
+
+        // Interlocking paving grid
+        const paveOffX = -(camX % 32);
+        ctx.strokeStyle = "#3f3f46";
+        ctx.lineWidth = 1;
+        for (let px = paveOffX - 32; px < CANVAS_W + 32; px += 32) {
+          ctx.beginPath();
+          ctx.moveTo(px, GROUND_Y + 16);
+          ctx.lineTo(px, CANVAS_H);
+          ctx.stroke();
+        }
+        for (let py = GROUND_Y + 16; py < CANVAS_H; py += 16) {
+          ctx.beginPath();
+          ctx.moveTo(0, py);
+          ctx.lineTo(CANVAS_W, py);
+          ctx.stroke();
+        }
+        // Curb stone edge line
+        ctx.fillStyle = "#52525b";
+        ctx.fillRect(0, GROUND_Y + 16, CANVAS_W, 3);
+        ctx.fillStyle = "#71717a";
+        ctx.fillRect(0, GROUND_Y + 19, CANVAS_W, 1);
+        ctx.restore();
+
+        // Return Portal to Pantai Losari at x = 180
+        drawPortal(ctx, 180 - camX, GROUND_Y, globalTimer, "🌀 PORTAL PANTAI LOSARI");
       }
 
-      // Layer 5.62: Adif (Sang Koboi Menara)
-      if (adifMasterImg) {
+      // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone
+      if (adifMasterImg && currentZone === "perkampungan") {
         const destW = 86;
         const destH = 126;
         const frameW = 150;
         const frameH = 224;
 
         if (adifState.onTower) {
-          const towerScreenX = 2700 - camX;
+          const towerScreenX = 1710 - camX;
           if (adifState.isRappelling) {
             // Draw cowboy rope from tower top to Adif
             ctx.save();
@@ -1815,7 +2227,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const drawY = adifState.y - destH * (219 / 224);
             ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, drawX, drawY, destW, destH);
           } else {
-            // Adif perched on top of Tower Listrik platform (Row 3, Frame 0)
+            // Adif perched on top of Tower 03 crossarm platform (Row 3, Frame 0)
             const drawX = towerScreenX - destW / 2 + 5;
             const drawY = GROUND_Y - 248;
             ctx.drawImage(adifMasterImg, 0, 3 * frameH, frameW, frameH, drawX, drawY, destW, destH);
@@ -1936,7 +2348,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Layer 5.63: Hairi (Pemuda Kaos Abu-abu)
-      if (hairiMasterImg) {
+      if (hairiMasterImg && (currentZone === "perkampungan" || hairiState.isFriend)) {
         const destW = 104;
         const destH = 138;
         const frameW = 180;
@@ -2078,8 +2490,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Layer 5.7: Boss Monster (Batara Siluman Panci Purba)
-      if (monster.isActive && (!monster.isEmerging || monster.isDefeated) && monsterMasterImg) {
+      // Layer 5.7: Boss Monster (Batara Siluman Panci Purba) - Losari Zone Only
+      if (currentZone === "losari" && monster.isActive && (!monster.isEmerging || monster.isDefeated) && monsterMasterImg) {
         let mRow = 0;
         if (monster.isDefeated || monster.state === "hurt") {
           mRow = 3; // HURT
@@ -2415,8 +2827,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Layer 7: Interactive Balloon Prompts
+      const currentInteractiveObjects = getInteractiveObjects(
+        currentZone,
+        monsterRef.current.isDefeated,
+        duelState.isDefeated,
+        hairiState.isFriend
+      );
+
       let nearestPromptObj: InteractiveObject | null = null;
-      for (const obj of interactiveObjects) {
+      for (const obj of currentInteractiveObjects) {
         const dist = Math.abs(active.x - obj.x);
         if (dist < 75) {
           nearestPromptObj = obj;
@@ -2485,6 +2904,75 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (isInteract) {
             keysRef.current.interact = false;
             sound.playInteract();
+
+            if (nearestPromptObj.id === "portal_to_kampung") {
+              sound.playPortal();
+              screenShakeRef.current = 10;
+              teleportFlashRef.current = 24;
+              zoneRef.current = "perkampungan";
+              setCurrentZone("perkampungan");
+              active.x = 280;
+              active.vx = 0;
+              companion.x = 210;
+              companion.vx = 0;
+              if (hairiState.isFriend) {
+                hairiState.x = 240;
+                hairiState.vx = 0;
+                hairiState.facingLeft = false;
+              }
+              cameraXRef.current = 0;
+              zoneBannerRef.current = {
+                title: "PERKAMPUNGAN MENARA SINYAL",
+                subtitle: "JARINGAN KABEL TRANSMISI & DUA PENDEKAR",
+                timer: 180,
+              };
+              damageNumbersRef.current.push({
+                x: 280,
+                y: GROUND_Y - 100,
+                text: "🌀 MENEMBUS DIMENSI MENARA!",
+                color: "#38bdf8",
+                life: 50,
+                maxLife: 50,
+                vy: -1.2,
+                isCrit: true,
+              });
+              return;
+            }
+
+            if (nearestPromptObj.id === "portal_to_losari") {
+              sound.playPortal();
+              screenShakeRef.current = 10;
+              teleportFlashRef.current = 24;
+              zoneRef.current = "losari";
+              setCurrentZone("losari");
+              active.x = 2200;
+              active.vx = 0;
+              companion.x = 2130;
+              companion.vx = 0;
+              if (hairiState.isFriend) {
+                hairiState.x = 2160;
+                hairiState.vx = 0;
+                hairiState.facingLeft = true;
+              }
+              cameraXRef.current = 1500;
+              zoneBannerRef.current = {
+                title: "PANTAI LOSARI, MAKASSAR",
+                subtitle: "ANJUNGAN SENJA & PESISIR SELAT MAKASSAR",
+                timer: 180,
+              };
+              damageNumbersRef.current.push({
+                x: 2200,
+                y: GROUND_Y - 100,
+                text: "🌀 KEMBALI KE DERMAGA LOSARI!",
+                color: "#facc15",
+                life: 50,
+                maxLife: 50,
+                vy: -1.2,
+                isCrit: true,
+              });
+              return;
+            }
+
             if (nearestPromptObj.id === "cat_oyen") {
               sound.playPurr();
             }
@@ -2524,7 +3012,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 isCrit: true,
               });
             }
-            onTriggerDialogue(targetDialogue);
+            if (targetDialogue) {
+              onTriggerDialogue(targetDialogue);
+            }
           }
         }
       }
@@ -2560,9 +3050,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
       }
 
-      // Layer 7.6: Grand Boss Monster HP Bar (Top Center HUD)
+      // Layer 7.6: Grand Boss Monster HP Bar (Top Center HUD) - Losari Zone Only
       const boss = monsterRef.current;
-      if (boss.isActive && !boss.isDefeated) {
+      if (currentZone === "losari" && boss.isActive && !boss.isDefeated) {
         ctx.save();
         const barW = 340;
         const barH = 14;
@@ -2618,8 +3108,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
       }
 
-      // Layer 7.65: Dual Boss Bar HUD (Adif & Hairi)
-      if (duelState.inCombat && !duelState.isDefeated) {
+      // Layer 7.65: Dual Boss Bar HUD (Adif & Hairi) - Perkampungan Zone Only
+      if (currentZone === "perkampungan" && duelState.inCombat && !duelState.isDefeated) {
         ctx.save();
         const barW = 340;
         const barH = 14;
@@ -2696,6 +3186,46 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       vignette.addColorStop(1, "rgba(5, 7, 12, 0.35)");
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Layer 8.2: Zone Notification Banner
+      if (zoneBannerRef.current.timer > 0) {
+        zoneBannerRef.current.timer--;
+        const b = zoneBannerRef.current;
+        const alpha = Math.min(1, b.timer / 30);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const bW = 490;
+        const bH = 46;
+        const bX = CANVAS_W / 2;
+        const bY = 75;
+        ctx.fillStyle = "rgba(10, 14, 26, 0.94)";
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(bX - bW / 2, bY - bH / 2, bW, bH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "bold 13px 'Courier New', monospace";
+        ctx.fillStyle = "#fde047";
+        ctx.textAlign = "center";
+        ctx.fillText(`📍 ${b.title}`, bX, bY - 4);
+
+        ctx.font = "10px 'Courier New', monospace";
+        ctx.fillStyle = "#93c5fd";
+        ctx.fillText(b.subtitle, bX, bY + 14);
+        ctx.restore();
+      }
+
+      // Layer 8.3: Teleport Dimensional Flash Effect
+      if (teleportFlashRef.current > 0) {
+        teleportFlashRef.current--;
+        const flashAlpha = teleportFlashRef.current / 24;
+        ctx.save();
+        ctx.fillStyle = `rgba(192, 132, 252, ${flashAlpha * 0.75})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+      }
 
       // Restore camera screen shake
       ctx.restore();
