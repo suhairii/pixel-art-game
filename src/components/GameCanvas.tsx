@@ -3989,21 +3989,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         krl.frame = krl.animTimer % 180 < 15 ? 2 : 0;
       }
 
-      // Update Background Passing Trains (Kereta Lalu Lalang di Stasiun)
+      // Update Background Passing Trains (Kereta Lalu Lalang di Balik Stasiun)
       if (currentZone === "stasiun_menara" || currentZone === "stasiun_bekasi") {
         passingTrainSpawnTimerRef.current++;
-        if (passingTrainSpawnTimerRef.current > 380 && passingTrainsRef.current.length < 2) {
+        if (passingTrainSpawnTimerRef.current > 320 && passingTrainsRef.current.length < 2) {
           passingTrainSpawnTimerRef.current = 0;
           const goRight = Math.random() < 0.5;
           passingTrainsRef.current.push({
             id: Math.random(),
-            x: goRight ? -500 : WORLD_W + 500,
-            vx: goRight ? 11.5 : -11.5,
-            y: GROUND_Y - 22,
+            x: goRight ? -600 : WORLD_W + 600,
+            vx: goRight ? 13.0 : -13.0,
+            y: GROUND_Y - 72,
             dir: goRight ? "right" : "left",
             frame: 1,
             animTimer: 0,
-            scale: 0.82,
+            scale: 0.72,
           });
         }
         passingTrainsRef.current = passingTrainsRef.current.filter((pt) => {
@@ -4012,19 +4012,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (pt.animTimer % 4 === 0) {
             pt.frame = (pt.frame + 1) % 4;
           }
-          if (Math.random() < 0.25) {
+          if (Math.random() < 0.2) {
             combatParticlesRef.current.push({
-              x: pt.x + (Math.random() - 0.5) * 80,
-              y: pt.y + 12,
-              vx: -pt.vx * 0.12,
-              vy: -Math.random() * 2.2,
+              x: pt.x - cameraXRef.current * 0.35 + (Math.random() - 0.5) * 60,
+              y: GROUND_Y - 55,
+              vx: -pt.vx * 0.08,
+              vy: -Math.random() * 1.8,
               color: Math.random() < 0.5 ? "#38bdf8" : "#facc15",
-              size: 2.2,
-              life: 14,
-              maxLife: 14,
+              size: 2.0,
+              life: 12,
+              maxLife: 12,
             });
           }
-          return pt.x > -700 && pt.x < WORLD_W + 700;
+          return pt.x > -800 && pt.x < WORLD_W + 800;
         });
       }
 
@@ -4685,6 +4685,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
+        // 2.5. Kereta Lalu Lalang di Balik Stasiun (Distant Track Behind Pillars & Platform)
+        if (krlTrainImg && passingTrainsRef.current.length > 0) {
+          for (const pt of passingTrainsRef.current) {
+            const trainW = 440 * pt.scale;
+            const trainH = 175 * pt.scale;
+            const trainDrawX = pt.x - camX * 0.35 - trainW / 2;
+            const trainDrawY = GROUND_Y - 72;
+            const fw = 572;
+            const fh = 226;
+            const sy = (pt.frame % 4) * 256;
+
+            ctx.save();
+            ctx.globalAlpha = 0.58;
+            ctx.filter = "brightness(0.65) contrast(1.15)";
+            if (pt.dir === "left") {
+              ctx.translate(trainDrawX + trainW, trainDrawY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, 0, 0, trainW, trainH);
+            } else {
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
+            }
+            ctx.restore();
+          }
+        }
+
         // 3. Platform Ceiling Neon Strip Lights spanning the entire station
         for (let lx = 0; lx < 22; lx++) {
           const lightX = lx * 150 + 50 - camX;
@@ -4836,12 +4861,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillText("COMMUTER LINE TUJUAN BEKASI (BKS)", signX, 81);
         ctx.restore();
 
-        // 10. Indonesian KRL Commuter Line JR 205 (New 4-Frame Spritesheet)
+        // 10. Indonesian KRL Commuter Line JR 205 (New 4-Frame Spritesheet - Grand Scale)
         if (krlTrainImg) {
-          const trainDrawX = krl.x - camX - 190;
-          const trainDrawY = GROUND_Y + 16 - 146;
-          const trainW = 380;
-          const trainH = 150;
+          const trainW = 580;
+          const trainH = 230;
+          const trainDrawX = krl.x - camX - trainW / 2;
+          const trainDrawY = GROUND_Y + 16 - (trainH - 8);
           const fw = 572;
           const fh = 226;
           const frameIdx = (krl.state === "departing" || krl.state === "arriving")
@@ -4852,50 +4877,26 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.save();
           if (frameIdx === 1) {
             // Glowing cyan spark at pantograph & wheels
-            const glow = ctx.createRadialGradient(trainDrawX + 115, trainDrawY + 15, 5, trainDrawX + 115, trainDrawY + 15, 45);
-            glow.addColorStop(0, "rgba(56, 189, 248, 0.75)");
+            const glow = ctx.createRadialGradient(trainDrawX + 175, trainDrawY + 22, 5, trainDrawX + 175, trainDrawY + 22, 65);
+            glow.addColorStop(0, "rgba(56, 189, 248, 0.85)");
             glow.addColorStop(1, "rgba(0, 0, 0, 0)");
             ctx.fillStyle = glow;
-            ctx.fillRect(trainDrawX + 70, trainDrawY - 10, 90, 60);
+            ctx.fillRect(trainDrawX + 110, trainDrawY - 15, 130, 80);
           }
 
           ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
 
           // LED Destination Board
           ctx.fillStyle = "#1e3a8a";
-          ctx.fillRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
+          ctx.fillRect(trainDrawX + 195, trainDrawY + 22, 190, 20);
           ctx.strokeStyle = "#facc15";
           ctx.lineWidth = 1;
-          ctx.strokeRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
-          ctx.font = "bold 8px 'Courier New', monospace";
+          ctx.strokeRect(trainDrawX + 195, trainDrawY + 22, 190, 20);
+          ctx.font = "bold 9px 'Courier New', monospace";
           ctx.fillStyle = "#facc15";
           ctx.textAlign = "center";
-          ctx.fillText("KRL • COMMUTER LINE BEKASI", trainDrawX + 190, trainDrawY + 24);
+          ctx.fillText("KRL • COMMUTER LINE BEKASI", trainDrawX + 290, trainDrawY + 36);
           ctx.restore();
-        }
-
-        // Background Passing Trains (Kereta Lalu Lalang di Peron Belakang)
-        if (krlTrainImg && passingTrainsRef.current.length > 0) {
-          for (const pt of passingTrainsRef.current) {
-            const trainDrawX = pt.x - camX - 145;
-            const trainDrawY = GROUND_Y - 45;
-            const trainW = 310 * pt.scale;
-            const trainH = 122 * pt.scale;
-            const fw = 572;
-            const fh = 226;
-            const sy = (pt.frame % 4) * 256;
-
-            ctx.save();
-            ctx.globalAlpha = 0.85;
-            if (pt.dir === "left") {
-              ctx.translate(trainDrawX + trainW, trainDrawY);
-              ctx.scale(-1, 1);
-              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, 0, 0, trainW, trainH);
-            } else {
-              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
-            }
-            ctx.restore();
-          }
         }
 
         // 11. Dark Subway Tunnel Arch to the right (Tracks heading into darkness)
@@ -4930,6 +4931,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             if (stOffX + stW > -50 && stOffX < CANVAS_W + 50) {
               ctx.drawImage(stasiunBekasiImg, 0, 0, 1376, 768, stOffX, 0, stW, stH);
             }
+          }
+        }
+
+        // 2.5. Kereta Lalu Lalang di Balik Stasiun Bekasi (Distant Through-Track Behind Trusses & Platform)
+        if (krlTrainImg && passingTrainsRef.current.length > 0) {
+          for (const pt of passingTrainsRef.current) {
+            const trainW = 440 * pt.scale;
+            const trainH = 175 * pt.scale;
+            const trainDrawX = pt.x - camX * 0.35 - trainW / 2;
+            const trainDrawY = GROUND_Y - 72;
+            const fw = 572;
+            const fh = 226;
+            const sy = (pt.frame % 4) * 256;
+
+            ctx.save();
+            ctx.globalAlpha = 0.58;
+            ctx.filter = "brightness(0.68) contrast(1.15)";
+            if (pt.dir === "left") {
+              ctx.translate(trainDrawX + trainW, trainDrawY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, 0, 0, trainW, trainH);
+            } else {
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
+            }
+            ctx.restore();
           }
         }
 
@@ -4992,36 +5018,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         ctx.restore();
 
-        // Background Passing Trains in Bekasi Station (Kereta Lalu Lalang di Peron Belakang)
-        if (krlTrainImg && passingTrainsRef.current.length > 0) {
-          for (const pt of passingTrainsRef.current) {
-            const trainDrawX = pt.x - camX - 145;
-            const trainDrawY = GROUND_Y - 45;
-            const trainW = 310 * pt.scale;
-            const trainH = 122 * pt.scale;
-            const fw = 572;
-            const fh = 226;
-            const sy = (pt.frame % 4) * 256;
-
-            ctx.save();
-            ctx.globalAlpha = 0.85;
-            if (pt.dir === "left") {
-              ctx.translate(trainDrawX + trainW, trainDrawY);
-              ctx.scale(-1, 1);
-              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, 0, 0, trainW, trainH);
-            } else {
-              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
-            }
-            ctx.restore();
-          }
-        }
-
-        // 5. Indonesian KRL Commuter Line JR 205 on Bekasi Tracks (at x = 550)
+        // 5. Indonesian KRL Commuter Line JR 205 on Bekasi Tracks (at x = 550 - Grand Scale)
         if (krlTrainImg) {
-          const trainDrawX = krl.x - camX - 190;
-          const trainDrawY = GROUND_Y + 16 - 146;
-          const trainW = 380;
-          const trainH = 150;
+          const trainW = 580;
+          const trainH = 230;
+          const trainDrawX = krl.x - camX - trainW / 2;
+          const trainDrawY = GROUND_Y + 16 - (trainH - 8);
           const fw = 572;
           const fh = 226;
           const frameIdx = (krl.state === "departing" || krl.state === "arriving")
@@ -5031,25 +5033,25 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
           ctx.save();
           if (frameIdx === 1) {
-            const glow = ctx.createRadialGradient(trainDrawX + 115, trainDrawY + 15, 5, trainDrawX + 115, trainDrawY + 15, 45);
-            glow.addColorStop(0, "rgba(56, 189, 248, 0.75)");
+            const glow = ctx.createRadialGradient(trainDrawX + 175, trainDrawY + 22, 5, trainDrawX + 175, trainDrawY + 22, 65);
+            glow.addColorStop(0, "rgba(56, 189, 248, 0.85)");
             glow.addColorStop(1, "rgba(0, 0, 0, 0)");
             ctx.fillStyle = glow;
-            ctx.fillRect(trainDrawX + 70, trainDrawY - 10, 90, 60);
+            ctx.fillRect(trainDrawX + 110, trainDrawY - 15, 130, 80);
           }
 
           ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
 
           // LED Destination Board
           ctx.fillStyle = "#1e3a8a";
-          ctx.fillRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
+          ctx.fillRect(trainDrawX + 195, trainDrawY + 22, 190, 20);
           ctx.strokeStyle = "#facc15";
           ctx.lineWidth = 1;
-          ctx.strokeRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
-          ctx.font = "bold 8px 'Courier New', monospace";
+          ctx.strokeRect(trainDrawX + 195, trainDrawY + 22, 190, 20);
+          ctx.font = "bold 9px 'Courier New', monospace";
           ctx.fillStyle = "#facc15";
           ctx.textAlign = "center";
-          ctx.fillText("KRL • MENUJU KAMPUNG MENARA", trainDrawX + 190, trainDrawY + 24);
+          ctx.fillText("KRL • MENUJU KAMPUNG MENARA", trainDrawX + 290, trainDrawY + 36);
           ctx.restore();
         }
 
@@ -5156,12 +5158,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (mImg) {
             const frameW = 128;
-            const frameH = 262;
+            const frameH = 260;
             const frameIdx = stMonster.isEmerging ? Math.min(7, stMonster.emergeFrame) : (stMonster.animFrame % 8);
             const sx = frameIdx * frameW;
 
-            const drawW = 145;
-            const drawH = 158;
+            const drawW = 160;
+            const drawH = 175;
             const drawX = stMonster.x - camX - drawW / 2 + (stMonster.shake > 0 ? (Math.random() - 0.5) * stMonster.shake : 0);
             const drawY = GROUND_Y + 16 - drawH + 4;
 
@@ -5180,7 +5182,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.fillRect(drawX - 30, drawY - 30, drawW + 60, drawH + 60);
             }
 
-            if (!stMonster.facingLeft) {
+            // The raw sprite naturally faces RIGHT!
+            // When moving/facing left (stMonster.facingLeft = true), flip it so it walks and attacks forward!
+            if (stMonster.facingLeft) {
               ctx.translate(drawX + drawW, drawY);
               ctx.scale(-1, 1);
               ctx.drawImage(mImg, sx, 0, frameW, frameH, 0, 0, drawW, drawH);
