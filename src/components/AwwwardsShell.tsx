@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,20 +14,46 @@ import {
   Users,
   Coffee,
   CheckCircle,
+  Wrench,
 } from "lucide-react";
 import { sound } from "@/lib/sound";
 import { GameCanvas } from "./GameCanvas";
 import { TouchControls } from "./TouchControls";
 import { StoryDialog } from "./StoryDialog";
+import { DevHub, DevActions } from "./DevHub";
 import { DIALOGUES } from "@/lib/storyData";
 import { CharacterId, DialogueChoice } from "@/lib/gameTypes";
 
-export const AwwwardsShell: React.FC = () => {
-  const [gameState, setGameState] = useState<"menu" | "playing">("menu");
+interface AwwwardsShellProps {
+  initialDevMode?: boolean;
+  autoStart?: boolean;
+}
+
+export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
+  initialDevMode = false,
+  autoStart = false,
+}) => {
+  const [gameState, setGameState] = useState<"menu" | "playing">(autoStart ? "playing" : "menu");
   const [activeCharacter, setActiveCharacter] = useState<CharacterId>("jihan");
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [scanlines, setScanlines] = useState<boolean>(true);
   const [currentDialogueId, setCurrentDialogueId] = useState<string | null>(null);
+
+  // Dev Hub / Testing State
+  const [isDevMode, setIsDevMode] = useState<boolean>(initialDevMode);
+  const [devActions, setDevActions] = useState<DevActions | null>(null);
+
+  // Hotkey toggle for Dev Hub: ~ (Backquote) or F2
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Backquote" || e.key === "~" || e.key === "`" || e.code === "F2") {
+        e.preventDefault();
+        setIsDevMode((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Discovery / Quest Tracker
   const [discoveries, setDiscoveries] = useState<{
@@ -171,8 +197,21 @@ export const AwwwardsShell: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Buttons: Sound & CRT Toggle */}
+        {/* Quick Buttons: DEV Hub, Sound & CRT Toggle */}
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsDevMode(!isDevMode)}
+            title="Toggle Mode Dev / Test Hub [~ atau F2]"
+            className={`px-2.5 py-1.5 rounded-xl border font-mono text-[11px] font-bold tracking-wider flex items-center gap-1.5 transition-all duration-150 cursor-pointer ${
+              isDevMode
+                ? "bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
+                : "bg-black/60 border-white/10 text-white/50 hover:text-amber-300 hover:border-amber-400/40"
+            }`}
+          >
+            <Wrench className="w-3.5 h-3.5 text-amber-400" />
+            <span>DEV</span>
+          </button>
+
           <button
             onClick={() => setScanlines(!scanlines)}
             title="Toggle Scanline CRT"
@@ -212,6 +251,7 @@ export const AwwwardsShell: React.FC = () => {
               currentDialogueId={currentDialogueId}
               scanlines={scanlines}
               virtualInput={virtualInput}
+              onRegisterDevActions={setDevActions}
             />
 
             {/* In-Game Interactive Story Dialogue Overlay */}
@@ -310,6 +350,15 @@ export const AwwwardsShell: React.FC = () => {
           activeCharacter={activeCharacter}
         />
       </footer>
+
+      {/* Dev / Stage Testing Hub Overlay */}
+      {isDevMode && (
+        <DevHub
+          actions={devActions}
+          onClose={() => setIsDevMode(false)}
+          isDefaultOpen={true}
+        />
+      )}
     </div>
   );
 };

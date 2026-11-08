@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { sound } from "@/lib/sound";
 import { CharacterId, CharacterPose, InteractiveObject, CloudLayer, FlyingBird } from "@/lib/gameTypes";
+import { DevActions } from "./DevHub";
 
 const CANVAS_W = 960;
 const CANVAS_H = 540;
@@ -142,6 +143,7 @@ interface GameCanvasProps {
   currentDialogueId?: string | null;
   scanlines: boolean;
   virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean };
+  onRegisterDevActions?: (actions: DevActions) => void;
 }
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({
@@ -152,6 +154,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   currentDialogueId,
   scanlines,
   virtualInput,
+  onRegisterDevActions,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -362,6 +365,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     timer: 0,
   });
   const teleportFlashRef = useRef<number>(0);
+
+  // Dev Hub / Cheats & Overrides
+  const godModeRef = useRef<boolean>(false);
+  const oneHitKillRef = useRef<boolean>(false);
+  const speedMultRef = useRef<number>(1.0);
 
   // Adif (Brown Cowboy on Tower) State
   const adifRef = useRef<{
@@ -997,6 +1005,302 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   }, [currentDialogueId]);
 
+  // Expose Dev Hub Actions to Parent Shell
+  useEffect(() => {
+    if (!onRegisterDevActions) return;
+
+    const actions: DevActions = {
+      warpZone: (zone, targetX) => {
+        zoneRef.current = zone;
+        setCurrentZone(zone);
+        const posX = targetX ?? (zone === "bekasi" ? 250 : zone === "perkampungan" ? 280 : 300);
+        const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+        const companion = activeCharacter === "jihan" ? daniPosRef.current : jihanPosRef.current;
+        active.x = posX;
+        active.vx = 0;
+        companion.x = posX - 50;
+        companion.vx = 0;
+        if (hairiRef.current.isFriend) {
+          hairiRef.current.x = posX - 100;
+          hairiRef.current.y = GROUND_Y;
+          hairiRef.current.vx = 0;
+        }
+        if (adifRef.current.isFriend) {
+          adifRef.current.x = posX - 140;
+          adifRef.current.y = GROUND_Y;
+          adifRef.current.vx = 0;
+        }
+        if (keyRef.current.isFriend) {
+          keyRef.current.x = posX - 180;
+          keyRef.current.y = GROUND_Y;
+          keyRef.current.vx = 0;
+        }
+        cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, posX - CANVAS_W / 2));
+        teleportFlashRef.current = 24;
+        sound.playPortal();
+        if (zone === "losari") {
+          zoneBannerRef.current = {
+            title: "PANTAI LOSARI • MAKASSAR",
+            subtitle: "ANJUNGAN PANTAI LOSARI & MASJID 99 KUBAH",
+            timer: 180,
+          };
+        } else if (zone === "perkampungan") {
+          zoneBannerRef.current = {
+            title: "PERKAMPUNGAN MENARA SINYAL",
+            subtitle: "LEMBAH MENARA PEMANCAR & KABEL FIBER OPTIK",
+            timer: 180,
+          };
+        } else if (zone === "bekasi") {
+          zoneBannerRef.current = {
+            title: "KOTA BEKASI • TPST BANTAR GEBANG",
+            subtitle: "HAWA PANAS MENYENGAT & GUNUNG SAMPAH BANTAR GEBANG",
+            timer: 180,
+          };
+        }
+      },
+      teleportPlayer: (x) => {
+        const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+        const companion = activeCharacter === "jihan" ? daniPosRef.current : jihanPosRef.current;
+        active.x = x;
+        active.vx = 0;
+        companion.x = x - 50;
+        companion.vx = 0;
+        cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, x - CANVAS_W / 2));
+        teleportFlashRef.current = 15;
+        sound.playWhoosh();
+      },
+      triggerBoss: (boss) => {
+        if (boss === "monster") {
+          zoneRef.current = "losari";
+          setCurrentZone("losari");
+          const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+          active.x = 1920;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1920 - CANVAS_W / 2));
+          monsterRef.current.isActive = true;
+          monsterRef.current.isEmerging = false;
+          monsterRef.current.isDefeated = false;
+          monsterRef.current.hp = 500;
+          monsterRef.current.state = "idle";
+          teleportFlashRef.current = 20;
+          sound.playMonsterGrowl();
+        } else if (boss === "adif_hairi") {
+          zoneRef.current = "perkampungan";
+          setCurrentZone("perkampungan");
+          const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+          active.x = 1500;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1500 - CANVAS_W / 2));
+          adifRef.current.onTower = false;
+          adifRef.current.isRappelling = false;
+          adifRef.current.y = GROUND_Y;
+          adifRef.current.x = 1710;
+          adifRef.current.hp = 300;
+          adifRef.current.state = "combat";
+          adifRef.current.isFriend = false;
+          hairiRef.current.phase = 1;
+          hairiRef.current.hp = 300;
+          hairiRef.current.state = "combat";
+          hairiRef.current.isFriend = false;
+          hairiRef.current.x = 1620;
+          hairiRef.current.y = GROUND_Y;
+          battleAdifHairiRef.current.inCombat = true;
+          battleAdifHairiRef.current.isDefeated = false;
+          teleportFlashRef.current = 20;
+          sound.playHitImpact();
+        } else if (boss === "hairi_v2") {
+          zoneRef.current = "perkampungan";
+          setCurrentZone("perkampungan");
+          const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+          active.x = 1500;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1500 - CANVAS_W / 2));
+          adifRef.current.hp = 0;
+          adifRef.current.state = "defeated";
+          hairiRef.current.phase = 2;
+          hairiRef.current.hp = 600;
+          hairiRef.current.maxHp = 600;
+          hairiRef.current.state = "combat";
+          hairiRef.current.isFriend = false;
+          hairiRef.current.x = 1620;
+          hairiRef.current.y = GROUND_Y;
+          battleAdifHairiRef.current.inCombat = true;
+          battleAdifHairiRef.current.isDefeated = false;
+          teleportFlashRef.current = 20;
+          sound.playWin();
+        } else if (boss === "hairi_v3") {
+          zoneRef.current = "perkampungan";
+          setCurrentZone("perkampungan");
+          const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+          active.x = 1500;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1500 - CANVAS_W / 2));
+          adifRef.current.hp = 0;
+          adifRef.current.state = "defeated";
+          hairiRef.current.phase = 3;
+          hairiRef.current.hp = 900;
+          hairiRef.current.maxHp = 900;
+          hairiRef.current.state = "combat";
+          hairiRef.current.isFriend = false;
+          hairiRef.current.x = 1620;
+          hairiRef.current.y = GROUND_Y - 45;
+          battleAdifHairiRef.current.inCombat = true;
+          battleAdifHairiRef.current.isDefeated = false;
+          teleportFlashRef.current = 20;
+          sound.startCyberBGM();
+        } else if (boss === "key") {
+          zoneRef.current = "bekasi";
+          setCurrentZone("bekasi");
+          const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+          active.x = 1350;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1350 - CANVAS_W / 2));
+          keyRef.current.x = 1550;
+          keyRef.current.hp = 900;
+          keyRef.current.maxHp = 900;
+          keyRef.current.state = "combat";
+          keyRef.current.isFriend = false;
+          battleKeyRef.current.inCombat = true;
+          battleKeyRef.current.isDefeated = false;
+          teleportFlashRef.current = 20;
+          sound.playTrashThrow();
+        }
+      },
+      defeatBoss: (boss) => {
+        if (boss === "monster") {
+          monsterRef.current.hp = 0;
+          monsterRef.current.isDefeated = true;
+          monsterRef.current.state = "defeated";
+          onTriggerDialogue("panci_defeat");
+        } else if (boss === "adif_hairi") {
+          adifRef.current.hp = 0;
+          hairiRef.current.hp = 0;
+          battleAdifHairiRef.current.inCombat = false;
+          battleAdifHairiRef.current.isDefeated = true;
+          adifRef.current.isFriend = true;
+          hairiRef.current.isFriend = true;
+          hairiRef.current.phase = 1;
+          hairiRef.current.y = GROUND_Y;
+          hairiRef.current.state = "idle";
+          adifRef.current.state = "idle";
+          sound.stopCyberBGM();
+          sound.playWin();
+          onTriggerDialogue("adif_hairi_defeat");
+        } else if (boss === "key") {
+          keyRef.current.hp = 0;
+          battleKeyRef.current.inCombat = false;
+          battleKeyRef.current.isDefeated = true;
+          keyRef.current.isFriend = true;
+          keyRef.current.state = "idle";
+          sound.playWin();
+          onTriggerDialogue("key_defeat_4");
+        }
+      },
+      toggleFriend: (char, isFriend) => {
+        const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+        if (char === "hairi") {
+          const next = isFriend !== undefined ? isFriend : !hairiRef.current.isFriend;
+          hairiRef.current.isFriend = next;
+          if (next) {
+            hairiRef.current.phase = 1;
+            hairiRef.current.y = GROUND_Y;
+            hairiRef.current.state = "idle";
+            hairiRef.current.x = active.x - 100;
+          }
+        } else if (char === "adif") {
+          const next = isFriend !== undefined ? isFriend : !adifRef.current.isFriend;
+          adifRef.current.isFriend = next;
+          if (next) {
+            adifRef.current.onTower = false;
+            adifRef.current.isRappelling = false;
+            adifRef.current.y = GROUND_Y;
+            adifRef.current.state = "idle";
+            adifRef.current.x = active.x - 140;
+          }
+        } else if (char === "key") {
+          const next = isFriend !== undefined ? isFriend : !keyRef.current.isFriend;
+          keyRef.current.isFriend = next;
+          if (next) {
+            keyRef.current.state = "idle";
+            keyRef.current.y = GROUND_Y;
+            keyRef.current.x = active.x - 180;
+          }
+        }
+      },
+      unlockAllFriends: () => {
+        const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+        hairiRef.current.isFriend = true;
+        hairiRef.current.phase = 1;
+        hairiRef.current.y = GROUND_Y;
+        hairiRef.current.state = "idle";
+        hairiRef.current.x = active.x - 100;
+
+        adifRef.current.isFriend = true;
+        adifRef.current.onTower = false;
+        adifRef.current.isRappelling = false;
+        adifRef.current.y = GROUND_Y;
+        adifRef.current.state = "idle";
+        adifRef.current.x = active.x - 140;
+
+        keyRef.current.isFriend = true;
+        keyRef.current.state = "idle";
+        keyRef.current.y = GROUND_Y;
+        keyRef.current.x = active.x - 180;
+      },
+      setGodMode: (enabled) => {
+        godModeRef.current = enabled;
+      },
+      setOneHitKill: (enabled) => {
+        oneHitKillRef.current = enabled;
+      },
+      setSpeedMult: (mult) => {
+        speedMultRef.current = mult;
+      },
+      triggerDialogue: (dialogueId) => {
+        onTriggerDialogue(dialogueId);
+      },
+      switchActiveChar: () => {
+        onSwitchCharacter();
+      },
+      getDevState: () => {
+        const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+        return {
+          zone: zoneRef.current,
+          playerX: Math.round(active.x),
+          playerY: Math.round(active.y),
+          activeChar: activeCharacter,
+          isHairiFriend: hairiRef.current.isFriend,
+          isAdifFriend: adifRef.current.isFriend,
+          isKeyFriend: keyRef.current.isFriend,
+          godMode: godModeRef.current,
+          oneHitKill: oneHitKillRef.current,
+          speedMult: speedMultRef.current,
+          bossStatus: {
+            monster: {
+              active: monsterRef.current.isActive,
+              hp: monsterRef.current.hp,
+              maxHp: monsterRef.current.maxHp,
+              defeated: monsterRef.current.isDefeated,
+            },
+            adif: {
+              hp: adifRef.current.hp,
+              maxHp: adifRef.current.maxHp,
+              onTower: adifRef.current.onTower,
+            },
+            hairi: {
+              hp: hairiRef.current.hp,
+              maxHp: hairiRef.current.maxHp,
+              phase: hairiRef.current.phase,
+            },
+            key: {
+              inCombat: battleKeyRef.current.inCombat,
+              hp: keyRef.current.hp,
+              maxHp: keyRef.current.maxHp,
+              defeated: battleKeyRef.current.isDefeated,
+            },
+          },
+        };
+      },
+    };
+
+    onRegisterDevActions(actions);
+  }, [activeCharacter, onRegisterDevActions, onSwitchCharacter, onTriggerDialogue]);
+
   // Main Game Loop
   useEffect(() => {
     let animId: number;
@@ -1071,7 +1375,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
               // Damage calculation with critical strike chance
               const isCrit = Math.random() < 0.35;
-              const baseDmg = isCrit ? Math.floor(85 + Math.random() * 45) : Math.floor(40 + Math.random() * 28);
+              const baseDmg = oneHitKillRef.current
+                ? 9999
+                : isCrit
+                ? Math.floor(85 + Math.random() * 45)
+                : Math.floor(40 + Math.random() * 28);
               monster.hp = Math.max(0, monster.hp - baseDmg);
 
               const text = isCrit ? `CRIT! -${baseDmg}` : `-${baseDmg}`;
@@ -1143,7 +1451,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 comboRef.current.count++;
                 comboRef.current.timer = 120;
                 const isCrit = Math.random() < 0.35;
-                const baseDmg = isCrit ? Math.floor(75 + Math.random() * 35) : Math.floor(35 + Math.random() * 25);
+                const baseDmg = oneHitKillRef.current
+                  ? 9999
+                  : isCrit
+                  ? Math.floor(75 + Math.random() * 35)
+                  : Math.floor(35 + Math.random() * 25);
                 adifBoss.hp = Math.max(0, adifBoss.hp - baseDmg);
 
                 // Adif nimble backstep evasion upon receiving hit
@@ -1182,7 +1494,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               if (dist < 95 && facingMatches) {
                 attack.hasHit = true;
                 const isCrit = Math.random() < 0.35;
-                const baseDmg = isCrit ? Math.floor(80 + Math.random() * 40) : Math.floor(40 + Math.random() * 25);
+                const baseDmg = oneHitKillRef.current
+                  ? 9999
+                  : isCrit
+                  ? Math.floor(80 + Math.random() * 40)
+                  : Math.floor(40 + Math.random() * 25);
                 comboRef.current.count++;
                 comboRef.current.timer = 120;
 
@@ -1190,7 +1506,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 const isHairiFacingPlayer = hairiBoss.facingLeft ? active.x <= hairiBoss.x : active.x >= hairiBoss.x;
                 const isShieldStance = hairiBoss.state === "combat" && (hairiBoss.animFrame <= 2 || hairiBoss.animFrame === 7);
 
-                if (isHairiFacingPlayer && isShieldStance) {
+                if (isHairiFacingPlayer && isShieldStance && !oneHitKillRef.current) {
                   // SHIELD DEFLECTION & ABSORPTION!
                   sound.playStomp();
                   screenShakeRef.current = 4;
@@ -1387,7 +1703,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             if (dist < 105 && facingMatches) {
               attack.hasHit = true;
               const isCrit = Math.random() < 0.35;
-              const baseDmg = isCrit ? Math.floor(75 + Math.random() * 35) : Math.floor(40 + Math.random() * 25);
+              const baseDmg = oneHitKillRef.current
+                ? 9999
+                : isCrit
+                ? Math.floor(75 + Math.random() * 35)
+                : Math.floor(40 + Math.random() * 25);
               comboRef.current.count++;
               comboRef.current.timer = 120;
               sound.playHitImpact();
@@ -2499,33 +2819,47 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Collision with Active Player
         if (Math.abs(proj.x - active.x) < 38 && Math.abs(proj.y - (active.y - 40)) < 48 && proj.life > 0) {
           proj.life = 0;
-          sound.playCyberBeamImpact();
-          screenShakeRef.current = 10;
-          active.vx = proj.vx > 0 ? 5.5 : -5.5;
-          active.x += active.vx;
-
-          damageNumbersRef.current.push({
-            x: active.x,
-            y: active.y - 85,
-            text: `🔮 CYBER BEAM! -${proj.damage}`,
-            color: "#c084fc",
-            life: 38,
-            maxLife: 38,
-            vy: -1.8,
-            isCrit: true,
-          });
-
-          for (let p = 0; p < 26; p++) {
-            combatParticlesRef.current.push({
-              x: active.x + (Math.random() - 0.5) * 20,
-              y: active.y - 45 + (Math.random() - 0.5) * 20,
-              vx: (Math.random() - 0.5) * 8,
-              vy: (Math.random() - 0.5) * 8,
-              color: p % 4 === 0 ? "#06b6d4" : p % 4 === 1 ? "#c084fc" : p % 4 === 2 ? "#38bdf8" : "#ffffff",
-              size: 4 + Math.random() * 2.5,
-              life: 24,
-              maxLife: 24,
+          if (godModeRef.current) {
+            sound.playWhoosh();
+            damageNumbersRef.current.push({
+              x: active.x,
+              y: active.y - 85,
+              text: "🛡️ GOD MODE IMMUNE!",
+              color: "#38bdf8",
+              life: 30,
+              maxLife: 30,
+              vy: -1.8,
+              isCrit: true,
             });
+          } else {
+            sound.playCyberBeamImpact();
+            screenShakeRef.current = 10;
+            active.vx = proj.vx > 0 ? 5.5 : -5.5;
+            active.x += active.vx;
+
+            damageNumbersRef.current.push({
+              x: active.x,
+              y: active.y - 85,
+              text: `🔮 CYBER BEAM! -${proj.damage}`,
+              color: "#c084fc",
+              life: 38,
+              maxLife: 38,
+              vy: -1.8,
+              isCrit: true,
+            });
+
+            for (let p = 0; p < 26; p++) {
+              combatParticlesRef.current.push({
+                x: active.x + (Math.random() - 0.5) * 20,
+                y: active.y - 45 + (Math.random() - 0.5) * 20,
+                vx: (Math.random() - 0.5) * 8,
+                vy: (Math.random() - 0.5) * 8,
+                color: p % 4 === 0 ? "#06b6d4" : p % 4 === 1 ? "#c084fc" : p % 4 === 2 ? "#38bdf8" : "#ffffff",
+                size: 4 + Math.random() * 2.5,
+                life: 24,
+                maxLife: 24,
+              });
+            }
           }
         }
       });
@@ -2791,33 +3125,47 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Collision with Active Player
         if (Math.abs(proj.x - active.x) < 32 && Math.abs(proj.y - (active.y - 35)) < 42 && proj.life > 0) {
           proj.life = 0;
-          sound.playHitImpact();
-          screenShakeRef.current = 7;
-          active.vx = proj.vx > 0 ? 4.5 : -4.5;
-          active.x += active.vx;
-
-          damageNumbersRef.current.push({
-            x: active.x,
-            y: active.y - 80,
-            text: `🗑️ SAMPAH BANTAR GEBANG! -${proj.damage}`,
-            color: "#10b981",
-            life: 36,
-            maxLife: 36,
-            vy: -1.6,
-            isCrit: true,
-          });
-
-          for (let p = 0; p < 18; p++) {
-            combatParticlesRef.current.push({
-              x: active.x + (Math.random() - 0.5) * 20,
-              y: active.y - 40 + (Math.random() - 0.5) * 20,
-              vx: (Math.random() - 0.5) * 6,
-              vy: (Math.random() - 0.5) * 6,
-              color: p % 3 === 0 ? "#10b981" : p % 3 === 1 ? "#a855f7" : "#78716c",
-              size: 3.5,
-              life: 20,
-              maxLife: 20,
+          if (godModeRef.current) {
+            sound.playWhoosh();
+            damageNumbersRef.current.push({
+              x: active.x,
+              y: active.y - 80,
+              text: "🛡️ GOD MODE IMMUNE!",
+              color: "#38bdf8",
+              life: 30,
+              maxLife: 30,
+              vy: -1.6,
+              isCrit: true,
             });
+          } else {
+            sound.playHitImpact();
+            screenShakeRef.current = 7;
+            active.vx = proj.vx > 0 ? 4.5 : -4.5;
+            active.x += active.vx;
+
+            damageNumbersRef.current.push({
+              x: active.x,
+              y: active.y - 80,
+              text: `🗑️ SAMPAH BANTAR GEBANG! -${proj.damage}`,
+              color: "#10b981",
+              life: 36,
+              maxLife: 36,
+              vy: -1.6,
+              isCrit: true,
+            });
+
+            for (let p = 0; p < 18; p++) {
+              combatParticlesRef.current.push({
+                x: active.x + (Math.random() - 0.5) * 20,
+                y: active.y - 40 + (Math.random() - 0.5) * 20,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                color: p % 3 === 0 ? "#10b981" : p % 3 === 1 ? "#a855f7" : "#78716c",
+                size: 3.5,
+                life: 20,
+                maxLife: 20,
+              });
+            }
           }
         }
       });
@@ -2825,7 +3173,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // 3. Update Active Character Physics
       if (!isDialogueOpen && !attack.isAttacking) {
-        const speed = isRun ? 4.8 : 2.6;
+        const speed = (isRun ? 4.8 : 2.6) * speedMultRef.current;
         if (isLeft && !isRight) {
           active.vx = -speed;
           active.facingLeft = true;
@@ -2845,7 +3193,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const compDiff = targetX - companion.x;
 
         if (Math.abs(compDiff) > 15) {
-          const compSpeed = Math.min(Math.abs(compDiff) * 0.08, isRun ? 4.6 : 2.5);
+          const compSpeed = Math.min(Math.abs(compDiff) * 0.08, (isRun ? 4.6 : 2.5) * speedMultRef.current);
           companion.vx = Math.sign(compDiff) * compSpeed;
           companion.x += companion.vx;
           companion.facingLeft = companion.vx < 0;

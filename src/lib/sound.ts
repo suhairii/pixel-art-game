@@ -517,6 +517,27 @@ class SoundSystem {
     } catch {}
   }
 
+  // Monster Growl / Low Rumble Roar
+  public playMonsterGrowl() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.38);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.38);
+    } catch {}
+  }
+
   // Cyber BGM: Driving 8-bit Cyberpunk / IT Mage Theme (Square Wave Arpeggio + Bitcrush Bass)
   private cyberBgmTimer: NodeJS.Timeout | null = null;
   private cyberBgmStep: number = 0;

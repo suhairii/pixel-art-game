@@ -1,9 +1,19 @@
 import { AwwwardsShell } from "@/components/AwwwardsShell";
 
-export default function Home() {
+interface PageProps {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+export default function Home({ searchParams }: PageProps) {
+  const isDev =
+    searchParams?.dev === "true" ||
+    searchParams?.dev === "1" ||
+    searchParams?.test === "true" ||
+    searchParams?.test === "1";
+
   return (
     <main className="w-full min-h-screen">
-      <AwwwardsShell />
+      <AwwwardsShell initialDevMode={Boolean(isDev)} autoStart={Boolean(isDev)} />
     </main>
   );
 }
