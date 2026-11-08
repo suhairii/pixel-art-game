@@ -299,9 +299,9 @@ export const DIALOGUES: Record<string, DialogueLine> = {
   adif_hairi_defeat: {
     id: "adif_hairi_defeat",
     speaker: "hairi",
-    speakerName: "SUPER HAIRI • Sistem Overheat",
-    portrait: "/hairi_super_portrait.png",
-    text: "Bzzzt... Sistem sirkuit mengalami pendinginan... Kalian berdua luar biasa hebat bisa menembus pertahanan Level 2 Super Mode-ku. Emosiku sudah padam dan pikiranku kembali jernih.",
+    speakerName: "Hairi • Kembali ke Wujud Manusia",
+    portrait: "/hairi_portrait.png",
+    text: "Huff... hahh... Sirkuit dayaku padam dan kacamata visorku sudah kusimpan. Aku kembali menjadi manusia biasa berkaos abu-abu. Kalian berdua luar biasa hebat bisa menembus pertahanan Level 2 Super Mode-ku! Emosiku sudah padam dan pikiranku kembali jernih. Sekarang izinkan aku bergabung mendampingi kalian sebagai sahabat sejati!",
     emotion: "thoughtful",
     nextId: "adif_hairi_defeat_2",
   },
@@ -310,7 +310,7 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "adif",
     speakerName: "Adif • Sang Koboi Menara",
     portrait: "/adif_portrait.png",
-    text: "Hahaha mantap sekali! Mulai detik ini Hairi resmi bergabung sebagai rekan bertarung kalian dengan kekuatan supernya! Kita semua sekarang sahabat sejati!",
+    text: "Hahaha mantap sekali! Mulai detik ini Hairi resmi bergabung sebagai rekan bertarung dan sahabat setia kalian dalam wujud manusianya! Mari kita jaga ketenteraman Pantai Losari bersama-sama!",
     emotion: "happy",
   },
 };

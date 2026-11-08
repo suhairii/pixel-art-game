@@ -702,6 +702,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }
     if (currentDialogueId === "adif_hairi_defeat" || currentDialogueId === "adif_hairi_defeat_2") {
       hairiRef.current.isFriend = true;
+      hairiRef.current.phase = 1; // Kembali ke wujud manusia biasa saat menjadi teman
       hairiRef.current.state = "idle";
     }
     if (!currentDialogueId && pendingBattleRef.current) {
@@ -1040,6 +1041,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               duel.inCombat = false;
               adifBoss.state = "defeated";
               hairiBoss.state = "defeated";
+              hairiBoss.phase = 1; // Kembali ke wujud manusia biasa setelah kalah
+              hairiBoss.isFriend = true;
               sound.playWin();
               sound.playCoin();
               screenShakeRef.current = 10;
@@ -2537,10 +2540,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu)
+      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu / Super Cyber Hairi)
       if (hairiMasterImg && (currentZone === "perkampungan" || hairiState.isFriend)) {
-        const destW = 104;
-        const destH = 138;
+        const destW = 108;
+        const destH = 144;
         const frameW = 180;
         const frameH = 240;
 
@@ -2548,8 +2551,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         let hRow = 0;
         let hCol = hairiState.animFrame % 8;
 
-        if (hairiState.phase === 2) {
-          // LEVEL 2: SUPER HAIRI OVERCLOCK SPRITESHEET
+        if (hairiState.phase === 2 && !hairiState.isFriend) {
+          // LEVEL 2: SUPER HAIRI OVERCLOCK SPRITESHEET (Hanya saat bertarung fase 2)
           if (hairiState.state === "defeated") {
             activeSheet = hairiSuperCombatImg || hairiSuperMasterImg || hairiCombatImg || hairiMasterImg;
             hRow = 3;
