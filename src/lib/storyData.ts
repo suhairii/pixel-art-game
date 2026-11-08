@@ -255,9 +255,9 @@ export const DIALOGUES: Record<string, DialogueLine> = {
   adif_hairi_defeat: {
     id: "adif_hairi_defeat",
     speaker: "hairi",
-    speakerName: "Hairi • Pemuda Kaos Abu-abu",
+    speakerName: "Hairi • Sahabat & Rekan Bertarung",
     portrait: "/hairi_portrait.png",
-    text: "Huff... hahh... nafas saya habis... muka saya sudah dingin dan tidak merah lagi. Maafkan saya, tadi saya terlalu emosi karena koneksi terputus!",
+    text: "Huff... hahh... nafas saya habis... muka saya sudah dingin dan tidak merah lagi. Maafkan saya, tadi saya terlalu emosi karena koneksi terputus! Mulai sekarang saya ikut bersama kalian sebagai sahabat, jika ada siluman monster panci atau musuh apapun yang mengancam, biar saya tebas di garis terdepan!",
     emotion: "thoughtful",
     nextId: "adif_hairi_defeat_2",
   },
@@ -266,7 +266,7 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "adif",
     speakerName: "Adif • Sang Koboi Menara",
     portrait: "/adif_portrait.png",
-    text: "Hahaha mantap sekali ilmu bela diri kalian berdua! Paduan Perisai XL Hairi dan lecutan laso koboi saya berhasil kalian lalui. Mari kita nikmati senja Losari bersama sebagai sahabat sejati!",
+    text: "Hahaha mantap sekali! Mulai detik ini Hairi resmi bergabung sebagai rekan bertarung kalian, dan kita semua bersahabat sejati! Mari kita jaga ketenteraman Pantai Losari bersama-sama!",
     emotion: "happy",
   },
 };
