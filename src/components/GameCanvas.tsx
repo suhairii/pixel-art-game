@@ -287,6 +287,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     hairiCombat: HTMLImageElement | null;
     hairiSuperMaster: HTMLImageElement | null;
     hairiSuperCombat: HTMLImageElement | null;
+    hairiV3Master: HTMLImageElement | null;
+    hairiV3Combat: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -308,6 +310,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     hairiCombat: null,
     hairiSuperMaster: null,
     hairiSuperCombat: null,
+    hairiV3Master: null,
+    hairiV3Combat: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara Sinyal)
@@ -378,7 +382,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     animTimer: number;
     hp: number;
     maxHp: number;
-    phase: 1 | 2;
+    phase: 1 | 2 | 3;
     isTransforming: boolean;
     transformTimer: number;
     hitFlash: number;
@@ -426,6 +430,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   });
   const pendingBattleRef = useRef(false);
   const pendingEvolutionBattleRef = useRef(false);
+  const cyberProjectilesRef = useRef<
+    Array<{
+      x: number;
+      y: number;
+      vx: number;
+      life: number;
+      maxLife: number;
+      damage: number;
+      facingLeft: boolean;
+    }>
+  >([]);
 
   // Boss Monster State (Summoned from Panci at Far Right)
   const monsterRef = useRef<{
@@ -632,8 +647,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/hairi_combat_sheet.png"),
       loadImage("/hairi_super_master_sheet.png"),
       loadImage("/hairi_super_combat_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat };
+      loadImage("/hairi_v3_master_sheet.png"),
+      loadImage("/hairi_v3_combat_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat };
     });
   }, []);
 
@@ -700,9 +717,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       pendingEvolutionBattleRef.current = true;
       battleAdifHairiRef.current.inCombat = false;
     }
+    if (currentDialogueId === "hairi_evolution_v3_1") {
+      pendingEvolutionBattleRef.current = true;
+      battleAdifHairiRef.current.inCombat = false;
+      sound.startCyberBGM();
+    }
     if (currentDialogueId === "adif_hairi_defeat" || currentDialogueId === "adif_hairi_defeat_2") {
+      sound.stopCyberBGM();
       hairiRef.current.isFriend = true;
       hairiRef.current.phase = 1; // Kembali ke wujud manusia biasa saat menjadi teman
+      hairiRef.current.y = GROUND_Y;
       hairiRef.current.state = "idle";
     }
     if (!currentDialogueId && pendingBattleRef.current) {
@@ -988,7 +1012,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 // Check if Hairi HP depleted
                 if (hairiBoss.hp <= 0) {
                   if (hairiBoss.phase === 1) {
-                    // EVOLUTION: Transform to Level 2 Super Hairi!
+                    // EVOLUTION 1: Transform to Level 2 Super Hairi!
                     hairiBoss.phase = 2;
                     hairiBoss.maxHp = 500; // Thicker & more HP
                     hairiBoss.hp = 500;
@@ -1028,6 +1052,48 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     pendingEvolutionBattleRef.current = true;
                     duel.inCombat = false;
                     onTriggerDialogue("hairi_evolution_1");
+                  } else if (hairiBoss.phase === 2) {
+                    // EVOLUTION 2: Transform to Level 3 CYBER MAGE HAIRI! (Floating IT Wizard)
+                    hairiBoss.phase = 3;
+                    hairiBoss.maxHp = 750; // Final thickest HP pool
+                    hairiBoss.hp = 750;
+                    hairiBoss.y = GROUND_Y - 35; // Ascends and floats in mid-air
+                    hairiBoss.state = "combat";
+                    hairiBoss.animFrame = 0;
+                    hairiBoss.hitFlash = 45;
+                    hairiBoss.shake = 26;
+                    screenShakeRef.current = 20;
+                    sound.playCyberAscend();
+                    sound.startCyberBGM();
+
+                    // Massive Matrix Code & Cyber Starburst Particles
+                    for (let p = 0; p < 48; p++) {
+                      combatParticlesRef.current.push({
+                        x: hairiBoss.x + (Math.random() - 0.5) * 45,
+                        y: hairiBoss.y - 40 + (Math.random() - 0.5) * 55,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: -2.5 - Math.random() * 6,
+                        color: p % 4 === 0 ? "#06b6d4" : p % 4 === 1 ? "#a855f7" : p % 4 === 2 ? "#38bdf8" : "#ffffff",
+                        size: 4.5 + Math.random() * 3.5,
+                        life: 38,
+                        maxLife: 38,
+                      });
+                    }
+
+                    damageNumbersRef.current.push({
+                      x: hairiBoss.x,
+                      y: hairiBoss.y - 115,
+                      text: "🔮 ASCENDING TO LAYER 7: CYBER MAGE LV.3! 🔮",
+                      color: "#c084fc",
+                      life: 75,
+                      maxLife: 75,
+                      vy: -1.2,
+                      isCrit: true,
+                    });
+
+                    pendingEvolutionBattleRef.current = true;
+                    duel.inCombat = false;
+                    onTriggerDialogue("hairi_evolution_v3_1");
                   } else {
                     hairiBoss.state = "defeated";
                   }
@@ -1035,13 +1101,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               }
             }
 
-            // Check if both Adif and Hairi defeated (Hairi must be in phase 2 and hp <= 0)
-            if (adifBoss.hp <= 0 && hairiBoss.hp <= 0 && hairiBoss.phase === 2 && !duel.isDefeated) {
+            // Check if both Adif and Hairi defeated (Hairi must be in phase 3 and hp <= 0)
+            if (adifBoss.hp <= 0 && hairiBoss.hp <= 0 && hairiBoss.phase === 3 && !duel.isDefeated) {
               duel.isDefeated = true;
               duel.inCombat = false;
+              sound.stopCyberBGM();
               adifBoss.state = "defeated";
               hairiBoss.state = "defeated";
-              hairiBoss.phase = 1; // Kembali ke wujud manusia biasa setelah kalah
+              hairiBoss.phase = 1; // Revert to Human Form upon defeat as friend companion
+              hairiBoss.y = GROUND_Y;
               hairiBoss.isFriend = true;
               sound.playWin();
               sound.playCoin();
@@ -1532,7 +1600,118 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         hairiState.facingLeft = active.x < hairiState.x;
         const dist = Math.abs(active.x - hairiState.x);
 
-        if (hairiState.phase === 2) {
+        if (hairiState.phase === 3) {
+          // LEVEL 3: CYBER MAGE HAIRI (Floating IT Wizard & Long-Range Spellcaster)
+          hairiState.y = GROUND_Y - 35 + Math.sin(hairiState.animTimer * 0.08) * 8;
+          const cyberSpeedMult = 1.45;
+
+          if (hairiState.state === "hurt") {
+            if (hairiState.animTimer % 3 === 0) {
+              hairiState.animFrame = Math.min(7, hairiState.animFrame + 1);
+            }
+            if (hairiState.animTimer > 15) {
+              hairiState.state = "combat";
+              hairiState.animFrame = 0;
+              hairiState.animTimer = 0;
+            }
+          } else if (dist > 280) {
+            // Super Flying Sprint - Horizontal Dash in Sky
+            hairiState.state = "run";
+            hairiState.vx = (hairiState.facingLeft ? -5.2 : 5.2) * cyberSpeedMult;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 3 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+            // High-speed cyber thruster wake
+            if (hairiState.animTimer % 2 === 0) {
+              combatParticlesRef.current.push({
+                x: hairiState.x + (Math.random() - 0.5) * 16,
+                y: hairiState.y - 10 + (Math.random() - 0.5) * 12,
+                vx: (hairiState.facingLeft ? 1 : -1) * (2 + Math.random() * 4),
+                vy: (Math.random() - 0.5) * 1.5,
+                color: Math.random() < 0.5 ? "#06b6d4" : "#c084fc",
+                size: 3.5,
+                life: 14,
+                maxLife: 14,
+              });
+            }
+          } else if (dist > 150) {
+            // Cyber Platform Walk atop glowing holographic blue platform tiles
+            hairiState.state = "walk";
+            hairiState.vx = (hairiState.facingLeft ? -2.5 : 2.5) * cyberSpeedMult;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+            // Platform digital cube sparkles
+            if (hairiState.animTimer % 3 === 0) {
+              combatParticlesRef.current.push({
+                x: hairiState.x + (hairiState.facingLeft ? -8 : 8),
+                y: hairiState.y + 18,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: -0.6,
+                color: "#38bdf8",
+                size: 3,
+                life: 12,
+                maxLife: 12,
+              });
+            }
+          } else {
+            // Semi-Mage Long-Range Combat: Cyber Rune Summon & Laser Beam Projectile
+            hairiState.state = "combat";
+            hairiState.vx = 0;
+            if (hairiState.animTimer % 4 === 0) {
+              hairiState.animFrame++;
+
+              // Frame 0-2: Orbiting digital rune cube particles
+              if (hairiState.animFrame <= 2) {
+                for (let i = 0; i < 3; i++) {
+                  combatParticlesRef.current.push({
+                    x: hairiState.x + (hairiState.facingLeft ? -22 : 22) + (Math.random() - 0.5) * 20,
+                    y: hairiState.y - 25 + (Math.random() - 0.5) * 25,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    color: i === 0 ? "#06b6d4" : i === 1 ? "#a855f7" : "#ffffff",
+                    size: 3.5,
+                    life: 16,
+                    maxLife: 16,
+                  });
+                }
+              }
+
+              // Frame 3: FIRE CYBER MAGIC BEAM PROJECTILE!
+              if (hairiState.animFrame === 3 && hairiState.attackCooldown <= 0) {
+                sound.playCyberSpellCast();
+                screenShakeRef.current = 10;
+                const projDir = hairiState.facingLeft ? -1 : 1;
+                cyberProjectilesRef.current.push({
+                  x: hairiState.x + projDir * 28,
+                  y: hairiState.y - 25,
+                  vx: projDir * 10.5,
+                  life: 65,
+                  maxLife: 65,
+                  damage: 55,
+                  facingLeft: hairiState.facingLeft,
+                });
+
+                // Laser burst muzzle particles
+                for (let p = 0; p < 22; p++) {
+                  combatParticlesRef.current.push({
+                    x: hairiState.x + projDir * 28,
+                    y: hairiState.y - 25 + (Math.random() - 0.5) * 20,
+                    vx: projDir * (3 + Math.random() * 7),
+                    vy: (Math.random() - 0.5) * 5,
+                    color: p % 3 === 0 ? "#38bdf8" : p % 3 === 1 ? "#c084fc" : "#ffffff",
+                    size: 4,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+                hairiState.attackCooldown = 48;
+              }
+
+              if (hairiState.animFrame >= 8) {
+                hairiState.animFrame = 0;
+              }
+            }
+          }
+        } else if (hairiState.phase === 2) {
           // LEVEL 2: SUPER HAIRI OVERCLOCK COMBAT
           const superSpeedMult = 1.4;
           if (hairiState.state === "hurt") {
@@ -1732,6 +1911,60 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
+      // 2.9 Update Cyber Magic Projectiles (Hairi Level 3 Mage Projectiles)
+      cyberProjectilesRef.current.forEach((proj) => {
+        proj.x += proj.vx;
+        proj.life--;
+
+        // Trailing square pixel particles (binary data trail)
+        if (proj.life % 2 === 0) {
+          combatParticlesRef.current.push({
+            x: proj.x + (Math.random() - 0.5) * 8,
+            y: proj.y + (Math.random() - 0.5) * 8,
+            vx: -proj.vx * 0.15,
+            vy: (Math.random() - 0.5) * 1.5,
+            color: Math.random() < 0.5 ? "#06b6d4" : "#c084fc",
+            size: 3.5,
+            life: 14,
+            maxLife: 14,
+          });
+        }
+
+        // Collision with Active Player
+        if (Math.abs(proj.x - active.x) < 38 && Math.abs(proj.y - (active.y - 40)) < 48 && proj.life > 0) {
+          proj.life = 0;
+          sound.playCyberBeamImpact();
+          screenShakeRef.current = 10;
+          active.vx = proj.vx > 0 ? 5.5 : -5.5;
+          active.x += active.vx;
+
+          damageNumbersRef.current.push({
+            x: active.x,
+            y: active.y - 85,
+            text: `🔮 CYBER BEAM! -${proj.damage}`,
+            color: "#c084fc",
+            life: 38,
+            maxLife: 38,
+            vy: -1.8,
+            isCrit: true,
+          });
+
+          for (let p = 0; p < 26; p++) {
+            combatParticlesRef.current.push({
+              x: active.x + (Math.random() - 0.5) * 20,
+              y: active.y - 45 + (Math.random() - 0.5) * 20,
+              vx: (Math.random() - 0.5) * 8,
+              vy: (Math.random() - 0.5) * 8,
+              color: p % 4 === 0 ? "#06b6d4" : p % 4 === 1 ? "#c084fc" : p % 4 === 2 ? "#38bdf8" : "#ffffff",
+              size: 4 + Math.random() * 2.5,
+              life: 24,
+              maxLife: 24,
+            });
+          }
+        }
+      });
+      cyberProjectilesRef.current = cyberProjectilesRef.current.filter((p) => p.life > 0 && p.x > 0 && p.x < 3000);
+
       // 3. Update Active Character Physics
       if (!isDialogueOpen && !attack.isAttacking) {
         const speed = isRun ? 4.8 : 2.6;
@@ -1856,6 +2089,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         hairiCombat: hairiCombatImg,
         hairiSuperMaster: hairiSuperMasterImg,
         hairiSuperCombat: hairiSuperCombatImg,
+        hairiV3Master: hairiV3MasterImg,
+        hairiV3Combat: hairiV3CombatImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -2551,7 +2786,29 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         let hRow = 0;
         let hCol = hairiState.animFrame % 8;
 
-        if (hairiState.phase === 2 && !hairiState.isFriend) {
+        if (hairiState.phase === 3 && !hairiState.isFriend) {
+          // LEVEL 3: CYBER MAGE HAIRI (Floating IT Wizard & Magic Ranged Combat)
+          if (hairiState.state === "defeated") {
+            activeSheet = hairiV3CombatImg || hairiV3MasterImg || hairiSuperMasterImg || hairiMasterImg;
+            hRow = 3; // Descending Sequence (7..0)
+            hCol = Math.min(7, hairiState.animFrame);
+          } else if (hairiState.state === "hurt") {
+            activeSheet = hairiV3CombatImg || hairiV3MasterImg || hairiMasterImg;
+            hRow = 2; // Levitation Hurt
+          } else if (hairiState.state === "combat") {
+            activeSheet = hairiV3CombatImg || hairiV3MasterImg || hairiMasterImg;
+            hRow = 0; // Semi-Mage Long-Range Combat (laser beam & rune casting)
+          } else if (hairiState.state === "run") {
+            activeSheet = hairiV3MasterImg || hairiV3CombatImg || hairiMasterImg;
+            hRow = 2; // Super Flying Sprint (horizontal superman dash)
+          } else if (hairiState.state === "walk" || hairiState.state === "walk_angry") {
+            activeSheet = hairiV3MasterImg || hairiMasterImg;
+            hRow = 1; // Cyber Platform Walk (walking atop glowing blue platform tiles)
+          } else {
+            activeSheet = hairiV3MasterImg || hairiMasterImg;
+            hRow = 0; // Levitation Idle (floating in mid-air)
+          }
+        } else if (hairiState.phase === 2 && !hairiState.isFriend) {
           // LEVEL 2: SUPER HAIRI OVERCLOCK SPRITESHEET (Hanya saat bertarung fase 2)
           if (hairiState.state === "defeated") {
             activeSheet = hairiSuperCombatImg || hairiSuperMasterImg || hairiCombatImg || hairiMasterImg;
@@ -2610,10 +2867,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         ctx.save();
 
-        // Ground shadow
-        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        // Ground shadow (adapts for mid-air levitation)
+        const shadowY = GROUND_Y + 16;
+        const shadowRadius = hairiState.phase === 3 ? 18 + Math.sin(hairiState.animTimer * 0.08) * 4 : 24;
+        const shadowAlpha = hairiState.phase === 3 ? 0.22 : 0.35;
+        ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
         ctx.beginPath();
-        ctx.ellipse(hScreenX, hairiState.y + 16, 24, 7, 0, 0, Math.PI * 2);
+        ctx.ellipse(hScreenX, shadowY, shadowRadius, 7, 0, 0, Math.PI * 2);
         ctx.fill();
 
         if (hairiState.hitFlash > 0 && Math.floor(hairiState.hitFlash / 2) % 2 === 0) {
@@ -3022,6 +3282,34 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
       }
 
+      // Layer 6.6: Cyber Magic Projectiles (Hairi Level 3 Mage Projectile Beams)
+      cyberProjectilesRef.current.forEach((proj) => {
+        const projScreenX = proj.x - camX;
+        const projDir = proj.facingLeft ? -1 : 1;
+        ctx.save();
+        // Cyan & Purple Digital Rune Glow
+        ctx.shadowColor = "#38bdf8";
+        ctx.shadowBlur = 12;
+
+        // Outer Cyber Laser Beam (32x12 rounded block with pixel spikes)
+        ctx.fillStyle = "rgba(6, 182, 212, 0.85)";
+        ctx.fillRect(projScreenX - 16, proj.y - 6, 32, 12);
+
+        // Inner Core Electric Violet
+        ctx.fillStyle = "rgba(192, 132, 252, 0.95)";
+        ctx.fillRect(projScreenX - 12, proj.y - 4, 24, 8);
+
+        // Core White Hot Pixel Ray
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(projScreenX - 8, proj.y - 2, 16, 4);
+
+        // Pixel arrow tip
+        ctx.fillStyle = "#67e8f9";
+        ctx.fillRect(projScreenX + projDir * 16, proj.y - 3, projDir * 6, 6);
+
+        ctx.restore();
+      });
+
       // Layer 6.7: Floating Damage Popups
       for (let i = damageNumbersRef.current.length - 1; i >= 0; i--) {
         const d = damageNumbersRef.current[i];
@@ -3376,7 +3664,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
         ctx.fillRect(rightX, barY, halfW, barH);
         const hairiGrad = ctx.createLinearGradient(rightX, barY, rightX + halfW, barY);
-        if (hairiState.phase === 2) {
+        if (hairiState.phase === 3) {
+          hairiGrad.addColorStop(0, "#7c3aed");
+          hairiGrad.addColorStop(0.5, "#a855f7");
+          hairiGrad.addColorStop(1, "#06b6d4");
+        } else if (hairiState.phase === 2) {
           hairiGrad.addColorStop(0, "#0891b2");
           hairiGrad.addColorStop(0.5, "#06b6d4");
           hairiGrad.addColorStop(1, "#38bdf8");
@@ -3393,7 +3685,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.font = "bold 8px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        const hairiLabel = hairiState.phase === 2
+        const hairiLabel = hairiState.phase === 3
+          ? `🔮 CYBER MAGE (LV.3) ${hairiState.hp}/${hairiState.maxHp}`
+          : hairiState.phase === 2
           ? `⚡ SUPER HAIRI ${hairiState.hp}/${hairiState.maxHp}`
           : hairiState.isEnraged
           ? `🔥 HAIRI ${hairiState.hp}/${hairiState.maxHp}`
