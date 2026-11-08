@@ -107,15 +107,15 @@ export const StoryDialog: React.FC<StoryDialogProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
+      exit={{ opacity: 0, y: 15 }}
       transition={{ duration: 0.2 }}
-      className="absolute bottom-2 sm:bottom-4 inset-x-2 sm:inset-x-6 z-40 flex flex-col items-center select-none"
+      className="relative w-full z-40 flex flex-col items-center select-none px-1"
     >
       <div
         onClick={handleSkipOrNext}
-        className="relative w-full max-w-3xl rounded-2xl sm:rounded-3xl p-3 sm:p-5 bg-[#090b10]/95 backdrop-blur-xl border border-white/15 shadow-[0_15px_50px_rgba(0,0,0,0.85)] cursor-pointer overflow-hidden"
+        className="relative w-full max-w-4xl rounded-2xl sm:rounded-3xl p-3 sm:p-4 bg-[#090b10]/95 backdrop-blur-xl border border-white/15 shadow-[0_15px_50px_rgba(0,0,0,0.85)] cursor-pointer overflow-hidden ring-1 ring-white/10"
       >
         {/* Ambient Top Glow */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-20 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />

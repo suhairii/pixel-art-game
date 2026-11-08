@@ -34,6 +34,7 @@ export interface DevState {
     monster: { active: boolean; hp: number; maxHp: number; defeated: boolean };
     adif: { hp: number; maxHp: number; onTower: boolean };
     hairi: { hp: number; maxHp: number; phase: number };
+    stationMonster: { active: boolean; hp: number; maxHp: number; defeated: boolean };
     key: { inCombat: boolean; hp: number; maxHp: number; defeated: boolean };
   };
 }
@@ -41,8 +42,8 @@ export interface DevState {
 export interface DevActions {
   warpZone: (zone: "losari" | "perkampungan" | "stasiun_menara" | "stasiun_bekasi" | "bekasi", targetX?: number) => void;
   teleportPlayer: (x: number) => void;
-  triggerBoss: (boss: "monster" | "adif_hairi" | "hairi_v2" | "hairi_v3" | "key") => void;
-  defeatBoss: (boss: "monster" | "adif_hairi" | "key") => void;
+  triggerBoss: (boss: "monster" | "adif_hairi" | "hairi_v2" | "hairi_v3" | "station_monster" | "key") => void;
+  defeatBoss: (boss: "monster" | "adif_hairi" | "station_monster" | "key") => void;
   toggleFriend: (char: "hairi" | "adif" | "key", isFriend?: boolean) => void;
   unlockAllFriends: () => void;
   setGodMode: (enabled: boolean) => void;
@@ -79,15 +80,21 @@ const DIALOGUE_OPTIONS: Array<{ category: string; id: string; label: string }> =
   { category: "2. Perkampungan & Duel", id: "adif_hairi_defeat", label: "Duel Selesai & Jadi Teman" },
   { category: "2. Perkampungan & Duel", id: "krl_station_1", label: "Stasiun KRL Naik Kereta" },
 
+  // Stasiun Bekasi & Monster
+  { category: "3. Stasiun Bekasi & Siluman", id: "stasiun_bekasi_arrive_1", label: "Tiba di Stasiun Bekasi" },
+  { category: "3. Stasiun Bekasi & Siluman", id: "bekasi_monster_encounter_1", label: "Siluman Limbah Muncul (Emergence)" },
+  { category: "3. Stasiun Bekasi & Siluman", id: "bekasi_monster_defeat_1", label: "Siluman Limbah Tumbang" },
+  { category: "3. Stasiun Bekasi & Siluman", id: "exit_stasiun_bekasi_1", label: "Pintu Keluar Turnstile Stasiun" },
+
   // Bekasi Bantar Gebang
-  { category: "3. Bekasi & Key", id: "bekasi_arrival_1", label: "Tiba di Stasiun Bekasi TPST" },
-  { category: "3. Bekasi & Key", id: "key_encounter_1", label: "Tantangan Pertama Key" },
-  { category: "3. Bekasi & Key", id: "key_defeat", label: "Key Kalah & Bergabung Sahabat" },
-  { category: "3. Bekasi & Key", id: "key_friend_chat", label: "Ngobrol Akrab dengan Key" },
-  { category: "3. Bekasi & Key", id: "supir_truk_1", label: "Pak Bambang (Supir Truk DLH)" },
-  { category: "3. Bekasi & Key", id: "gundukan_sampah_1", label: "Mengais Timbunan Sampah" },
-  { category: "3. Bekasi & Key", id: "kucing_garong_1", label: "Kucing Garong Belang TPA" },
-  { category: "3. Bekasi & Key", id: "burung_bantar_1", label: "Kawanan Burung Gagak & Bangau" },
+  { category: "4. Bekasi & Key", id: "bekasi_arrival_1", label: "Tiba di Stasiun Bekasi TPST" },
+  { category: "4. Bekasi & Key", id: "key_encounter_1", label: "Tantangan Pertama Key" },
+  { category: "4. Bekasi & Key", id: "key_defeat", label: "Key Kalah & Bergabung Sahabat" },
+  { category: "4. Bekasi & Key", id: "key_friend_chat", label: "Ngobrol Akrab dengan Key" },
+  { category: "4. Bekasi & Key", id: "supir_truk_1", label: "Pak Bambang (Supir Truk DLH)" },
+  { category: "4. Bekasi & Key", id: "gundukan_sampah_1", label: "Mengais Timbunan Sampah" },
+  { category: "4. Bekasi & Key", id: "kucing_garong_1", label: "Kucing Garong Belang TPA" },
+  { category: "4. Bekasi & Key", id: "burung_bantar_1", label: "Kawanan Burung Gagak & Bangau" },
 ];
 
 export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen = true }) => {
@@ -424,6 +431,28 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                   className="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 font-bold transition-all"
                 >
                   🤝 Kalahkan & Jadikan Teman
+                </button>
+              </div>
+            </div>
+
+            {/* Siluman Limbah Stasiun Bekasi */}
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-teal-500/30 space-y-2">
+              <div className="flex items-center justify-between text-teal-400 font-bold">
+                <span>🦖 SILUMAN LIMBAH STASIUN BEKASI</span>
+                <span className="text-[10px] text-slate-400">ZONA 4 (BARU)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => actions?.triggerBoss("station_monster")}
+                  className="px-2 py-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-200 font-bold transition-all"
+                >
+                  ⚡ Munculkan Siluman Stasiun
+                </button>
+                <button
+                  onClick={() => actions?.defeatBoss("station_monster")}
+                  className="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 font-bold transition-all"
+                >
+                  💀 Kalahkan Siluman Stasiun
                 </button>
               </div>
             </div>

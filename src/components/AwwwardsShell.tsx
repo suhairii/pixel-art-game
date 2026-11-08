@@ -239,7 +239,7 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
       </header>
 
       {/* GAME SCREEN CHASSIS */}
-      <main className="relative z-10 w-full max-w-4xl flex-1 flex items-center justify-center my-auto">
+      <main className="relative z-10 w-full max-w-4xl flex-1 flex flex-col items-center justify-center my-auto gap-2">
         <div className="relative w-full rounded-[1.4rem] sm:rounded-[2rem] p-1.5 sm:p-2 bg-gradient-to-b from-white/10 via-white/5 to-white/[0.02] ring-1 ring-white/10 shadow-2xl">
           <div className="relative rounded-[calc(1.4rem-0.375rem)] sm:rounded-[calc(2rem-0.5rem)] overflow-hidden bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]">
             {/* Canvas Narrative Game */}
@@ -253,18 +253,6 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
               virtualInput={virtualInput}
               onRegisterDevActions={setDevActions}
             />
-
-            {/* In-Game Interactive Story Dialogue Overlay */}
-            <AnimatePresence>
-              {currentDialogue && (
-                <StoryDialog
-                  dialogue={currentDialogue}
-                  onNext={handleDialogNext}
-                  onClose={() => setCurrentDialogueId(null)}
-                  onChoice={handleDialogChoice}
-                />
-              )}
-            </AnimatePresence>
 
             {/* OVERLAY: MENU UTAMA (A Space for the Unbound Style) */}
             <AnimatePresence>
@@ -339,6 +327,18 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
             </AnimatePresence>
           </div>
         </div>
+
+        {/* In-Game Interactive Story Dialogue: Placed OUTSIDE the game canvas so character transform animations are never covered! */}
+        <AnimatePresence>
+          {currentDialogue && (
+            <StoryDialog
+              dialogue={currentDialogue}
+              onNext={handleDialogNext}
+              onClose={() => setCurrentDialogueId(null)}
+              onChoice={handleDialogChoice}
+            />
+          )}
+        </AnimatePresence>
       </main>
 
       {/* FOOTER: Ergonomic Touch Controls */}

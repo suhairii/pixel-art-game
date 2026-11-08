@@ -420,7 +420,45 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "jihan",
     speakerName: "Jihan • Pendekar Anggun",
     portrait: "/jihan_portrait.png",
-    text: "Pintu KRL telah terbuka! Jalan terus ke sebelah kanan, ada Icon Pintu Keluar Stasiun menuju ke permukaan Kota Bekasi!",
+    text: "Pintu KRL telah terbuka! Jalan terus ke sebelah kanan melalui aula peron stasiun menuju ke pintu keluar!",
+    emotion: "happy",
+  },
+
+  // ENCOUNTER MONSTER STASIUN BEKASI (MUNCUL TIBA-TIBA DARI BAWAH TANAH)
+  bekasi_monster_encounter_1: {
+    id: "bekasi_monster_encounter_1",
+    speaker: "dani",
+    speakerName: "Dani • Pendekar Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Awas kawan-kawan! Lantai peron stesen bergegar kuat! Ada raksasa buas lumpur toksik yang merempuh keluar dari bawah tanah!",
+    emotion: "surprised",
+    nextId: "bekasi_monster_encounter_2",
+  },
+  bekasi_monster_encounter_2: {
+    id: "bekasi_monster_encounter_2",
+    speaker: "jihan",
+    speakerName: "Jihan • Pendekar Anggun",
+    portrait: "/jihan_portrait.png",
+    text: "Makhluk ini memuntahkan serpihan sampah dan wap beracun! Jangan biarkan ia menguasai stasiun! Ayo kita berempat tumpaskan bersama!",
+    emotion: "thoughtful",
+  },
+
+  // MONSTER STASIUN BEKASI KALAH
+  bekasi_monster_defeat_1: {
+    id: "bekasi_monster_defeat_1",
+    speaker: "dani",
+    speakerName: "Dani • Pendekar Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Fuhhh! Serangan gabungan kita berjaya melumpuhkan raksasa limbah stesen ini! Tengok ia tumbang!",
+    emotion: "happy",
+    nextId: "bekasi_monster_defeat_2",
+  },
+  bekasi_monster_defeat_2: {
+    id: "bekasi_monster_defeat_2",
+    speaker: "hairi",
+    speakerName: "Hairi • IT Cyber Mage",
+    portrait: "/hairi_portrait.png",
+    text: "Kadar gelombang toksik di aula stesen telah kembali stabil. Laluan ke pintu keluar turnstile menuju TPST Bantar Gebang kini selamat!",
     emotion: "happy",
   },
 

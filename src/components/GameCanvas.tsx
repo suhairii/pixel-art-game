@@ -477,6 +477,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     keyCombat: HTMLImageElement | null;
     bekasiBirds: HTMLImageElement | null;
     bekasiTruckProps: HTMLImageElement | null;
+    monsterBekasiEmerge: HTMLImageElement | null;
+    monsterBekasiWalk: HTMLImageElement | null;
+    monsterBekasiAttack: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -508,6 +511,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     keyCombat: null,
     bekasiBirds: null,
     bekasiTruckProps: null,
+    monsterBekasiEmerge: null,
+    monsterBekasiWalk: null,
+    monsterBekasiAttack: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara vs Stasiun Menara vs Stasiun Bekasi vs Bekasi TPST)
@@ -753,7 +759,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     dissolveTimer: 0,
   });
 
-  // 2D KRL Commuter Line Train Animated Entity State (8-frame doors & movement)
+  // 2D KRL Commuter Line Train Animated Entity State (4-frame JR 205 Indonesian Commuter Line)
   const krlStateRef = useRef<{
     x: number;
     vx: number;
@@ -763,14 +769,72 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     targetX: number;
     transitionTimer: number;
   }>({
-    x: 2780,
+    x: 2200,
     vx: 0,
     state: "idle_open",
-    frame: 4, // Frame 4 = sliding doors fully open
+    frame: 0, // Frame 0 = idle at station
     animTimer: 0,
-    targetX: 2780,
+    targetX: 2200,
     transitionTimer: 0,
   });
+
+  // Siluman Limbah Stasiun Bekasi Boss State (Emerges from subterranean sewer when arriving in Bekasi Station)
+  const stationMonsterRef = useRef<{
+    isActive: boolean;
+    isEmerging: boolean;
+    emergeFrame: number;
+    emergeTimer: number;
+    x: number;
+    y: number;
+    vx: number;
+    hp: number;
+    maxHp: number;
+    facingLeft: boolean;
+    state: "idle" | "walk" | "attack" | "hurt" | "defeated";
+    animFrame: number;
+    animTimer: number;
+    hitFlash: number;
+    shake: number;
+    attackCooldown: number;
+    isAttacking: boolean;
+    isDefeated: boolean;
+    hasTriggeredEncounter: boolean;
+  }>({
+    isActive: false,
+    isEmerging: false,
+    emergeFrame: 0,
+    emergeTimer: 0,
+    x: 1350,
+    y: GROUND_Y,
+    vx: 0,
+    hp: 850,
+    maxHp: 850,
+    facingLeft: true,
+    state: "idle",
+    animFrame: 0,
+    animTimer: 0,
+    hitFlash: 0,
+    shake: 0,
+    attackCooldown: 100,
+    isAttacking: false,
+    isDefeated: false,
+    hasTriggeredEncounter: false,
+  });
+
+  // Background Passing Trains (Kereta Lalu Lalang di Stasiun Menara & Bekasi)
+  const passingTrainsRef = useRef<
+    Array<{
+      id: number;
+      x: number;
+      vx: number;
+      y: number;
+      dir: "left" | "right";
+      frame: number;
+      animTimer: number;
+      scale: number;
+    }>
+  >([]);
+  const passingTrainSpawnTimerRef = useRef<number>(180);
 
   // Dynamic Interactive Objects Filtered by Current Zone
   const getInteractiveObjects = (
@@ -1080,15 +1144,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/hairi_v3_master_sheet.png"),
       loadImage("/hairi_v3_combat_sheet.png"),
       loadImage("/underground_station_pixelart.png"),
-      loadImage("/krl_train_8frames_sheet.png"),
+      loadImage("/krl_new_spritesheet.png"),
       loadImage("/stasiun_bekasi_pixelart.png"),
       loadImage("/env_bekasi_bantar_gebang.png"),
       loadImage("/key_master_sheet.png"),
       loadImage("/key_combat_sheet.png"),
       loadImage("/bekasi_scavenger_birds_sheet.png"),
       loadImage("/bekasi_truck_props_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps };
+      loadImage("/monster_bekasi_emerge.png"),
+      loadImage("/monster_bekasi_walk.png"),
+      loadImage("/monster_bekasi_attack.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack };
     });
   }, []);
 
@@ -1487,6 +1554,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           battleAdifHairiRef.current.isDefeated = false;
           teleportFlashRef.current = 20;
           sound.startCyberBGM();
+        } else if (boss === "station_monster") {
+          zoneRef.current = "stasiun_bekasi";
+          setCurrentZone("stasiun_bekasi");
+          const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
+          active.x = 1200;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1200 - CANVAS_W / 2));
+          stationMonsterRef.current.x = 1450;
+          stationMonsterRef.current.isActive = true;
+          stationMonsterRef.current.isEmerging = false;
+          stationMonsterRef.current.isDefeated = false;
+          stationMonsterRef.current.hp = 850;
+          stationMonsterRef.current.maxHp = 850;
+          stationMonsterRef.current.state = "idle";
+          stationMonsterRef.current.hasTriggeredEncounter = true;
+          teleportFlashRef.current = 20;
+          sound.playStomp();
         } else if (boss === "key") {
           zoneRef.current = "bekasi";
           setCurrentZone("bekasi");
@@ -1524,6 +1607,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           sound.stopCyberBGM();
           sound.playWin();
           onTriggerDialogue("adif_hairi_defeat");
+        } else if (boss === "station_monster") {
+          stationMonsterRef.current.hp = 0;
+          stationMonsterRef.current.isActive = false;
+          stationMonsterRef.current.isDefeated = true;
+          stationMonsterRef.current.state = "defeated";
+          sound.playWin();
+          onTriggerDialogue("bekasi_monster_defeat_1");
         } else if (boss === "key") {
           keyRef.current.hp = 0;
           battleKeyRef.current.inCombat = false;
@@ -1629,6 +1719,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               hp: hairiRef.current.hp,
               maxHp: hairiRef.current.maxHp,
               phase: hairiRef.current.phase,
+            },
+            stationMonster: {
+              active: stationMonsterRef.current.isActive,
+              hp: stationMonsterRef.current.hp,
+              maxHp: stationMonsterRef.current.maxHp,
+              defeated: stationMonsterRef.current.isDefeated,
             },
             key: {
               inCombat: battleKeyRef.current.inCombat,
@@ -2122,6 +2218,63 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   isCrit: true,
                 });
                 onTriggerDialogue("key_defeat");
+              }
+            }
+          }
+
+          // 1.9. Check Station Monster hit if in Stasiun Bekasi battle
+          const stMonster = stationMonsterRef.current;
+          if (stMonster.isActive && !stMonster.isEmerging && !stMonster.isDefeated && !attack.hasHit && stMonster.hp > 0) {
+            const facingMatches = active.facingLeft ? stMonster.x <= active.x : stMonster.x >= active.x;
+            const dist = Math.abs(active.x - stMonster.x);
+            if (dist < 115 && facingMatches) {
+              attack.hasHit = true;
+              const isCrit = Math.random() < 0.35;
+              const baseDmg = oneHitKillRef.current
+                ? 9999
+                : isCrit
+                ? Math.floor(80 + Math.random() * 40)
+                : Math.floor(45 + Math.random() * 30);
+              comboRef.current.count++;
+              comboRef.current.timer = 120;
+              sound.playHitImpact();
+              screenShakeRef.current = 8;
+              stMonster.hitFlash = 16;
+              stMonster.shake = 10;
+              stMonster.hp = Math.max(0, stMonster.hp - baseDmg);
+
+              for (let p = 0; p < 16; p++) {
+                combatParticlesRef.current.push({
+                  x: stMonster.x + (Math.random() - 0.5) * 40,
+                  y: stMonster.y - 60 + (Math.random() - 0.5) * 60,
+                  vx: (Math.random() - 0.5) * 7,
+                  vy: -Math.random() * 6 - 1,
+                  color: Math.random() < 0.5 ? "#b45309" : Math.random() < 0.5 ? "#78350f" : "#a855f7",
+                  size: 3.5,
+                  life: 22,
+                  maxLife: 22,
+                });
+              }
+
+              damageNumbersRef.current.push({
+                x: stMonster.x + (Math.random() - 0.5) * 30,
+                y: stMonster.y - 100,
+                text: `${baseDmg}${isCrit ? " CRIT!" : ""}`,
+                color: isCrit ? "#facc15" : "#38bdf8",
+                life: 45,
+                maxLife: 45,
+                vy: -1.6,
+                isCrit,
+              });
+
+              if (stMonster.hp <= 0) {
+                stMonster.hp = 0;
+                stMonster.isActive = false;
+                stMonster.isDefeated = true;
+                stMonster.state = "defeated";
+                sound.playWin();
+                screenShakeRef.current = 14;
+                onTriggerDialogue("bekasi_monster_defeat_1");
               }
             }
           }
@@ -3713,25 +3866,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       const currentZone = zoneRef.current;
 
-      // Update KRL Train Animation and Movement State (2D 8-Frame State Machine)
+      // Update KRL Train Animation and Movement State (4-Frame JR 205 Indonesian Commuter Line)
       const krl = krlStateRef.current;
       krl.animTimer++;
 
       if (krl.state === "doors_closing") {
         if (krl.animTimer % 5 === 0) {
-          if (krl.frame < 7) {
-            krl.frame++;
-          } else {
-            krl.frame = 0; // Doors fully shut and locked
-            krl.state = "departing";
-            krl.vx = currentZone === "stasiun_menara" ? 2.5 : -2.5;
-            sound.playWhoosh();
-          }
+          krl.frame = 0; // Doors shut
+          krl.state = "departing";
+          krl.vx = currentZone === "stasiun_menara" ? 2.5 : -2.5;
+          sound.playWhoosh();
         }
       } else if (krl.state === "departing") {
         const accel = currentZone === "stasiun_menara" ? 0.45 : -0.45;
         krl.vx += accel;
         krl.x += krl.vx;
+        // Frame 1 (pantograph sparks) and Frame 3 (speed motion blur lines)
+        krl.frame = krl.animTimer % 8 < 4 ? 1 : 3;
 
         // Camera smoothly follows the speeding train!
         cameraXRef.current += (krl.x - CANVAS_W / 2 - cameraXRef.current) * 0.15;
@@ -3780,7 +3931,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             krl.targetX = 550;
             krl.vx = 8.0;
             krl.state = "arriving";
-            krl.frame = 1;
+            krl.frame = 3;
             cameraXRef.current = 0;
           } else {
             // Arrive back at Stasiun Menara!
@@ -3809,7 +3960,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             krl.targetX = 2200;
             krl.vx = -8.0;
             krl.state = "arriving";
-            krl.frame = 1;
+            krl.frame = 3;
             cameraXRef.current = Math.max(0, 2200 - CANVAS_W / 2);
           }
         }
@@ -3818,9 +3969,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         krl.vx = diff * 0.08;
         krl.x += krl.vx;
         cameraXRef.current += (krl.x - CANVAS_W / 2 - cameraXRef.current) * 0.12;
-        if (krl.animTimer % 4 === 0) {
-          krl.frame = krl.frame === 0 ? 1 : krl.frame === 1 ? 7 : 0;
-        }
+        krl.frame = krl.animTimer % 8 < 4 ? 3 : 1;
         if (Math.abs(diff) < 3.5) {
           krl.x = krl.targetX;
           krl.vx = 0;
@@ -3833,15 +3982,157 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
       } else if (krl.state === "doors_opening") {
-        if (krl.animTimer % 6 === 0) {
-          if (krl.frame < 4) {
-            krl.frame++;
-          } else {
-            krl.state = "idle_open";
+        krl.frame = 0;
+        krl.state = "idle_open";
+      } else if (krl.state === "idle_open") {
+        // Subtle sheen reflection every 3 seconds
+        krl.frame = krl.animTimer % 180 < 15 ? 2 : 0;
+      }
+
+      // Update Background Passing Trains (Kereta Lalu Lalang di Stasiun)
+      if (currentZone === "stasiun_menara" || currentZone === "stasiun_bekasi") {
+        passingTrainSpawnTimerRef.current++;
+        if (passingTrainSpawnTimerRef.current > 380 && passingTrainsRef.current.length < 2) {
+          passingTrainSpawnTimerRef.current = 0;
+          const goRight = Math.random() < 0.5;
+          passingTrainsRef.current.push({
+            id: Math.random(),
+            x: goRight ? -500 : WORLD_W + 500,
+            vx: goRight ? 11.5 : -11.5,
+            y: GROUND_Y - 22,
+            dir: goRight ? "right" : "left",
+            frame: 1,
+            animTimer: 0,
+            scale: 0.82,
+          });
+        }
+        passingTrainsRef.current = passingTrainsRef.current.filter((pt) => {
+          pt.x += pt.vx;
+          pt.animTimer++;
+          if (pt.animTimer % 4 === 0) {
+            pt.frame = (pt.frame + 1) % 4;
+          }
+          if (Math.random() < 0.25) {
+            combatParticlesRef.current.push({
+              x: pt.x + (Math.random() - 0.5) * 80,
+              y: pt.y + 12,
+              vx: -pt.vx * 0.12,
+              vy: -Math.random() * 2.2,
+              color: Math.random() < 0.5 ? "#38bdf8" : "#facc15",
+              size: 2.2,
+              life: 14,
+              maxLife: 14,
+            });
+          }
+          return pt.x > -700 && pt.x < WORLD_W + 700;
+        });
+      }
+
+      // Update Siluman Limbah Stasiun Bekasi Boss Logic
+      if (currentZone === "stasiun_bekasi") {
+        const stMonster = stationMonsterRef.current;
+        if (!stMonster.hasTriggeredEncounter && active.x > 820 && !stMonster.isDefeated) {
+          stMonster.hasTriggeredEncounter = true;
+          stMonster.isActive = true;
+          stMonster.isEmerging = true;
+          stMonster.emergeFrame = 0;
+          stMonster.emergeTimer = 0;
+          stMonster.x = 1380;
+          screenShakeRef.current = 14;
+          sound.playStomp();
+          onTriggerDialogue("bekasi_monster_encounter_1");
+        }
+
+        if (stMonster.isActive) {
+          if (stMonster.isEmerging) {
+            stMonster.emergeTimer++;
+            if (stMonster.emergeTimer % 8 === 0) {
+              stMonster.emergeFrame++;
+              if (stMonster.emergeFrame >= 8) {
+                stMonster.isEmerging = false;
+                stMonster.state = "idle";
+                stMonster.animFrame = 0;
+                stMonster.animTimer = 0;
+                sound.playHitImpact();
+                screenShakeRef.current = 10;
+              }
+            }
+            // Toxic bubbling mud particles during emergence
+            if (Math.random() < 0.6) {
+              combatParticlesRef.current.push({
+                x: stMonster.x + (Math.random() - 0.5) * 60,
+                y: GROUND_Y + 10 - Math.random() * 30,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -Math.random() * 4 - 1.5,
+                color: Math.random() < 0.4 ? "#a855f7" : Math.random() < 0.5 ? "#b45309" : "#dc2626",
+                size: 3.5,
+                life: 20,
+                maxLife: 20,
+              });
+            }
+          } else if (!stMonster.isDefeated) {
+            stMonster.animTimer++;
+            if (stMonster.hitFlash > 0) stMonster.hitFlash--;
+            if (stMonster.shake > 0) stMonster.shake *= 0.85;
+            if (stMonster.attackCooldown > 0) stMonster.attackCooldown--;
+
+            const mDist = Math.abs(active.x - stMonster.x);
+            stMonster.facingLeft = active.x < stMonster.x;
+
+            if (stMonster.state === "attack") {
+              if (stMonster.animTimer % 5 === 0) {
+                stMonster.animFrame++;
+                if (stMonster.animFrame === 4) {
+                  // Spew toxic debris projectiles!
+                  sound.playTrashThrow();
+                  screenShakeRef.current = 7;
+                  const projDir = stMonster.facingLeft ? -1 : 1;
+                  for (let i = 0; i < 4; i++) {
+                    combatParticlesRef.current.push({
+                      x: stMonster.x + projDir * 25,
+                      y: stMonster.y - 75,
+                      vx: projDir * (5 + Math.random() * 3),
+                      vy: -1.5 + (Math.random() - 0.5) * 3,
+                      color: i % 2 === 0 ? "#7e22ce" : "#eab308",
+                      size: 4.5,
+                      life: 26,
+                      maxLife: 26,
+                    });
+                  }
+                  if (mDist < 130 && !godModeRef.current) {
+                    screenShakeRef.current = 10;
+                    sound.playHitImpact();
+                  }
+                }
+                if (stMonster.animFrame >= 8) {
+                  stMonster.state = "idle";
+                  stMonster.animFrame = 0;
+                  stMonster.attackCooldown = 130;
+                }
+              }
+            } else {
+              if (stMonster.attackCooldown <= 0 && mDist < 200) {
+                stMonster.state = "attack";
+                stMonster.animFrame = 0;
+                stMonster.animTimer = 0;
+              } else if (mDist > 80 && mDist < 600) {
+                stMonster.state = "walk";
+                stMonster.vx = stMonster.facingLeft ? -1.6 : 1.6;
+                stMonster.x += stMonster.vx;
+                if (stMonster.animTimer % 5 === 0) {
+                  stMonster.animFrame = (stMonster.animFrame + 1) % 8;
+                  if (stMonster.animFrame === 5) {
+                    sound.playStomp();
+                    screenShakeRef.current = 4;
+                  }
+                }
+              } else {
+                stMonster.state = "idle";
+                stMonster.animFrame = 0;
+              }
+            }
           }
         }
-      } else if (krl.state === "idle_open") {
-        krl.frame = 4; // Doors fully wide open for boarding
       }
 
       if (currentZone === "losari") {
@@ -4545,38 +4836,66 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillText("COMMUTER LINE TUJUAN BEKASI (BKS)", signX, 81);
         ctx.restore();
 
-        // 10. Separate 2D 8-Frame Animated KRL Train Carriage on Tracks
+        // 10. Indonesian KRL Commuter Line JR 205 (New 4-Frame Spritesheet)
         if (krlTrainImg) {
-          const trainDrawX = krl.x - camX - 145;
-          const trainDrawY = GROUND_Y + 16 - 198;
-          const trainW = 290;
-          const trainH = 198;
-          const fw = 168;
-          const fh = 232;
-          const sx = krl.frame * fw;
+          const trainDrawX = krl.x - camX - 190;
+          const trainDrawY = GROUND_Y + 16 - 146;
+          const trainW = 380;
+          const trainH = 150;
+          const fw = 572;
+          const fh = 226;
+          const frameIdx = (krl.state === "departing" || krl.state === "arriving")
+            ? (krl.animTimer % 8 < 4 ? 1 : 3)
+            : (krl.animTimer % 180 < 15 ? 2 : 0);
+          const sy = frameIdx * 256;
 
           ctx.save();
-          if (krl.frame >= 2 && krl.frame <= 5) {
-            const glow = ctx.createRadialGradient(trainDrawX + 145, trainDrawY + 95, 10, trainDrawX + 145, trainDrawY + 95, 80);
-            glow.addColorStop(0, "rgba(254, 240, 138, 0.35)");
+          if (frameIdx === 1) {
+            // Glowing cyan spark at pantograph & wheels
+            const glow = ctx.createRadialGradient(trainDrawX + 115, trainDrawY + 15, 5, trainDrawX + 115, trainDrawY + 15, 45);
+            glow.addColorStop(0, "rgba(56, 189, 248, 0.75)");
             glow.addColorStop(1, "rgba(0, 0, 0, 0)");
             ctx.fillStyle = glow;
-            ctx.fillRect(trainDrawX + 65, trainDrawY + 40, 160, 110);
+            ctx.fillRect(trainDrawX + 70, trainDrawY - 10, 90, 60);
           }
 
-          ctx.drawImage(krlTrainImg, sx, 0, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
+          ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
 
           // LED Destination Board
           ctx.fillStyle = "#1e3a8a";
-          ctx.fillRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
+          ctx.fillRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
           ctx.strokeStyle = "#facc15";
           ctx.lineWidth = 1;
-          ctx.strokeRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
+          ctx.strokeRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
           ctx.font = "bold 8px 'Courier New', monospace";
           ctx.fillStyle = "#facc15";
           ctx.textAlign = "center";
-          ctx.fillText("KRL • BEKASI SPECIAL", trainDrawX + 145, trainDrawY + 28);
+          ctx.fillText("KRL • COMMUTER LINE BEKASI", trainDrawX + 190, trainDrawY + 24);
           ctx.restore();
+        }
+
+        // Background Passing Trains (Kereta Lalu Lalang di Peron Belakang)
+        if (krlTrainImg && passingTrainsRef.current.length > 0) {
+          for (const pt of passingTrainsRef.current) {
+            const trainDrawX = pt.x - camX - 145;
+            const trainDrawY = GROUND_Y - 45;
+            const trainW = 310 * pt.scale;
+            const trainH = 122 * pt.scale;
+            const fw = 572;
+            const fh = 226;
+            const sy = (pt.frame % 4) * 256;
+
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            if (pt.dir === "left") {
+              ctx.translate(trainDrawX + trainW, trainDrawY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, 0, 0, trainW, trainH);
+            } else {
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
+            }
+            ctx.restore();
+          }
         }
 
         // 11. Dark Subway Tunnel Arch to the right (Tracks heading into darkness)
@@ -4673,37 +4992,64 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         ctx.restore();
 
-        // 5. Separate 2D 8-Frame Animated KRL Train Carriage on Bekasi Tracks (at x = 550)
+        // Background Passing Trains in Bekasi Station (Kereta Lalu Lalang di Peron Belakang)
+        if (krlTrainImg && passingTrainsRef.current.length > 0) {
+          for (const pt of passingTrainsRef.current) {
+            const trainDrawX = pt.x - camX - 145;
+            const trainDrawY = GROUND_Y - 45;
+            const trainW = 310 * pt.scale;
+            const trainH = 122 * pt.scale;
+            const fw = 572;
+            const fh = 226;
+            const sy = (pt.frame % 4) * 256;
+
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            if (pt.dir === "left") {
+              ctx.translate(trainDrawX + trainW, trainDrawY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, 0, 0, trainW, trainH);
+            } else {
+              ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
+            }
+            ctx.restore();
+          }
+        }
+
+        // 5. Indonesian KRL Commuter Line JR 205 on Bekasi Tracks (at x = 550)
         if (krlTrainImg) {
-          const trainDrawX = krl.x - camX - 145;
-          const trainDrawY = GROUND_Y + 16 - 198;
-          const trainW = 290;
-          const trainH = 198;
-          const fw = 168;
-          const fh = 232;
-          const sx = krl.frame * fw;
+          const trainDrawX = krl.x - camX - 190;
+          const trainDrawY = GROUND_Y + 16 - 146;
+          const trainW = 380;
+          const trainH = 150;
+          const fw = 572;
+          const fh = 226;
+          const frameIdx = (krl.state === "departing" || krl.state === "arriving")
+            ? (krl.animTimer % 8 < 4 ? 1 : 3)
+            : (krl.animTimer % 180 < 15 ? 2 : 0);
+          const sy = frameIdx * 256;
 
           ctx.save();
-          if (krl.frame >= 2 && krl.frame <= 5) {
-            const glow = ctx.createRadialGradient(trainDrawX + 145, trainDrawY + 95, 10, trainDrawX + 145, trainDrawY + 95, 80);
-            glow.addColorStop(0, "rgba(254, 240, 138, 0.35)");
+          if (frameIdx === 1) {
+            const glow = ctx.createRadialGradient(trainDrawX + 115, trainDrawY + 15, 5, trainDrawX + 115, trainDrawY + 15, 45);
+            glow.addColorStop(0, "rgba(56, 189, 248, 0.75)");
             glow.addColorStop(1, "rgba(0, 0, 0, 0)");
             ctx.fillStyle = glow;
-            ctx.fillRect(trainDrawX + 65, trainDrawY + 40, 160, 110);
+            ctx.fillRect(trainDrawX + 70, trainDrawY - 10, 90, 60);
           }
 
-          ctx.drawImage(krlTrainImg, sx, 0, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
+          ctx.drawImage(krlTrainImg, 0, sy, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
 
           // LED Destination Board
           ctx.fillStyle = "#1e3a8a";
-          ctx.fillRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
+          ctx.fillRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
           ctx.strokeStyle = "#facc15";
           ctx.lineWidth = 1;
-          ctx.strokeRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
+          ctx.strokeRect(trainDrawX + 130, trainDrawY + 14, 120, 14);
           ctx.font = "bold 8px 'Courier New', monospace";
           ctx.fillStyle = "#facc15";
           ctx.textAlign = "center";
-          ctx.fillText("KRL • KAMPUNG MENARA", trainDrawX + 145, trainDrawY + 28);
+          ctx.fillText("KRL • MENUJU KAMPUNG MENARA", trainDrawX + 190, trainDrawY + 24);
           ctx.restore();
         }
 
@@ -4798,6 +5144,86 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           globalTimer,
           "PERMUKAAN TPST BANTAR GEBANG"
         );
+
+        // 11. Siluman Limbah Stasiun Bekasi Boss
+        const stMonster = stationMonsterRef.current;
+        if (stMonster.isActive || (stMonster.isEmerging && stMonster.emergeFrame < 8)) {
+          const mImg = stMonster.isEmerging
+            ? imagesRef.current.monsterBekasiEmerge
+            : stMonster.state === "attack"
+            ? imagesRef.current.monsterBekasiAttack
+            : imagesRef.current.monsterBekasiWalk;
+
+          if (mImg) {
+            const frameW = 128;
+            const frameH = 262;
+            const frameIdx = stMonster.isEmerging ? Math.min(7, stMonster.emergeFrame) : (stMonster.animFrame % 8);
+            const sx = frameIdx * frameW;
+
+            const drawW = 145;
+            const drawH = 158;
+            const drawX = stMonster.x - camX - drawW / 2 + (stMonster.shake > 0 ? (Math.random() - 0.5) * stMonster.shake : 0);
+            const drawY = GROUND_Y + 16 - drawH + 4;
+
+            ctx.save();
+            if (stMonster.hitFlash > 0) {
+              ctx.filter = "brightness(2.2) saturate(0.2)";
+            }
+
+            // Toxic purple aura during attack or emergence
+            if (stMonster.state === "attack" || stMonster.isEmerging) {
+              const aura = ctx.createRadialGradient(drawX + drawW / 2, drawY + drawH / 2, 10, drawX + drawW / 2, drawY + drawH / 2, 90);
+              aura.addColorStop(0, "rgba(168, 85, 247, 0.45)");
+              aura.addColorStop(0.7, "rgba(126, 34, 206, 0.15)");
+              aura.addColorStop(1, "rgba(0, 0, 0, 0)");
+              ctx.fillStyle = aura;
+              ctx.fillRect(drawX - 30, drawY - 30, drawW + 60, drawH + 60);
+            }
+
+            if (!stMonster.facingLeft) {
+              ctx.translate(drawX + drawW, drawY);
+              ctx.scale(-1, 1);
+              ctx.drawImage(mImg, sx, 0, frameW, frameH, 0, 0, drawW, drawH);
+            } else {
+              ctx.drawImage(mImg, sx, 0, frameW, frameH, drawX, drawY, drawW, drawH);
+            }
+            ctx.restore();
+
+            // Overhead Boss Health Bar
+            if (!stMonster.isEmerging && stMonster.hp > 0) {
+              const barW = 220;
+              const barH = 11;
+              const barX = CANVAS_W / 2 - barW / 2;
+              const barY = 24;
+
+              ctx.save();
+              ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+              ctx.fillRect(barX - 12, barY - 17, barW + 24, barH + 26);
+              ctx.strokeStyle = "#a855f7";
+              ctx.lineWidth = 1.8;
+              ctx.strokeRect(barX - 12, barY - 17, barW + 24, barH + 26);
+
+              ctx.font = "bold 9px 'Courier New', monospace";
+              ctx.fillStyle = "#facc15";
+              ctx.textAlign = "center";
+              ctx.fillText("🦖 SILUMAN LIMBAH STASIUN BEKASI", CANVAS_W / 2, barY - 4);
+
+              // Health gauge
+              const hpPct = Math.max(0, stMonster.hp / stMonster.maxHp);
+              ctx.fillStyle = "#334155";
+              ctx.fillRect(barX, barY, barW, barH);
+              const hpGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+              hpGrad.addColorStop(0, "#a855f7");
+              hpGrad.addColorStop(1, "#ef4444");
+              ctx.fillStyle = hpGrad;
+              ctx.fillRect(barX, barY, barW * hpPct, barH);
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 1;
+              ctx.strokeRect(barX, barY, barW, barH);
+              ctx.restore();
+            }
+          }
+        }
       } else if (currentZone === "bekasi") {
         // ==============================================================
         // ZONE 3: KOTA BEKASI & TPST BANTAR GEBANG (GUNUNG SAMPAH OP)
