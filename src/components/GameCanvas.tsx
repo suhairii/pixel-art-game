@@ -2201,10 +2201,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone
       if (adifMasterImg && currentZone === "perkampungan") {
-        const destW = 86;
-        const destH = 126;
-        const frameW = 150;
-        const frameH = 224;
+        const destW = 104;
+        const destH = 138;
+        const frameW = 180;
+        const frameH = 240;
 
         if (adifState.onTower) {
           const towerScreenX = 1710 - camX;
@@ -2219,18 +2219,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
             ctx.restore();
 
-            // Adif rappelling down on rope (Row 3, frames 1..7)
-            const rappelFrame = 1 + (adifState.animFrame % 7);
+            // Adif rappelling down on rope (Row 1 of adifCombatImg, 8 frames)
+            const rappelFrame = adifState.animFrame % 8;
             const sx = rappelFrame * frameW;
-            const sy = 3 * frameH;
+            const sy = 1 * frameH;
             const drawX = towerScreenX - destW / 2 - 5;
-            const drawY = adifState.y - destH * (219 / 224);
-            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, drawX, drawY, destW, destH);
+            const drawY = adifState.y + 18 - destH * (230 / 240);
+            const activeRappelSheet = adifCombatImg || adifMasterImg;
+            ctx.drawImage(activeRappelSheet, sx, sy, frameW, frameH, drawX, drawY, destW, destH);
           } else {
-            // Adif perched on top of Tower 03 crossarm platform (Row 3, Frame 0)
+            // Adif perched on top of Tower 03 crossarm platform (Row 3, animated 8-frame Tower Idle)
+            const towerIdleFrame = Math.floor(globalTimer / 8) % 8;
+            const sx = towerIdleFrame * frameW;
+            const sy = 3 * frameH;
             const drawX = towerScreenX - destW / 2 + 5;
-            const drawY = GROUND_Y - 248;
-            ctx.drawImage(adifMasterImg, 0, 3 * frameH, frameW, frameH, drawX, drawY, destW, destH);
+            const drawY = GROUND_Y - 240 + 18 - destH * (230 / 240);
+            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, drawX, drawY, destW, destH);
           }
         } else {
           // Adif on Ground
@@ -2239,36 +2243,36 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           let aCol = adifState.animFrame % 8;
 
           if (duelState.inCombat && !duelState.isDefeated) {
-            if (adifCombatImg) {
-              activeSheet = adifCombatImg;
-              if (adifState.combatType === "whip") {
-                aRow = 1; // Whip attack
-              } else if (adifState.combatType === "punch") {
-                aRow = 2; // Punch rush
-              } else {
-                aRow = 0; // Overhead lasso spin & stance
-              }
+            if (adifState.state === "combat") {
+              activeSheet = adifCombatImg || adifMasterImg;
+              aRow = 0; // Combat 8-frame lasso combo attack
+            } else if (adifState.state === "run") {
+              activeSheet = adifMasterImg;
+              aRow = 2; // Run
+            } else if (adifState.state === "walk") {
+              activeSheet = adifMasterImg;
+              aRow = 1; // Walk
             } else {
-              aRow = 2;
+              activeSheet = adifCombatImg || adifMasterImg;
+              aRow = 2; // Combat windup & ready stance
             }
           } else if (adifState.state === "run") {
+            activeSheet = adifMasterImg;
             aRow = 2; // Run
           } else if (adifState.state === "walk") {
+            activeSheet = adifMasterImg;
             aRow = 1; // Walk
           } else if (adifState.state === "defeated") {
-            if (adifCombatImg) {
-              activeSheet = adifCombatImg;
-              aRow = 3; // Friendly dismount / salute
-            } else {
-              aRow = 0;
-            }
+            activeSheet = adifCombatImg || adifMasterImg;
+            aRow = 3; // Friendly stance / defeated
           } else {
-            aRow = 0; // Idle
+            activeSheet = adifMasterImg;
+            aRow = 0; // Ground Idle
           }
 
           const sx = aCol * frameW;
           const sy = aRow * frameH;
-          const drawY = adifState.y + 18 - destH * (219 / 224);
+          const drawY = adifState.y + 18 - destH * (230 / 240);
           const aScreenX = adifState.x - camX + (adifState.shake > 0 ? (Math.random() - 0.5) * adifState.shake : 0);
 
           ctx.save();
