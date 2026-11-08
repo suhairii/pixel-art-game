@@ -285,6 +285,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     adifCombat: HTMLImageElement | null;
     hairiMaster: HTMLImageElement | null;
     hairiCombat: HTMLImageElement | null;
+    hairiSuperMaster: HTMLImageElement | null;
+    hairiSuperCombat: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -304,6 +306,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     adifCombat: null,
     hairiMaster: null,
     hairiCombat: null,
+    hairiSuperMaster: null,
+    hairiSuperCombat: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara Sinyal)
@@ -363,7 +367,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     evasionTimer: 0,
   });
 
-  // Hairi (Angry Gray Shirt Guy with Red Face) State
+  // Hairi (Angry Gray Shirt Guy / Super Cyber Hairi) State
   const hairiRef = useRef<{
     x: number;
     y: number;
@@ -374,6 +378,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     animTimer: number;
     hp: number;
     maxHp: number;
+    phase: 1 | 2;
+    isTransforming: boolean;
+    transformTimer: number;
     hitFlash: number;
     shake: number;
     attackCooldown: number;
@@ -394,6 +401,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     animTimer: 0,
     hp: 300,
     maxHp: 300,
+    phase: 1,
+    isTransforming: false,
+    transformTimer: 0,
     hitFlash: 0,
     shake: 0,
     attackCooldown: 45,
@@ -415,6 +425,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     isDefeated: false,
   });
   const pendingBattleRef = useRef(false);
+  const pendingEvolutionBattleRef = useRef(false);
 
   // Boss Monster State (Summoned from Panci at Far Right)
   const monsterRef = useRef<{
@@ -619,8 +630,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/adif_combat_sheet.png"),
       loadImage("/hairi_master_sheet.png"),
       loadImage("/hairi_combat_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat };
+      loadImage("/hairi_super_master_sheet.png"),
+      loadImage("/hairi_super_combat_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat };
     });
   }, []);
 
@@ -683,6 +696,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     if (currentDialogueId === "adif_hairi_battle_start") {
       pendingBattleRef.current = true;
     }
+    if (currentDialogueId === "hairi_evolution_1") {
+      pendingEvolutionBattleRef.current = true;
+      battleAdifHairiRef.current.inCombat = false;
+    }
     if (currentDialogueId === "adif_hairi_defeat" || currentDialogueId === "adif_hairi_defeat_2") {
       hairiRef.current.isFriend = true;
       hairiRef.current.state = "idle";
@@ -694,6 +711,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       hairiRef.current.state = "combat";
       sound.playHitImpact();
       screenShakeRef.current = 8;
+    }
+    if (!currentDialogueId && pendingEvolutionBattleRef.current) {
+      pendingEvolutionBattleRef.current = false;
+      battleAdifHairiRef.current.inCombat = true;
+      hairiRef.current.state = "combat";
+      hairiRef.current.animFrame = 0;
+      sound.playHitImpact();
+      sound.playWin();
+      screenShakeRef.current = 12;
     }
   }, [currentDialogueId]);
 
@@ -958,11 +984,58 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     });
                   }
                 }
+                // Check if Hairi HP depleted
+                if (hairiBoss.hp <= 0) {
+                  if (hairiBoss.phase === 1) {
+                    // EVOLUTION: Transform to Level 2 Super Hairi!
+                    hairiBoss.phase = 2;
+                    hairiBoss.maxHp = 500; // Thicker & more HP
+                    hairiBoss.hp = 500;
+                    hairiBoss.state = "combat";
+                    hairiBoss.animFrame = 0;
+                    hairiBoss.hitFlash = 35;
+                    hairiBoss.shake = 22;
+                    screenShakeRef.current = 16;
+                    sound.playHitImpact();
+                    sound.playWin();
+
+                    // Cyber Cyan Lightning Burst Particles
+                    for (let p = 0; p < 36; p++) {
+                      combatParticlesRef.current.push({
+                        x: hairiBoss.x + (Math.random() - 0.5) * 35,
+                        y: hairiBoss.y - 50 + (Math.random() - 0.5) * 45,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: -2 - Math.random() * 5,
+                        color: p % 3 === 0 ? "#38bdf8" : p % 3 === 1 ? "#06b6d4" : "#ffffff",
+                        size: 4 + Math.random() * 3,
+                        life: 30,
+                        maxLife: 30,
+                      });
+                    }
+
+                    damageNumbersRef.current.push({
+                      x: hairiBoss.x,
+                      y: hairiBoss.y - 105,
+                      text: "⚡ SYSTEM OVERCLOCK: LEVEL 2 EVOLUTION! ⚡",
+                      color: "#38bdf8",
+                      life: 65,
+                      maxLife: 65,
+                      vy: -1.2,
+                      isCrit: true,
+                    });
+
+                    pendingEvolutionBattleRef.current = true;
+                    duel.inCombat = false;
+                    onTriggerDialogue("hairi_evolution_1");
+                  } else {
+                    hairiBoss.state = "defeated";
+                  }
+                }
               }
             }
 
-            // Check if both Adif and Hairi defeated
-            if (adifBoss.hp <= 0 && hairiBoss.hp <= 0 && !duel.isDefeated) {
+            // Check if both Adif and Hairi defeated (Hairi must be in phase 2 and hp <= 0)
+            if (adifBoss.hp <= 0 && hairiBoss.hp <= 0 && hairiBoss.phase === 2 && !duel.isDefeated) {
               duel.isDefeated = true;
               duel.inCombat = false;
               adifBoss.state = "defeated";
@@ -1456,67 +1529,178 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         hairiState.facingLeft = active.x < hairiState.x;
         const dist = Math.abs(active.x - hairiState.x);
 
-        if (hairiState.state === "hurt") {
-          // Di Serang / Damage Recoil animation
-          if (hairiState.animTimer % 3 === 0) {
-            hairiState.animFrame = Math.min(7, hairiState.animFrame + 1);
-          }
-          if (hairiState.animTimer > 18) {
-            hairiState.state = "combat";
-            hairiState.animFrame = 0;
-            hairiState.animTimer = 0;
-          }
-        } else if (dist > 200) {
-          // Dani & Jihan are running away / fleeing: HAIRI RUNS CHASING THEM!
-          hairiState.state = "run";
-          hairiState.vx = (hairiState.facingLeft ? -3.4 : 3.4) * hairiSpeedMult;
-          hairiState.x += hairiState.vx;
-          if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
-        } else if (dist > 70) {
-          // Mid-range approach: Stomping Walk cycle
-          hairiState.state = "walk";
-          hairiState.vx = (hairiState.facingLeft ? -1.8 : 1.8) * hairiSpeedMult;
-          hairiState.x += hairiState.vx;
-          if (hairiState.animTimer % 5 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
-        } else {
-          // Close Combat Attack range: Unleash Combat Strike!
-          hairiState.state = "combat";
-          hairiState.vx = 0;
-          if (hairiState.animTimer % 4 === 0) {
-            hairiState.animFrame++;
-            if (hairiState.animFrame === 4 && hairiState.attackCooldown <= 0) {
-              sound.playHitImpact();
-              screenShakeRef.current = 7;
-              active.vx = (hairiState.facingLeft ? -4.5 : 4.5) * hairiSpeedMult;
-              active.x += active.vx;
-
-              damageNumbersRef.current.push({
-                x: active.x,
-                y: active.y - 75,
-                text: "⚔️ HAIRI FURY STRIKE!",
-                color: "#dc2626",
-                life: 32,
-                maxLife: 32,
-                vy: -1.6,
-                isCrit: true,
+        if (hairiState.phase === 2) {
+          // LEVEL 2: SUPER HAIRI OVERCLOCK COMBAT
+          const superSpeedMult = 1.4;
+          if (hairiState.state === "hurt") {
+            if (hairiState.animTimer % 3 === 0) {
+              hairiState.animFrame = Math.min(7, hairiState.animFrame + 1);
+            }
+            if (hairiState.animTimer > 15) {
+              hairiState.state = "combat";
+              hairiState.animFrame = 0;
+              hairiState.animTimer = 0;
+            }
+          } else if (dist > 220) {
+            // Super Sprint Dash with cyan blur
+            hairiState.state = "run";
+            hairiState.vx = (hairiState.facingLeft ? -4.5 : 4.5) * superSpeedMult;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 3 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+            if (hairiState.animTimer % 2 === 0) {
+              combatParticlesRef.current.push({
+                x: hairiState.x + (Math.random() - 0.5) * 14,
+                y: hairiState.y + 14,
+                vx: (hairiState.facingLeft ? 1 : -1) * (1.5 + Math.random() * 3),
+                vy: -0.5,
+                color: "#38bdf8",
+                size: 2.8,
+                life: 12,
+                maxLife: 12,
               });
+            }
+          } else if (dist > 85) {
+            // Super Walk with foot sparks
+            hairiState.state = "walk";
+            hairiState.vx = (hairiState.facingLeft ? -2.2 : 2.2) * superSpeedMult;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+            if (hairiState.animTimer % 3 === 0) {
+              combatParticlesRef.current.push({
+                x: hairiState.x + (Math.random() - 0.5) * 10,
+                y: hairiState.y + 16,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: -0.4,
+                color: "#67e8f9",
+                size: 2.2,
+                life: 10,
+                maxLife: 10,
+              });
+            }
+          } else {
+            // Close Combat Range: Overpowered Tech Blast & Quantum Kick combo
+            hairiState.state = "combat";
+            hairiState.vx = 0;
+            if (hairiState.animTimer % 4 === 0) {
+              hairiState.animFrame++;
+              if (hairiState.animFrame === 3 && hairiState.attackCooldown <= 0) {
+                // OVERPOWERED TECH BLAST IMPACT!
+                sound.playWhip();
+                screenShakeRef.current = 10;
+                active.vx = (hairiState.facingLeft ? -6.5 : 6.5);
+                active.x += active.vx;
 
-              for (let p = 0; p < 12; p++) {
-                combatParticlesRef.current.push({
-                  x: active.x + (Math.random() - 0.5) * 16,
-                  y: active.y - 45 + (Math.random() - 0.5) * 18,
-                  vx: (Math.random() - 0.5) * 6,
-                  vy: -1.5 - Math.random() * 3,
-                  color: p % 2 === 0 ? "#dc2626" : "#f97316",
-                  size: 3.5,
-                  life: 22,
-                  maxLife: 22,
+                damageNumbersRef.current.push({
+                  x: active.x,
+                  y: active.y - 85,
+                  text: "⚡ OVERPOWERED TECH BLAST! 💥",
+                  color: "#38bdf8",
+                  life: 38,
+                  maxLife: 38,
+                  vy: -1.8,
+                  isCrit: true,
+                });
+
+                for (let p = 0; p < 20; p++) {
+                  combatParticlesRef.current.push({
+                    x: active.x + (Math.random() - 0.5) * 24,
+                    y: active.y - 45 + (Math.random() - 0.5) * 24,
+                    vx: (hairiState.facingLeft ? -1 : 1) * (2 + Math.random() * 6),
+                    vy: (Math.random() - 0.5) * 6,
+                    color: p % 2 === 0 ? "#38bdf8" : "#ffffff",
+                    size: 4,
+                    life: 24,
+                    maxLife: 24,
+                  });
+                }
+                hairiState.attackCooldown = 38;
+              } else if (hairiState.animFrame === 5 && hairiState.attackCooldown <= 0) {
+                // QUANTUM TECH KICK!
+                sound.playHitImpact();
+                screenShakeRef.current = 8;
+                active.vx = (hairiState.facingLeft ? -4.5 : 4.5);
+                active.x += active.vx;
+
+                damageNumbersRef.current.push({
+                  x: active.x,
+                  y: active.y - 75,
+                  text: "⭐ QUANTUM TECH KICK!",
+                  color: "#67e8f9",
+                  life: 30,
+                  maxLife: 30,
+                  vy: -1.5,
+                  isCrit: true,
                 });
               }
-              hairiState.attackCooldown = Math.floor(55 * hairiCdMult);
+              if (hairiState.animFrame >= 8) {
+                hairiState.animFrame = 0;
+              }
             }
-            if (hairiState.animFrame >= 8) {
+          }
+        } else {
+          // LEVEL 1: NORMAL HAIRI COMBAT
+          if (hairiState.state === "hurt") {
+            // Di Serang / Damage Recoil animation
+            if (hairiState.animTimer % 3 === 0) {
+              hairiState.animFrame = Math.min(7, hairiState.animFrame + 1);
+            }
+            if (hairiState.animTimer > 18) {
+              hairiState.state = "combat";
               hairiState.animFrame = 0;
+              hairiState.animTimer = 0;
+            }
+          } else if (dist > 200) {
+            // Dani & Jihan are running away / fleeing: HAIRI RUNS CHASING THEM!
+            hairiState.state = "run";
+            hairiState.vx = (hairiState.facingLeft ? -3.4 : 3.4) * hairiSpeedMult;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+          } else if (dist > 70) {
+            // Mid-range approach: Stomping Walk cycle
+            hairiState.state = "walk";
+            hairiState.vx = (hairiState.facingLeft ? -1.8 : 1.8) * hairiSpeedMult;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 5 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+          } else {
+            // Close Combat Attack range: Unleash Combat Strike!
+            hairiState.state = "combat";
+            hairiState.vx = 0;
+            if (hairiState.animTimer % 4 === 0) {
+              hairiState.animFrame++;
+              if (hairiState.animFrame === 4 && hairiState.attackCooldown <= 0) {
+                sound.playHitImpact();
+                screenShakeRef.current = 7;
+                active.vx = (hairiState.facingLeft ? -4.5 : 4.5) * hairiSpeedMult;
+                active.x += active.vx;
+
+                damageNumbersRef.current.push({
+                  x: active.x,
+                  y: active.y - 75,
+                  text: "⚔️ HAIRI FURY STRIKE!",
+                  color: "#dc2626",
+                  life: 32,
+                  maxLife: 32,
+                  vy: -1.6,
+                  isCrit: true,
+                });
+
+                for (let p = 0; p < 12; p++) {
+                  combatParticlesRef.current.push({
+                    x: active.x + (Math.random() - 0.5) * 16,
+                    y: active.y - 45 + (Math.random() - 0.5) * 18,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: -1.5 - Math.random() * 3,
+                    color: p % 2 === 0 ? "#dc2626" : "#f97316",
+                    size: 3.5,
+                    life: 22,
+                    maxLife: 22,
+                  });
+                }
+                hairiState.attackCooldown = Math.floor(55 * hairiCdMult);
+              }
+              if (hairiState.animFrame >= 8) {
+                hairiState.animFrame = 0;
+              }
             }
           }
         }
@@ -1667,6 +1851,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         adifCombat: adifCombatImg,
         hairiMaster: hairiMasterImg,
         hairiCombat: hairiCombatImg,
+        hairiSuperMaster: hairiSuperMasterImg,
+        hairiSuperCombat: hairiSuperCombatImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -2362,33 +2548,61 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         let hRow = 0;
         let hCol = hairiState.animFrame % 8;
 
-        if (hairiState.state === "defeated") {
-          activeSheet = hairiCombatImg || hairiMasterImg;
-          hRow = hairiCombatImg ? 2 : 3;
-          hCol = Math.min(7, hairiState.animFrame);
-        } else if (hairiState.state === "hurt") {
-          activeSheet = hairiCombatImg || hairiMasterImg;
-          hRow = 1; // Di Serang / Hurt
-        } else if (hairiState.state === "combat") {
-          activeSheet = hairiCombatImg || hairiMasterImg;
-          hRow = 0; // Combat Fury Slash
-        } else if (hairiState.isFriend && hairiState.state === "idle") {
-          activeSheet = hairiCombatImg || hairiMasterImg;
-          hRow = 3; // Friendly Stance
-        } else if (hairiState.state === "run") {
-          activeSheet = hairiMasterImg;
-          hRow = 2; // Run
-        } else if (hairiState.state === "walk" || hairiState.state === "walk_angry") {
-          activeSheet = hairiMasterImg;
-          hRow = 1; // Walk
+        if (hairiState.phase === 2) {
+          // LEVEL 2: SUPER HAIRI OVERCLOCK SPRITESHEET
+          if (hairiState.state === "defeated") {
+            activeSheet = hairiSuperCombatImg || hairiSuperMasterImg || hairiCombatImg || hairiMasterImg;
+            hRow = 3;
+            hCol = Math.min(7, hairiState.animFrame);
+          } else if (hairiState.state === "hurt") {
+            activeSheet = hairiSuperCombatImg || hairiCombatImg || hairiMasterImg;
+            hRow = 2; // Hurt
+          } else if (hairiState.state === "combat") {
+            activeSheet = hairiSuperCombatImg || hairiCombatImg || hairiMasterImg;
+            hRow = 0; // Overpowered Tech Blast Combo
+          } else if (hairiState.isFriend && hairiState.state === "idle") {
+            activeSheet = hairiSuperCombatImg || hairiSuperMasterImg || hairiMasterImg;
+            hRow = 3; // Friendly Stance
+          } else if (hairiState.state === "run") {
+            activeSheet = hairiSuperMasterImg || hairiMasterImg;
+            hRow = 2; // Super Sprint & Dash
+          } else if (hairiState.state === "walk" || hairiState.state === "walk_angry") {
+            activeSheet = hairiSuperMasterImg || hairiMasterImg;
+            hRow = 1; // Super Walk with sparks
+          } else {
+            activeSheet = hairiSuperMasterImg || hairiMasterImg;
+            hRow = 0; // Super Idle (Cyber visor & circuit shirt)
+          }
         } else {
-          activeSheet = hairiMasterImg;
-          hRow = 0; // Idle
+          // LEVEL 1: NORMAL HAIRI SPRITESHEET
+          if (hairiState.state === "defeated") {
+            activeSheet = hairiCombatImg || hairiMasterImg;
+            hRow = hairiCombatImg ? 2 : 3;
+            hCol = Math.min(7, hairiState.animFrame);
+          } else if (hairiState.state === "hurt") {
+            activeSheet = hairiCombatImg || hairiMasterImg;
+            hRow = 1; // Di Serang / Hurt
+          } else if (hairiState.state === "combat") {
+            activeSheet = hairiCombatImg || hairiMasterImg;
+            hRow = 0; // Combat Fury Slash
+          } else if (hairiState.isFriend && hairiState.state === "idle") {
+            activeSheet = hairiCombatImg || hairiMasterImg;
+            hRow = 3; // Friendly Stance
+          } else if (hairiState.state === "run") {
+            activeSheet = hairiMasterImg;
+            hRow = 2; // Run
+          } else if (hairiState.state === "walk" || hairiState.state === "walk_angry") {
+            activeSheet = hairiMasterImg;
+            hRow = 1; // Walk
+          } else {
+            activeSheet = hairiMasterImg;
+            hRow = 0; // Idle
+          }
         }
 
         const sx = hCol * frameW;
         const sy = hRow * frameH;
-        const drawY = hairiState.y + 18 - destH * (229 / 240);
+        const drawY = hairiState.y + 18 - destH * (230 / 240);
         const hScreenX = hairiState.x - camX + (hairiState.shake > 0 ? (Math.random() - 0.5) * hairiState.shake : 0);
 
         ctx.save();
@@ -2484,12 +2698,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.save();
           ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
           ctx.fillRect(hScreenX - barW / 2 - 1, drawY - 14, barW + 2, barH + 2);
-          ctx.fillStyle = hairiState.isEnraged ? "#ef4444" : "#f87171";
+          ctx.fillStyle = hairiState.phase === 2 ? "#06b6d4" : (hairiState.isEnraged ? "#ef4444" : "#f87171");
           ctx.fillRect(hScreenX - barW / 2, drawY - 13, barW * hpRatio, barH);
           ctx.font = "bold 8px 'Courier New', monospace";
-          ctx.fillStyle = "#fef2f2";
+          ctx.fillStyle = hairiState.phase === 2 ? "#e0f2fe" : "#fef2f2";
           ctx.textAlign = "center";
-          ctx.fillText(hairiState.isEnraged ? "HAIRI 🔥" : "HAIRI", hScreenX, drawY - 16);
+          const tag = hairiState.phase === 2 ? "⚡ SUPER HAIRI" : (hairiState.isEnraged ? "HAIRI 🔥" : "HAIRI");
+          ctx.fillText(tag, hScreenX, drawY - 16);
           ctx.restore();
         }
       }
@@ -3158,7 +3373,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
         ctx.fillRect(rightX, barY, halfW, barH);
         const hairiGrad = ctx.createLinearGradient(rightX, barY, rightX + halfW, barY);
-        if (hairiState.isEnraged) {
+        if (hairiState.phase === 2) {
+          hairiGrad.addColorStop(0, "#0891b2");
+          hairiGrad.addColorStop(0.5, "#06b6d4");
+          hairiGrad.addColorStop(1, "#38bdf8");
+        } else if (hairiState.isEnraged) {
           hairiGrad.addColorStop(0, "#ef4444");
           hairiGrad.addColorStop(0.5, "#f97316");
           hairiGrad.addColorStop(1, "#fbbf24");
@@ -3171,7 +3390,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.font = "bold 8px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        const hairiLabel = hairiState.isEnraged ? `🔥 HAIRI ${hairiState.hp}/300` : `🛡️ HAIRI ${hairiState.hp}/300`;
+        const hairiLabel = hairiState.phase === 2
+          ? `⚡ SUPER HAIRI ${hairiState.hp}/${hairiState.maxHp}`
+          : hairiState.isEnraged
+          ? `🔥 HAIRI ${hairiState.hp}/${hairiState.maxHp}`
+          : `🛡️ HAIRI (LV.1) ${hairiState.hp}/${hairiState.maxHp}`;
         ctx.fillText(hairiLabel, rightX + halfW / 2, barY + barH / 2 + 3);
 
         ctx.restore();
