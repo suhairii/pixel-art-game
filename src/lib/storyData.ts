@@ -358,32 +358,32 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     emotion: "thoughtful",
   },
 
-  // INTERAKSI TEROWONGAN MENUJU STASIUN BAWAH TANAH
-  terowongan_enter_1: {
-    id: "terowongan_enter_1",
+  // INTERAKSI PORTAL MENUJU STASIUN KAMPUNG MENARA (TANPA TANGGA)
+  portal_stasiun_menara_1: {
+    id: "portal_stasiun_menara_1",
     speaker: "dani",
     speakerName: "Dani • Pendekar Malaysia",
     portrait: "/dani-portrait.png",
-    text: "Tengok tu, ada terowongan tangga bawah tanah di hujung lembah menara! Suasana di dalamnya berangin sejuk dan ada deruan rel!",
+    text: "Tengok tu, ada Portal Stasiun KRL di hujung lembah menara! Gerbang tenaga birunya terus menghubungkan kita ke dalam stesen!",
     emotion: "happy",
-    nextId: "terowongan_enter_2",
+    nextId: "portal_stasiun_menara_2",
   },
-  terowongan_enter_2: {
-    id: "terowongan_enter_2",
+  portal_stasiun_menara_2: {
+    id: "portal_stasiun_menara_2",
     speaker: "jihan",
     speakerName: "Jihan • Pendekar Anggun",
     portrait: "/jihan_portrait.png",
-    text: "Ayo teman-teman, kita melangkah masuk ke dalam terowongan menuruni tangga menuju Stasiun Bawah Tanah!",
+    text: "Ayo teman-teman, kita melangkah masuk menembus portal langsung menuju Stasiun Kampung Menara!",
     emotion: "happy",
   },
 
-  // DI DALAM STASIUN BAWAH TANAH KRL & PERJALANAN KE BEKASI
+  // DI DALAM STASIUN BAWAH TANAH KAMPUNG MENARA & NAIK KRL KE BEKASI
   krl_station_1: {
     id: "krl_station_1",
     speaker: "dani",
     speakerName: "Dani • Pendekar Malaysia",
     portrait: "/dani-portrait.png",
-    text: "Wah, megah betul stesen bawah tanah ni! Lampu neon overhead cerah dan peron ubin kuning keselamatan sangat teratur!",
+    text: "Wah, megah betul stesen bawah tanah Kampung Menara ni! Lampu neon overhead cerah dan jalur rel bersiap untuk bertolak!",
     emotion: "happy",
     nextId: "krl_station_2",
   },
@@ -401,26 +401,74 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "adif",
     speakerName: "Adif • Sang Koboi",
     portrait: "/adif_portrait.png",
-    text: "Pintu otomatis menutup rapat dan semboyan hijau berbunyi! Kereta melaju kencang menembus terowongan bawah tanah menuju Kota Patriot Bekasi!",
+    text: "Pintu otomatis menutup rapat dan semboyan 35 berbunyi! KRL melaju kencang menembus rel menuju Stasiun Kota Bekasi!",
     emotion: "warm",
   },
 
-  // KRL KEMBALI KE PERKAMPUNGAN DARI BEKASI
-  krl_station_return_1: {
-    id: "krl_station_return_1",
+  // KEDATANGAN DI STASIUN BEKASI (LATAR STASIUN BERBEDA)
+  stasiun_bekasi_arrive_1: {
+    id: "stasiun_bekasi_arrive_1",
     speaker: "dani",
     speakerName: "Dani • Pendekar Malaysia",
     portrait: "/dani-portrait.png",
-    text: "Jom kita turun semula ke stesen bawah tanah Bekasi! KRL sedia membawa kita kembali ke Perkampungan Menara Sinyal!",
+    text: "Wah, tengok papan tanda tu: STASIUN BEKASI (BKS)! Rekaan stesen ni berbeza sungguh dengan bumbung keluli tinggi dan paparan LED!",
     emotion: "happy",
-    nextId: "krl_station_return_2",
+    nextId: "stasiun_bekasi_arrive_2",
   },
-  krl_station_return_2: {
-    id: "krl_station_return_2",
+  stasiun_bekasi_arrive_2: {
+    id: "stasiun_bekasi_arrive_2",
+    speaker: "jihan",
+    speakerName: "Jihan • Pendekar Anggun",
+    portrait: "/jihan_portrait.png",
+    text: "Pintu KRL telah terbuka! Jalan terus ke sebelah kanan, ada Icon Pintu Keluar Stasiun menuju ke permukaan Kota Bekasi!",
+    emotion: "happy",
+  },
+
+  // KELUAR DARI STASIUN BEKASI MENUJU PERMUKAAN TPST BANTAR GEBANG
+  exit_stasiun_bekasi_1: {
+    id: "exit_stasiun_bekasi_1",
+    speaker: "dani",
+    speakerName: "Dani • Pendekar Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Jom kita scan kad dan melangkah keluar melepasi pintu keluar stesen ni ke permukaan Kota Bekasi!",
+    emotion: "happy",
+    nextId: "exit_stasiun_bekasi_2",
+  },
+  exit_stasiun_bekasi_2: {
+    id: "exit_stasiun_bekasi_2",
+    speaker: "jihan",
+    speakerName: "Jihan • Pendekar Anggun",
+    portrait: "/jihan_portrait.png",
+    text: "Hawa di luar terasa sangat panas menyengat! Ayo kita keluar sekarang!",
+    emotion: "thoughtful",
+  },
+
+  // MASUK KEMBALI KE STASIUN BEKASI DARI PERMUKAAN
+  enter_stasiun_bekasi_1: {
+    id: "enter_stasiun_bekasi_1",
+    speaker: "dani",
+    speakerName: "Dani • Pendekar Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Jom kita masuk semula ke dalam bangunan Stesen Bekasi untuk naik KRL pulang!",
+    emotion: "happy",
+  },
+
+  // KRL KEMBALI DARI STASIUN BEKASI KE STASIUN KAMPUNG MENARA
+  krl_bekasi_to_menara_1: {
+    id: "krl_bekasi_to_menara_1",
+    speaker: "dani",
+    speakerName: "Dani • Pendekar Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "KRL di peron bersedia bertolak balik ke Stesen Kampung Menara! Semua kawan dah sedia?",
+    emotion: "happy",
+    nextId: "krl_bekasi_to_menara_2",
+  },
+  krl_bekasi_to_menara_2: {
+    id: "krl_bekasi_to_menara_2",
     speaker: "adif",
     speakerName: "Adif • Sang Koboi",
     portrait: "/adif_portrait.png",
-    text: "Semua kawan sudah naik ke dalam gerbong! Pintu KRL tertutup, berangkat kembali ke Stasiun Kampung Menara!",
+    text: "Pintu KRL tertutup rapat dan klakson berbunyi! Kereta meluncur kembali ke Stasiun Menara Sinyal!",
     emotion: "warm",
   },
 
