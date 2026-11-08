@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export interface DevState {
-  zone: "losari" | "perkampungan" | "bekasi";
+  zone: "losari" | "perkampungan" | "stasiun" | "bekasi";
   playerX: number;
   playerY: number;
   activeChar: "jihan" | "dani";
@@ -39,7 +39,7 @@ export interface DevState {
 }
 
 export interface DevActions {
-  warpZone: (zone: "losari" | "perkampungan" | "bekasi", targetX?: number) => void;
+  warpZone: (zone: "losari" | "perkampungan" | "stasiun" | "bekasi", targetX?: number) => void;
   teleportPlayer: (x: number) => void;
   triggerBoss: (boss: "monster" | "adif_hairi" | "hairi_v2" | "hairi_v3" | "key") => void;
   defeatBoss: (boss: "monster" | "adif_hairi" | "key") => void;
@@ -269,26 +269,48 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                   🤠 Tower Adif (x: 1710)
                 </button>
                 <button
-                  onClick={() => actions?.warpZone("perkampungan", 2780)}
+                  onClick={() => actions?.warpZone("perkampungan", 2750)}
                   className="px-2 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/30 border border-blue-500/40 text-blue-200 text-left transition-all font-bold text-yellow-300"
                 >
-                  🚉 Stasiun KRL (x: 2780)
+                  🚇 Terowongan KRL (x: 2750)
                 </button>
               </div>
             </div>
 
-            {/* Zone 3: Bekasi Bantar Gebang */}
+            {/* Zone 3: Stasiun Bawah Tanah KRL (Dedicated Zone) */}
+            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-cyan-500/30 space-y-2">
+              <div className="flex items-center justify-between text-cyan-400 font-bold">
+                <span>🚉 ZONA 3: STASIUN BAWAH TANAH</span>
+                <span className="text-[10px] text-slate-400">JALUR KRL KOMUTER</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => actions?.warpZone("stasiun", 140)}
+                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all"
+                >
+                  ⬆ Tangga Keluar (x: 140)
+                </button>
+                <button
+                  onClick={() => actions?.warpZone("stasiun", 620)}
+                  className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-left transition-all font-bold text-yellow-300"
+                >
+                  🚪 Pintu Gerbong KRL (x: 620)
+                </button>
+              </div>
+            </div>
+
+            {/* Zone 4: Bekasi Bantar Gebang */}
             <div className="p-2.5 rounded-xl bg-slate-900/80 border border-purple-500/30 space-y-2">
               <div className="flex items-center justify-between text-purple-400 font-bold">
-                <span>🚛 ZONA 3: KOTA BEKASI</span>
+                <span>🚛 ZONA 4: KOTA BEKASI</span>
                 <span className="text-[10px] text-slate-400">TPST BANTAR GEBANG</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
-                  onClick={() => actions?.warpZone("bekasi", 180)}
+                  onClick={() => actions?.warpZone("bekasi", 160)}
                   className="px-2 py-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 border border-purple-500/40 text-purple-200 text-left transition-all"
                 >
-                  🚉 Stasiun Bekasi (x: 180)
+                  🚇 Terowongan Stasiun (x: 160)
                 </button>
                 <button
                   onClick={() => actions?.warpZone("bekasi", 750)}

@@ -358,9 +358,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     bekasiTruckProps: null,
   });
 
-  // Zone & Map State (Losari vs Perkampungan Menara Sinyal vs Bekasi Bantar Gebang)
-  const zoneRef = useRef<"losari" | "perkampungan" | "bekasi">("losari");
-  const [, setCurrentZone] = useState<"losari" | "perkampungan" | "bekasi">("losari");
+  // Zone & Map State (Losari vs Perkampungan Menara Sinyal vs Stasiun Bawah Tanah vs Bekasi Bantar Gebang)
+  const zoneRef = useRef<"losari" | "perkampungan" | "stasiun" | "bekasi">("losari");
+  const [, setCurrentZone] = useState<"losari" | "perkampungan" | "stasiun" | "bekasi">("losari");
   const zoneBannerRef = useRef<{ title: string; subtitle: string; timer: number }>({
     title: "",
     subtitle: "",
@@ -481,6 +481,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   });
   const pendingBattleRef = useRef(false);
   const pendingEvolutionBattleRef = useRef(false);
+  const pendingTunnelToStationRef = useRef(false);
   const cyberProjectilesRef = useRef<
     Array<{
       x: number;
@@ -619,7 +620,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   // Dynamic Interactive Objects Filtered by Current Zone
   const getInteractiveObjects = (
-    zone: "losari" | "perkampungan" | "bekasi",
+    zone: "losari" | "perkampungan" | "stasiun" | "bekasi",
     monsterDefeated: boolean,
     duelDefeated: boolean,
     hairiFriend: boolean
@@ -736,56 +737,59 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         },
       ];
       if (duelDefeated) {
-        objs.push(
-          {
-            id: "krl_subway_entrance",
-            type: "pier_edge",
-            x: 2620,
-            y: GROUND_Y - 80,
-            width: 130,
-            height: 180,
-            prompt: "🚇 Pintu Masuk Terowongan Tangga ke Stasiun Bawah Tanah KRL",
-            interacted: false,
-            dialogueId: "krl_station_1",
-          },
-          {
-            id: "krl_station_to_bekasi",
-            type: "pier_edge",
-            x: 2780,
-            y: GROUND_Y - 80,
-            width: 180,
-            height: 180,
-            prompt: "🚉 Naik Gerbong KRL Bawah Tanah ke Kota Bekasi & TPST Bantar Gebang",
-            interacted: false,
-            dialogueId: "krl_station_1",
-          }
-        );
+        objs.push({
+          id: "terowongan_ke_stasiun",
+          type: "pier_edge",
+          x: 2750,
+          y: GROUND_Y - 80,
+          width: 140,
+          height: 180,
+          prompt: "🚇 [E] Masuk Terowongan Tangga Bawah Tanah Menuju Stasiun KRL",
+          interacted: false,
+          dialogueId: "terowongan_enter_1",
+        });
       }
       return objs;
-    } else {
-      // Bekasi Bantar Gebang zone
+    } else if (zone === "stasiun") {
+      // Dedicated Zone 3: Stasiun Bawah Tanah KRL (Full Platform & Train)
       const objs: InteractiveObject[] = [
         {
-          id: "krl_station_to_kampung",
+          id: "tangga_ke_kampung",
           type: "pier_edge",
-          x: 180,
+          x: 140,
           y: GROUND_Y - 80,
-          width: 160,
+          width: 140,
           height: 180,
-          prompt: "🚉 Naik KRL Bawah Tanah Kembali ke Perkampungan Menara",
+          prompt: "⬆ [E] Naik Tangga Terowongan Kembali ke Perkampungan Menara",
           interacted: false,
-          dialogueId: "krl_station_return_1",
+          dialogueId: "",
         },
         {
-          id: "bekasi_subway_stairs",
+          id: "krl_station_to_bekasi",
           type: "pier_edge",
-          x: 460,
+          x: 620,
           y: GROUND_Y - 80,
-          width: 130,
+          width: 220,
           height: 180,
-          prompt: "🚇 Pintu Keluar Tangga Terowongan ke Permukaan Bantar Gebang",
+          prompt: "🚉 [E] Naik KRL Commuter Line Menuju Kota Bekasi",
           interacted: false,
-          dialogueId: "bekasi_arrival_1",
+          dialogueId: "krl_station_1",
+        },
+      ];
+      return objs;
+    } else {
+      // Zone 4: Kota Bekasi Bantar Gebang
+      const objs: InteractiveObject[] = [
+        {
+          id: "terowongan_ke_stasiun_bekasi",
+          type: "pier_edge",
+          x: 160,
+          y: GROUND_Y - 80,
+          width: 140,
+          height: 180,
+          prompt: "🚇 [E] Masuk Terowongan Tangga ke Stasiun Bawah Tanah (KRL Pulang)",
+          interacted: false,
+          dialogueId: "krl_station_return_1",
         },
         {
           id: "truk_sampah_dlh",
@@ -983,6 +987,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       hairiRef.current.y = GROUND_Y;
       hairiRef.current.state = "idle";
     }
+    if (currentDialogueId === "terowongan_enter_2") {
+      pendingTunnelToStationRef.current = true;
+    }
     if (currentDialogueId === "krl_station_3") {
       // Start train doors closing animation and departure to Bekasi
       krlStateRef.current.state = "doors_closing";
@@ -1006,6 +1013,43 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       keyRef.current.state = "idle";
       keyRef.current.isFriend = true;
       sound.playWin();
+    }
+    if (!currentDialogueId && pendingTunnelToStationRef.current) {
+      pendingTunnelToStationRef.current = false;
+      sound.playPortal();
+      screenShakeRef.current = 10;
+      teleportFlashRef.current = 24;
+      zoneRef.current = "stasiun";
+      setCurrentZone("stasiun");
+      daniPosRef.current.x = 220;
+      daniPosRef.current.vx = 0;
+      jihanPosRef.current.x = 180;
+      jihanPosRef.current.vx = 0;
+      hairiRef.current.x = 140;
+      hairiRef.current.vx = 0;
+      adifRef.current.x = 100;
+      adifRef.current.vx = 0;
+      cameraXRef.current = 0;
+      krlStateRef.current.x = 620;
+      krlStateRef.current.targetX = 620;
+      krlStateRef.current.vx = 0;
+      krlStateRef.current.state = "idle_open";
+      krlStateRef.current.frame = 4;
+      zoneBannerRef.current = {
+        title: "STASIUN BAWAH TANAH KAMPUNG MENARA",
+        subtitle: "PERON JALUR 1 • KRL COMMUTER LINE MENUJU BEKASI",
+        timer: 180,
+      };
+      damageNumbersRef.current.push({
+        x: 220,
+        y: GROUND_Y - 100,
+        text: "🚇 MEMASUKI STASIUN BAWAH TANAH!",
+        color: "#38bdf8",
+        life: 50,
+        maxLife: 50,
+        vy: -1.2,
+        isCrit: true,
+      });
     }
     if (!currentDialogueId && pendingBattleRef.current) {
       pendingBattleRef.current = false;
@@ -1043,7 +1087,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       warpZone: (zone, targetX) => {
         zoneRef.current = zone;
         setCurrentZone(zone);
-        const posX = targetX ?? (zone === "bekasi" ? 250 : zone === "perkampungan" ? 280 : 300);
+        const posX = targetX ?? (zone === "stasiun" ? 220 : zone === "bekasi" ? 250 : zone === "perkampungan" ? 280 : 300);
         const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
         const companion = activeCharacter === "jihan" ? daniPosRef.current : jihanPosRef.current;
         active.x = posX;
@@ -1068,35 +1112,43 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, posX - CANVAS_W / 2));
         teleportFlashRef.current = 24;
         sound.playPortal();
-        if (zone === "bekasi") {
+        if (zone === "stasiun") {
+          krlStateRef.current.x = 620;
+          krlStateRef.current.targetX = 620;
+          krlStateRef.current.vx = 0;
+          krlStateRef.current.state = "idle_open";
+          krlStateRef.current.frame = 4;
+          zoneBannerRef.current = {
+            title: "STASIUN BAWAH TANAH KAMPUNG MENARA",
+            subtitle: "PERON JALUR 1 • KRL COMMUTER LINE MENUJU BEKASI",
+            timer: 180,
+          };
+        } else if (zone === "bekasi") {
           krlStateRef.current.x = 180;
           krlStateRef.current.targetX = 180;
           krlStateRef.current.vx = 0;
           krlStateRef.current.state = "idle_open";
           krlStateRef.current.frame = 4;
+          zoneBannerRef.current = {
+            title: "KOTA BEKASI • TPST BANTAR GEBANG",
+            subtitle: "HAWA PANAS MENYENGAT & GUNUNG SAMPAH BANTAR GEBANG",
+            timer: 180,
+          };
         } else if (zone === "perkampungan") {
           krlStateRef.current.x = 2780;
           krlStateRef.current.targetX = 2780;
           krlStateRef.current.vx = 0;
           krlStateRef.current.state = "idle_open";
           krlStateRef.current.frame = 4;
-        }
-        if (zone === "losari") {
-          zoneBannerRef.current = {
-            title: "PANTAI LOSARI • MAKASSAR",
-            subtitle: "ANJUNGAN PANTAI LOSARI & MASJID 99 KUBAH",
-            timer: 180,
-          };
-        } else if (zone === "perkampungan") {
           zoneBannerRef.current = {
             title: "PERKAMPUNGAN MENARA SINYAL",
             subtitle: "LEMBAH MENARA PEMANCAR & KABEL FIBER OPTIK",
             timer: 180,
           };
-        } else if (zone === "bekasi") {
+        } else if (zone === "losari") {
           zoneBannerRef.current = {
-            title: "KOTA BEKASI • TPST BANTAR GEBANG",
-            subtitle: "HAWA PANAS MENYENGAT & GUNUNG SAMPAH BANTAR GEBANG",
+            title: "PANTAI LOSARI • MAKASSAR",
+            subtitle: "ANJUNGAN PANTAI LOSARI & MASJID 99 KUBAH",
             timer: 180,
           };
         }
@@ -3422,12 +3474,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           } else {
             krl.frame = 0; // Doors fully shut and locked
             krl.state = "departing";
-            krl.vx = currentZone === "perkampungan" ? 2.0 : -2.0;
+            krl.vx = currentZone === "stasiun" ? 2.0 : -2.0;
             sound.playWhoosh();
           }
         }
       } else if (krl.state === "departing") {
-        const accel = currentZone === "perkampungan" ? 0.4 : -0.4;
+        const accel = currentZone === "stasiun" ? 0.4 : -0.4;
         krl.vx += accel;
         krl.x += krl.vx;
         // Wheel sparks during electric acceleration
@@ -3447,7 +3499,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (krl.transitionTimer > 45) {
           krl.transitionTimer = 0;
           teleportFlashRef.current = 32;
-          if (currentZone === "perkampungan") {
+          if (currentZone === "stasiun") {
             zoneRef.current = "bekasi";
             setCurrentZone("bekasi");
             sound.playTrainChime();
@@ -3455,46 +3507,49 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             cameraXRef.current = 0;
             zoneBannerRef.current = {
               title: "KOTA BEKASI • TPST BANTAR GEBANG",
-              subtitle: "TIBA DI STASIUN BAWAH TANAH • PINTU KELUAR KE GUNUNG SAMPAH",
+              subtitle: "TIBA DARI TEROWONGAN KRL • GUNUNG SAMPAH BANTAR GEBANG",
               timer: 180,
             };
-            daniPosRef.current.x = 260;
+            daniPosRef.current.x = 240;
             daniPosRef.current.vx = 0;
             jihanPosRef.current.x = 200;
             jihanPosRef.current.vx = 0;
-            hairiRef.current.x = 140;
+            hairiRef.current.x = 160;
             hairiRef.current.vx = 0;
-            adifRef.current.x = 80;
+            adifRef.current.x = 120;
             adifRef.current.vx = 0;
-            krl.x = -220;
-            krl.targetX = 180;
-            krl.vx = 7.0;
-            krl.state = "arriving";
-            krl.frame = 1;
+            if (keyRef.current.isFriend) {
+              keyRef.current.x = 80;
+              keyRef.current.vx = 0;
+            }
           } else {
-            zoneRef.current = "perkampungan";
-            setCurrentZone("perkampungan");
+            zoneRef.current = "stasiun";
+            setCurrentZone("stasiun");
             sound.playTrainChime();
             sound.playPortal();
-            cameraXRef.current = Math.max(0, WORLD_W - CANVAS_W);
+            cameraXRef.current = 0;
             zoneBannerRef.current = {
-              title: "PERKAMPUNGAN MENARA SINYAL",
-              subtitle: "TIBA DI STASIUN BAWAH TANAH KAMPUNG MENARA",
+              title: "STASIUN BAWAH TANAH KAMPUNG MENARA",
+              subtitle: "PERON JALUR 1 • KRL COMMUTER LINE",
               timer: 180,
             };
-            daniPosRef.current.x = 2780;
+            daniPosRef.current.x = 620;
             daniPosRef.current.vx = 0;
-            jihanPosRef.current.x = 2720;
+            jihanPosRef.current.x = 580;
             jihanPosRef.current.vx = 0;
-            hairiRef.current.x = 2660;
+            hairiRef.current.x = 540;
             hairiRef.current.vx = 0;
-            adifRef.current.x = 2600;
+            adifRef.current.x = 500;
             adifRef.current.vx = 0;
-            krl.x = 3200;
-            krl.targetX = 2780;
-            krl.vx = -7.0;
-            krl.state = "arriving";
-            krl.frame = 1;
+            if (keyRef.current.isFriend) {
+              keyRef.current.x = 460;
+              keyRef.current.vx = 0;
+            }
+            krl.x = 620;
+            krl.targetX = 620;
+            krl.vx = 0;
+            krl.state = "idle_open";
+            krl.frame = 4;
           }
         }
       } else if (krl.state === "arriving") {
@@ -4040,8 +4095,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Return Portal to Pantai Losari at x = 180
         drawPortal(ctx, 180 - camX, GROUND_Y, globalTimer, "🌀 PORTAL PANTAI LOSARI");
 
-        // 1. Surface Subway Metro Canopy & Downward Tunnel Stairs at x = 2620
-        const entranceX = 2620 - camX;
+        // 1. Surface Subway Metro Canopy & Downward Tunnel Stairs at x = 2750
+        const entranceX = 2750 - camX;
         ctx.save();
         // Canopy glass roof & dark metal framing
         ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
@@ -4065,7 +4120,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.font = "bold 8px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.fillText("🚇 ENTRANCE • KRL", entranceX, GROUND_Y - 84);
+        ctx.fillText("🚇 TEROWONGAN KRL", entranceX, GROUND_Y - 84);
         ctx.font = "bold 7px 'Courier New', monospace";
         ctx.fillStyle = "#38bdf8";
         ctx.fillText("STASIUN BAWAH TANAH", entranceX, GROUND_Y - 76);
@@ -4084,34 +4139,127 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillStyle = "#020617";
         ctx.fillRect(entranceX + 35, GROUND_Y - 20, 35, 36);
         ctx.restore();
+      } else if (currentZone === "stasiun") {
+        // ==============================================================
+        // ZONE 3: STASIUN BAWAH TANAH KRL (DEDICATED METRO PLATFORM ZONE)
+        // ==============================================================
 
-        // 2. Separate 2D Subterranean Station Platform at x = 2700 - 3000
+        // 1. Dark Subterranean Atmosphere Background
+        const metroSky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+        metroSky.addColorStop(0, "#020617");
+        metroSky.addColorStop(0.5, "#0b0f19");
+        metroSky.addColorStop(1, "#0f172a");
+        ctx.fillStyle = metroSky;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // 2. Full 2D Underground Station Background
         if (undergroundStationImg) {
-          const stX = 2700 - camX;
-          const stW = 600;
-          const stH = 420;
-          const stY = GROUND_Y + 16 - 360;
-          ctx.save();
-          // Draw Underground Subway Station 2D cross-section background
-          ctx.drawImage(undergroundStationImg, 0, 0, 1376, 768, stX, stY, stW, stH);
+          const stW = 1200;
+          const stH = 540;
+          const stOffX = -camX * 0.35;
+          ctx.drawImage(undergroundStationImg, 0, 0, 1376, 768, stOffX, 0, stW, stH);
+          if (stOffX + stW < CANVAS_W) {
+            ctx.drawImage(undergroundStationImg, 0, 0, 1376, 768, stOffX + stW, 0, stW, stH);
+          }
+        }
 
-          // Subterranean Station Header Signboard
-          ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-          ctx.fillRect(stX + 18, stY + 12, 230, 26);
-          ctx.strokeStyle = "#38bdf8";
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(stX + 18, stY + 12, 230, 26);
-          ctx.font = "bold 9px 'Courier New', monospace";
-          ctx.fillStyle = "#ffffff";
-          ctx.textAlign = "left";
-          ctx.fillText("🚉 STASIUN BAWAH TANAH KAMPUNG MENARA", stX + 26, stY + 23);
-          ctx.font = "bold 8px 'Courier New', monospace";
-          ctx.fillStyle = "#facc15";
-          ctx.fillText("JALUR 1 • KRL COMMUTER LINE -> BEKASI", stX + 26, stY + 33);
+        // 3. Platform Ceiling Neon Strip Lights
+        for (let lx = 0; lx < 8; lx++) {
+          const lightX = lx * 160 + 50 - camX;
+          if (lightX < -60 || lightX > CANVAS_W + 60) continue;
+          ctx.save();
+          // Fixture
+          ctx.fillStyle = "#334155";
+          ctx.fillRect(lightX - 35, 18, 70, 7);
+          // Neon glow
+          const neonGlow = ctx.createRadialGradient(lightX, 26, 4, lightX, 100, 90);
+          neonGlow.addColorStop(0, "rgba(56, 189, 248, 0.4)");
+          neonGlow.addColorStop(0.7, "rgba(56, 189, 248, 0.08)");
+          neonGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+          ctx.fillStyle = neonGlow;
+          ctx.fillRect(lightX - 70, 22, 140, 180);
+          // White-cyan neon tube
+          ctx.fillStyle = "#e0f2fe";
+          ctx.fillRect(lightX - 30, 22, 60, 4);
           ctx.restore();
         }
 
-        // 3. Separate 2D 8-Frame Animated KRL Train on Platform Tracks
+        // 4. Platform Floor & Yellow Safety Tactile Strip
+        ctx.save();
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(0, GROUND_Y + 16, CANVAS_W, CANVAS_H - (GROUND_Y + 16));
+
+        // Tactile yellow safety line
+        ctx.fillStyle = "#facc15";
+        ctx.fillRect(0, GROUND_Y + 16, CANVAS_W, 6);
+        ctx.fillStyle = "#ca8a04";
+        for (let tx = -(camX % 16); tx < CANVAS_W; tx += 16) {
+          ctx.fillRect(tx, GROUND_Y + 17, 8, 4);
+        }
+
+        // Sunken Track Bed below platform (at right side towards x > 480)
+        const trackStartX = 480 - camX;
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(trackStartX, GROUND_Y + 26, WORLD_W, CANVAS_H - (GROUND_Y + 26));
+
+        // Steel Rails & Sleepers on Tracks
+        if (trackStartX < CANVAS_W) {
+          ctx.fillStyle = "#451a03";
+          for (let rx = Math.max(0, trackStartX); rx < CANVAS_W; rx += 24) {
+            ctx.fillRect(rx, GROUND_Y + 34, 16, 8);
+          }
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(trackStartX, GROUND_Y + 32, WORLD_W, 3);
+          ctx.fillRect(trackStartX, GROUND_Y + 40, WORLD_W, 3);
+          ctx.fillStyle = "#e2e8f0";
+          ctx.fillRect(trackStartX, GROUND_Y + 32, WORLD_W, 1);
+        }
+        ctx.restore();
+
+        // 5. Exit Stairs Leading UP to Perkampungan at x = 140
+        const stairX = 140 - camX;
+        ctx.save();
+        for (let s = 0; s < 7; s++) {
+          const stepY = GROUND_Y + 10 - s * 14;
+          const stepX = stairX + 30 - s * 15;
+          ctx.fillStyle = s % 2 === 0 ? "#334155" : "#1e293b";
+          ctx.fillRect(stepX, stepY, 32, 12);
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillRect(stepX, stepY, 32, 2);
+        }
+        // Exit signage above stairs
+        ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+        ctx.fillRect(stairX - 45, GROUND_Y - 110, 150, 26);
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(stairX - 45, GROUND_Y - 110, 150, 26);
+        ctx.font = "bold 8px 'Courier New', monospace";
+        ctx.fillStyle = "#38bdf8";
+        ctx.textAlign = "center";
+        ctx.fillText("⬆ PINTU KELUAR / EXIT", stairX + 30, GROUND_Y - 98);
+        ctx.font = "bold 7px 'Courier New', monospace";
+        ctx.fillStyle = "#facc15";
+        ctx.fillText("PERKAMPUNGAN MENARA", stairX + 30, GROUND_Y - 89);
+        ctx.restore();
+
+        // 6. Station Platform Overhead Signboard at x = 620
+        const signX = 620 - camX;
+        ctx.save();
+        ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+        ctx.fillRect(signX - 115, 55, 230, 32);
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(signX - 115, 55, 230, 32);
+        ctx.font = "bold 9px 'Courier New', monospace";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText("🚉 STASIUN BAWAH TANAH KAMPUNG MENARA", signX, 70);
+        ctx.font = "bold 8px 'Courier New', monospace";
+        ctx.fillStyle = "#facc15";
+        ctx.fillText("JALUR 1 • KRL COMMUTER LINE -> BEKASI", signX, 81);
+        ctx.restore();
+
+        // 7. Separate 2D 8-Frame Animated KRL Train Carriage on Tracks
         if (krlTrainImg) {
           const trainDrawX = krl.x - camX - 145;
           const trainDrawY = GROUND_Y + 16 - 198;
@@ -4122,7 +4270,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const sx = krl.frame * fw;
 
           ctx.save();
-          // Train interior illumination glow when doors are open
           if (krl.frame >= 2 && krl.frame <= 5) {
             const glow = ctx.createRadialGradient(trainDrawX + 145, trainDrawY + 95, 10, trainDrawX + 145, trainDrawY + 95, 80);
             glow.addColorStop(0, "rgba(254, 240, 138, 0.35)");
@@ -4131,10 +4278,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.fillRect(trainDrawX + 65, trainDrawY + 40, 160, 110);
           }
 
-          // Draw the 2D KRL Train Carriage
           ctx.drawImage(krlTrainImg, sx, 0, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
 
-          // Destination LED Badge
+          // LED Destination Board
           ctx.fillStyle = "#1e3a8a";
           ctx.fillRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
           ctx.strokeStyle = "#facc15";
@@ -4146,6 +4292,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillText("KRL • BEKASI SPECIAL", trainDrawX + 145, trainDrawY + 28);
           ctx.restore();
         }
+
+        // 8. Dark Subway Tunnel Arch to the right (Tracks heading into darkness)
+        const darkTunnelX = 960 - camX;
+        ctx.save();
+        const tunnelGrad = ctx.createLinearGradient(darkTunnelX, 0, darkTunnelX + 220, 0);
+        tunnelGrad.addColorStop(0, "rgba(0, 0, 0, 0)");
+        tunnelGrad.addColorStop(0.7, "rgba(2, 6, 23, 0.95)");
+        tunnelGrad.addColorStop(1, "rgba(2, 6, 23, 1)");
+        ctx.fillStyle = tunnelGrad;
+        ctx.fillRect(darkTunnelX, 0, 240, CANVAS_H);
+        ctx.restore();
       } else if (currentZone === "bekasi") {
         // ==============================================================
         // ZONE 3: KOTA BEKASI & TPST BANTAR GEBANG (GUNUNG SAMPAH OP)
@@ -4225,105 +4382,49 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillRect(0, GROUND_Y + 19, CANVAS_W, 1);
         ctx.restore();
 
-        // Layer 4.5: Subterranean Underground Station Platform of Bekasi (x = 40 to 480)
-        if (undergroundStationImg) {
-          const stX = 40 - camX;
-          const stW = 540;
-          const stH = 420;
-          const stY = GROUND_Y + 16 - 360;
-          ctx.save();
-          // Draw Underground Subway Station 2D cross-section background
-          ctx.drawImage(undergroundStationImg, 0, 0, 1376, 768, stX, stY, stW, stH);
-
-          // Station Signboard
-          ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-          ctx.fillRect(stX + 18, stY + 12, 240, 26);
-          ctx.strokeStyle = "#38bdf8";
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(stX + 18, stY + 12, 240, 26);
-          ctx.font = "bold 9px 'Courier New', monospace";
-          ctx.fillStyle = "#ffffff";
-          ctx.textAlign = "left";
-          ctx.fillText("🚉 STASIUN BAWAH TANAH KOTA BEKASI", stX + 26, stY + 23);
-          ctx.font = "bold 8px 'Courier New', monospace";
-          ctx.fillStyle = "#facc15";
-          ctx.fillText("JALUR 1 • COMMUTER LINE KAMPUNG MENARA", stX + 26, stY + 33);
-          ctx.restore();
-        }
-
-        // Layer 4.51: Separate 2D 8-Frame Animated KRL Train on Bekasi Tracks
-        if (krlTrainImg) {
-          const trainDrawX = krl.x - camX - 145;
-          const trainDrawY = GROUND_Y + 16 - 198;
-          const trainW = 290;
-          const trainH = 198;
-          const fw = 168;
-          const fh = 232;
-          const sx = krl.frame * fw;
-
-          ctx.save();
-          if (krl.frame >= 2 && krl.frame <= 5) {
-            const glow = ctx.createRadialGradient(trainDrawX + 145, trainDrawY + 95, 10, trainDrawX + 145, trainDrawY + 95, 80);
-            glow.addColorStop(0, "rgba(254, 240, 138, 0.35)");
-            glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-            ctx.fillStyle = glow;
-            ctx.fillRect(trainDrawX + 65, trainDrawY + 40, 160, 110);
-          }
-
-          ctx.drawImage(krlTrainImg, sx, 0, fw, fh, trainDrawX, trainDrawY, trainW, trainH);
-
-          ctx.fillStyle = "#1e3a8a";
-          ctx.fillRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
-          ctx.strokeStyle = "#facc15";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(trainDrawX + 85, trainDrawY + 18, 120, 14);
-          ctx.font = "bold 8px 'Courier New', monospace";
-          ctx.fillStyle = "#facc15";
-          ctx.textAlign = "center";
-          ctx.fillText("KRL • KAMPUNG MENARA", trainDrawX + 145, trainDrawY + 28);
-          ctx.restore();
-        }
-
-        // Layer 4.52: Escalator / Subway Staircase Exit Tunnel heading UP to surface (x = 450 - 580)
-        const exitX = 460 - camX;
+        // Layer 4.5: Surface Subway Metro Tunnel Entrance Canopy at x = 160 (Descends into Stasiun)
+        const entranceX = 160 - camX;
         ctx.save();
-        // Ascending illuminated escalator / stairs cutaway
-        for (let s = 0; s < 7; s++) {
-          const stepY = GROUND_Y - 20 - s * 12;
-          const stepX = exitX - 30 + s * 16;
-          ctx.fillStyle = s % 2 === 0 ? "#475569" : "#334155";
-          ctx.fillRect(stepX, stepY, 34, 11);
-          ctx.fillStyle = "#facc15"; // yellow edge
-          ctx.fillRect(stepX, stepY, 34, 2);
-        }
-
-        // Exit Signboard above ascending stairs
-        ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
-        ctx.fillRect(exitX - 10, GROUND_Y - 115, 140, 24);
+        // Canopy glass roof & metal framing
+        ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+        ctx.fillRect(entranceX - 60, GROUND_Y - 105, 120, 115);
         ctx.strokeStyle = "#f97316";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(exitX - 10, GROUND_Y - 115, 140, 24);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(entranceX - 60, GROUND_Y - 105, 120, 115);
+
+        // Canopy roof overhang
+        ctx.fillStyle = "#ea580c";
+        ctx.fillRect(entranceX - 68, GROUND_Y - 112, 136, 10);
+        ctx.fillStyle = "#facc15";
+        ctx.fillRect(entranceX - 68, GROUND_Y - 103, 136, 2);
+
+        // Subway Illuminated Orange Signboard
+        ctx.fillStyle = "#7c2d12";
+        ctx.fillRect(entranceX - 52, GROUND_Y - 96, 104, 22);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(entranceX - 52, GROUND_Y - 96, 104, 22);
         ctx.font = "bold 8px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.fillText("⬆ PINTU KELUAR / EXIT", exitX + 60, GROUND_Y - 103);
+        ctx.fillText("🚇 TEROWONGAN KRL", entranceX, GROUND_Y - 84);
         ctx.font = "bold 7px 'Courier New', monospace";
         ctx.fillStyle = "#fdba74";
-        ctx.fillText("PERMUKAAN TPST BANTAR GEBANG", exitX + 60, GROUND_Y - 95);
+        ctx.fillText("STASIUN BAWAH TANAH", entranceX, GROUND_Y - 76);
 
-        // Blazing Sunlight pouring down into the tunnel opening
-        const exitGlow = ctx.createLinearGradient(exitX + 80, GROUND_Y - 120, exitX + 20, GROUND_Y);
-        exitGlow.addColorStop(0, "rgba(251, 146, 60, 0.45)");
-        exitGlow.addColorStop(0.6, "rgba(254, 215, 170, 0.2)");
-        exitGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
-        ctx.fillStyle = exitGlow;
-        ctx.beginPath();
-        ctx.moveTo(exitX + 60, GROUND_Y - 120);
-        ctx.lineTo(exitX + 130, GROUND_Y - 120);
-        ctx.lineTo(exitX + 90, GROUND_Y + 16);
-        ctx.lineTo(exitX - 10, GROUND_Y + 16);
-        ctx.closePath();
-        ctx.fill();
+        // Downward illuminated staircase cutaway into subterranean level
+        for (let s = 0; s < 6; s++) {
+          const stepY = GROUND_Y - 60 + s * 11;
+          const stepX = entranceX - 42 + s * 14;
+          ctx.fillStyle = s % 2 === 0 ? "#475569" : "#334155";
+          ctx.fillRect(stepX, stepY, 32, 10);
+          ctx.fillStyle = "#facc15"; // step edge yellow safety strip
+          ctx.fillRect(stepX, stepY, 32, 2);
+        }
+
+        // Subterranean Entrance Arch shadow
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(entranceX + 35, GROUND_Y - 20, 35, 36);
         ctx.restore();
 
         // Layer 4.6: Landfill Props & Scavenger World Elements (Truk Sampah DLH, Gerobak, Gundukan)
@@ -5561,21 +5662,92 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               return;
             }
 
-            if (nearestPromptObj.id === "krl_subway_entrance" || nearestPromptObj.id === "krl_station_to_bekasi") {
+            if (nearestPromptObj.id === "terowongan_ke_stasiun") {
+              sound.playWhoosh();
+              onTriggerDialogue("terowongan_enter_1");
+              return;
+            }
+
+            if (nearestPromptObj.id === "tangga_ke_kampung") {
+              sound.playPortal();
+              screenShakeRef.current = 8;
+              teleportFlashRef.current = 20;
+              zoneRef.current = "perkampungan";
+              setCurrentZone("perkampungan");
+              active.x = 2700;
+              active.vx = 0;
+              companion.x = 2650;
+              companion.vx = 0;
+              if (hairiState.isFriend) {
+                hairiState.x = 2600;
+                hairiState.vx = 0;
+                hairiState.facingLeft = true;
+              }
+              if (adifState.isFriend) {
+                adifState.x = 2550;
+                adifState.vx = 0;
+                adifState.facingLeft = true;
+                adifState.y = GROUND_Y;
+              }
+              if (keyState.isFriend) {
+                keyState.x = 2500;
+                keyState.vx = 0;
+                keyState.facingLeft = true;
+                keyState.y = GROUND_Y;
+              }
+              cameraXRef.current = Math.max(0, WORLD_W - CANVAS_W);
+              zoneBannerRef.current = {
+                title: "PERKAMPUNGAN MENARA SINYAL",
+                subtitle: "LEMBAH MENARA PEMANCAR & KABEL FIBER OPTIK",
+                timer: 180,
+              };
+              return;
+            }
+
+            if (nearestPromptObj.id === "krl_station_to_bekasi") {
               sound.playTrainChime();
               onTriggerDialogue("krl_station_1");
               return;
             }
 
-            if (nearestPromptObj.id === "krl_station_to_kampung") {
-              sound.playTrainChime();
-              onTriggerDialogue("krl_station_return_1");
-              return;
-            }
-
-            if (nearestPromptObj.id === "bekasi_subway_stairs") {
-              sound.playWhoosh();
-              onTriggerDialogue("bekasi_arrival_1");
+            if (nearestPromptObj.id === "terowongan_ke_stasiun_bekasi") {
+              sound.playPortal();
+              screenShakeRef.current = 8;
+              teleportFlashRef.current = 20;
+              zoneRef.current = "stasiun";
+              setCurrentZone("stasiun");
+              active.x = 620;
+              active.vx = 0;
+              companion.x = 580;
+              companion.vx = 0;
+              if (hairiState.isFriend) {
+                hairiState.x = 540;
+                hairiState.vx = 0;
+                hairiState.facingLeft = true;
+              }
+              if (adifState.isFriend) {
+                adifState.x = 500;
+                adifState.vx = 0;
+                adifState.facingLeft = true;
+                adifState.y = GROUND_Y;
+              }
+              if (keyState.isFriend) {
+                keyState.x = 460;
+                keyState.vx = 0;
+                keyState.facingLeft = true;
+                keyState.y = GROUND_Y;
+              }
+              cameraXRef.current = 0;
+              krlStateRef.current.x = 620;
+              krlStateRef.current.targetX = 620;
+              krlStateRef.current.vx = 0;
+              krlStateRef.current.state = "idle_open";
+              krlStateRef.current.frame = 4;
+              zoneBannerRef.current = {
+                title: "STASIUN BAWAH TANAH KAMPUNG MENARA",
+                subtitle: "PERON JALUR 1 • KRL COMMUTER LINE",
+                timer: 180,
+              };
               return;
             }
 

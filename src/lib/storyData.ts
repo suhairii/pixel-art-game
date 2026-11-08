@@ -358,13 +358,32 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     emotion: "thoughtful",
   },
 
-  // STASIUN KRL & PERJALANAN KE BEKASI
+  // INTERAKSI TEROWONGAN MENUJU STASIUN BAWAH TANAH
+  terowongan_enter_1: {
+    id: "terowongan_enter_1",
+    speaker: "dani",
+    speakerName: "Dani • Pendekar Malaysia",
+    portrait: "/dani-portrait.png",
+    text: "Tengok tu, ada terowongan tangga bawah tanah di hujung lembah menara! Suasana di dalamnya berangin sejuk dan ada deruan rel!",
+    emotion: "happy",
+    nextId: "terowongan_enter_2",
+  },
+  terowongan_enter_2: {
+    id: "terowongan_enter_2",
+    speaker: "jihan",
+    speakerName: "Jihan • Pendekar Anggun",
+    portrait: "/jihan_portrait.png",
+    text: "Ayo teman-teman, kita melangkah masuk ke dalam terowongan menuruni tangga menuju Stasiun Bawah Tanah!",
+    emotion: "happy",
+  },
+
+  // DI DALAM STASIUN BAWAH TANAH KRL & PERJALANAN KE BEKASI
   krl_station_1: {
     id: "krl_station_1",
     speaker: "dani",
     speakerName: "Dani • Pendekar Malaysia",
     portrait: "/dani-portrait.png",
-    text: "Wah, tengok tu! Di hujung lembah menara ada terowongan tangga masuk stasiun bawah tanah KRL! Lampu neon dan rel terowongannya sangat moden!",
+    text: "Wah, megah betul stesen bawah tanah ni! Lampu neon overhead cerah dan peron ubin kuning keselamatan sangat teratur!",
     emotion: "happy",
     nextId: "krl_station_2",
   },
@@ -373,7 +392,7 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "jihan",
     speakerName: "Jihan • Pendekar Anggun",
     portrait: "/jihan_portrait.png",
-    text: "Lihat, keretanya baru saja meluncur tiba dari dalam terowongan gelap! Pintunya sedang terbuka otomatis, ayo Dani, Adif, Hairi, kita masuk ke gerbong!",
+    text: "Lihat, gerbong KRL bersandar di jalur 1 dan pintu otomatisnya terbuka lebar! Ayo Dani, Adif, Hairi, kita masuk ke dalam gerbong!",
     emotion: "happy",
     nextId: "krl_station_3",
   },
@@ -382,7 +401,7 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "adif",
     speakerName: "Adif • Sang Koboi",
     portrait: "/adif_portrait.png",
-    text: "Pintu otomatis menutup rapat dan semboyan hijau menyala! Kereta melaju kencang menembus terowongan bawah tanah menuju Kota Patriot Bekasi!",
+    text: "Pintu otomatis menutup rapat dan semboyan hijau berbunyi! Kereta melaju kencang menembus terowongan bawah tanah menuju Kota Patriot Bekasi!",
     emotion: "warm",
   },
 
