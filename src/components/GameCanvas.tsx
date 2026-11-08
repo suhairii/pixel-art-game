@@ -289,6 +289,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     hairiSuperCombat: HTMLImageElement | null;
     hairiV3Master: HTMLImageElement | null;
     hairiV3Combat: HTMLImageElement | null;
+    krlStation: HTMLImageElement | null;
+    envBekasi: HTMLImageElement | null;
+    keyMaster: HTMLImageElement | null;
+    keyCombat: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -312,11 +316,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     hairiSuperCombat: null,
     hairiV3Master: null,
     hairiV3Combat: null,
+    krlStation: null,
+    envBekasi: null,
+    keyMaster: null,
+    keyCombat: null,
   });
 
-  // Zone & Map State (Losari vs Perkampungan Menara Sinyal)
-  const zoneRef = useRef<"losari" | "perkampungan">("losari");
-  const [, setCurrentZone] = useState<"losari" | "perkampungan">("losari");
+  // Zone & Map State (Losari vs Perkampungan Menara Sinyal vs Bekasi Bantar Gebang)
+  const zoneRef = useRef<"losari" | "perkampungan" | "bekasi">("losari");
+  const [, setCurrentZone] = useState<"losari" | "perkampungan" | "bekasi">("losari");
   const zoneBannerRef = useRef<{ title: string; subtitle: string; timer: number }>({
     title: "",
     subtitle: "",
@@ -347,6 +355,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     lassoTargetY: number;
     lassoTimer: number;
     evasionTimer: number;
+    isFriend: boolean;
   }>({
     onTower: true,
     isRappelling: false,
@@ -369,6 +378,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     lassoTargetY: 0,
     lassoTimer: 0,
     evasionTimer: 0,
+    isFriend: false,
   });
 
   // Hairi (Angry Gray Shirt Guy / Super Cyber Hairi) State
@@ -442,6 +452,68 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }>
   >([]);
 
+  // Key (OP Bantar Gebang Mage from Bekasi) State
+  const keyRef = useRef<{
+    x: number;
+    y: number;
+    vx: number;
+    facingLeft: boolean;
+    state: "idle" | "walk" | "run" | "combat" | "hurt" | "defeated";
+    animFrame: number;
+    animTimer: number;
+    hp: number;
+    maxHp: number;
+    hitFlash: number;
+    shake: number;
+    teleportTimer: number;
+    teleportCooldown: number;
+    attackCooldown: number;
+    isAttacking: boolean;
+    isFriend: boolean;
+  }>({
+    x: 1450,
+    y: GROUND_Y,
+    vx: 0,
+    facingLeft: true,
+    state: "idle",
+    animFrame: 0,
+    animTimer: 0,
+    hp: 900,
+    maxHp: 900,
+    hitFlash: 0,
+    shake: 0,
+    teleportTimer: 0,
+    teleportCooldown: 70,
+    attackCooldown: 45,
+    isAttacking: false,
+    isFriend: false,
+  });
+
+  const battleKeyRef = useRef<{
+    inCombat: boolean;
+    isDefeated: boolean;
+  }>({
+    inCombat: false,
+    isDefeated: false,
+  });
+  const pendingKeyBattleRef = useRef(false);
+
+  // Bantar Gebang Flying Trash Projectiles
+  const trashProjectilesRef = useRef<
+    Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      type: "bag" | "bottle" | "box";
+      rot: number;
+      rotSpeed: number;
+      life: number;
+      maxLife: number;
+      damage: number;
+    }>
+  >([]);
+
   // Boss Monster State (Summoned from Panci at Far Right)
   const monsterRef = useRef<{
     isActive: boolean;
@@ -487,7 +559,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   // Dynamic Interactive Objects Filtered by Current Zone
   const getInteractiveObjects = (
-    zone: "losari" | "perkampungan",
+    zone: "losari" | "perkampungan" | "bekasi",
     monsterDefeated: boolean,
     duelDefeated: boolean,
     hairiFriend: boolean
@@ -575,9 +647,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         });
       }
       return objs;
-    } else {
+    } else if (zone === "perkampungan") {
       // Perkampungan zone
-      return [
+      const objs: InteractiveObject[] = [
         {
           id: "portal_to_losari",
           type: "pier_edge",
@@ -603,6 +675,47 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           dialogueId: duelDefeated ? "adif_hairi_defeat_2" : "adif_tower_1",
         },
       ];
+      if (duelDefeated) {
+        objs.push({
+          id: "krl_station_to_bekasi",
+          type: "pier_edge",
+          x: 2780,
+          y: GROUND_Y - 80,
+          width: 160,
+          height: 180,
+          prompt: "🚉 Naik KRL Commuter Line ke Kota Bekasi & TPST Bantar Gebang",
+          interacted: false,
+          dialogueId: "krl_station_1",
+        });
+      }
+      return objs;
+    } else {
+      // Bekasi Bantar Gebang zone
+      const objs: InteractiveObject[] = [
+        {
+          id: "krl_station_to_kampung",
+          type: "pier_edge",
+          x: 180,
+          y: GROUND_Y - 80,
+          width: 140,
+          height: 180,
+          prompt: "🚉 Naik KRL Kembali ke Perkampungan Menara",
+          interacted: false,
+          dialogueId: "",
+        },
+        {
+          id: "key_encounter",
+          type: "pier_edge",
+          x: 1450,
+          y: GROUND_Y - 80,
+          width: 120,
+          height: 140,
+          prompt: battleKeyRef.current.isDefeated ? "Bicara dengan Key (Mage Bantar Gebang)" : "Tantang Key • Penguasa Sampah Bantar Gebang",
+          interacted: false,
+          dialogueId: battleKeyRef.current.isDefeated ? "key_defeat" : "key_encounter_1",
+        },
+      ];
+      return objs;
     }
   };
 
@@ -649,8 +762,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/hairi_super_combat_sheet.png"),
       loadImage("/hairi_v3_master_sheet.png"),
       loadImage("/hairi_v3_combat_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat };
+      loadImage("/krl_station_sheet.png"),
+      loadImage("/env_bekasi_bantar_gebang.png"),
+      loadImage("/key_master_sheet.png"),
+      loadImage("/key_combat_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, krlStation, envBekasi, keyMaster, keyCombat]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, krlStation, envBekasi, keyMaster, keyCombat };
     });
   }, []);
 
@@ -722,12 +839,54 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       battleAdifHairiRef.current.inCombat = false;
       sound.startCyberBGM();
     }
-    if (currentDialogueId === "adif_hairi_defeat" || currentDialogueId === "adif_hairi_defeat_2") {
+    if (currentDialogueId === "adif_hairi_defeat" || currentDialogueId === "adif_hairi_defeat_2" || currentDialogueId === "adif_hairi_defeat_3") {
       sound.stopCyberBGM();
+      adifRef.current.isFriend = true;
+      adifRef.current.state = "idle";
       hairiRef.current.isFriend = true;
       hairiRef.current.phase = 1; // Kembali ke wujud manusia biasa saat menjadi teman
       hairiRef.current.y = GROUND_Y;
       hairiRef.current.state = "idle";
+    }
+    if (currentDialogueId === "krl_station_3") {
+      // Perjalanan KRL dari Stasiun Perkampungan ke Stasiun Bekasi Bantar Gebang
+      teleportFlashRef.current = 32;
+      zoneRef.current = "bekasi";
+      setCurrentZone("bekasi");
+      sound.playTrainChime();
+      sound.playPortal();
+      cameraXRef.current = 0;
+      zoneBannerRef.current = {
+        title: "KOTA BEKASI • TPST BANTAR GEBANG",
+        subtitle: "HAWA PANAS MENYENGAT & GUNUNG SAMPAH BANTAR GEBANG",
+        timer: 180,
+      };
+      // Place all 4 friends at the start of Bekasi
+      daniPosRef.current.x = 260;
+      daniPosRef.current.vx = 0;
+      jihanPosRef.current.x = 200;
+      jihanPosRef.current.vx = 0;
+      hairiRef.current.x = 140;
+      hairiRef.current.vx = 0;
+      hairiRef.current.facingLeft = false;
+      hairiRef.current.state = "idle";
+      adifRef.current.x = 80;
+      adifRef.current.vx = 0;
+      adifRef.current.facingLeft = false;
+      adifRef.current.state = "idle";
+      adifRef.current.onTower = false;
+      adifRef.current.isRappelling = false;
+      adifRef.current.y = GROUND_Y;
+    }
+    if (currentDialogueId === "key_encounter_3") {
+      pendingKeyBattleRef.current = true;
+    }
+    if (currentDialogueId === "key_defeat") {
+      battleKeyRef.current.inCombat = false;
+      battleKeyRef.current.isDefeated = true;
+      keyRef.current.state = "idle";
+      keyRef.current.isFriend = true;
+      sound.playWin();
     }
     if (!currentDialogueId && pendingBattleRef.current) {
       pendingBattleRef.current = false;
@@ -736,6 +895,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       hairiRef.current.state = "combat";
       sound.playHitImpact();
       screenShakeRef.current = 8;
+    }
+    if (!currentDialogueId && pendingKeyBattleRef.current) {
+      pendingKeyBattleRef.current = false;
+      battleKeyRef.current.inCombat = true;
+      keyRef.current.state = "combat";
+      keyRef.current.animFrame = 0;
+      sound.playTrashThrow();
+      sound.playHitImpact();
+      screenShakeRef.current = 10;
     }
     if (!currentDialogueId && pendingEvolutionBattleRef.current) {
       pendingEvolutionBattleRef.current = false;
@@ -1107,6 +1275,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               duel.inCombat = false;
               sound.stopCyberBGM();
               adifBoss.state = "defeated";
+              adifBoss.isFriend = true;
               hairiBoss.state = "defeated";
               hairiBoss.phase = 1; // Revert to Human Form upon defeat as friend companion
               hairiBoss.y = GROUND_Y;
@@ -1125,6 +1294,91 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 isCrit: true,
               });
               onTriggerDialogue("adif_hairi_defeat");
+            }
+          }
+
+          // 1.8. Check Key Boss hit if in Bekasi battle
+          const keyDuel = battleKeyRef.current;
+          const keyBoss = keyRef.current;
+          if (keyDuel.inCombat && !keyDuel.isDefeated && !attack.hasHit && keyBoss.hp > 0) {
+            const facingMatches = active.facingLeft ? keyBoss.x <= active.x : keyBoss.x >= active.x;
+            const dist = Math.abs(active.x - keyBoss.x);
+            if (dist < 105 && facingMatches) {
+              attack.hasHit = true;
+              const isCrit = Math.random() < 0.35;
+              const baseDmg = isCrit ? Math.floor(75 + Math.random() * 35) : Math.floor(40 + Math.random() * 25);
+              comboRef.current.count++;
+              comboRef.current.timer = 120;
+              sound.playHitImpact();
+              screenShakeRef.current = 7;
+              keyBoss.hitFlash = 16;
+              keyBoss.shake = 12;
+              keyBoss.hp = Math.max(0, keyBoss.hp - baseDmg);
+
+              // OP Teleport Evasion upon taking hit!
+              if (Math.random() < 0.65 && keyBoss.hp > 0) {
+                sound.playTeleportWhoosh();
+                const teleportDir = active.facingLeft ? 1 : -1;
+                keyBoss.x = Math.max(250, Math.min(2700, active.x + teleportDir * 240));
+                keyBoss.facingLeft = active.x < keyBoss.x;
+                keyBoss.teleportTimer = 18;
+                for (let p = 0; p < 20; p++) {
+                  combatParticlesRef.current.push({
+                    x: keyBoss.x + (Math.random() - 0.5) * 24,
+                    y: GROUND_Y - 45 + (Math.random() - 0.5) * 35,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    color: p % 3 === 0 ? "#9333ea" : p % 3 === 1 ? "#c084fc" : "#22c55e",
+                    size: 4,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+              }
+
+              damageNumbersRef.current.push({
+                x: keyBoss.x,
+                y: keyBoss.y - 85,
+                text: isCrit ? `CRIT! 💥 -${baseDmg}` : `-${baseDmg}`,
+                color: isCrit ? "#f59e0b" : "#c084fc",
+                life: 35,
+                maxLife: 35,
+                vy: -1.8,
+                isCrit,
+              });
+              for (let p = 0; p < 16; p++) {
+                combatParticlesRef.current.push({
+                  x: keyBoss.x + (Math.random() - 0.5) * 20,
+                  y: keyBoss.y - 50 + (Math.random() - 0.5) * 20,
+                  vx: (Math.random() - 0.5) * 6,
+                  vy: -1.5 - Math.random() * 3.5,
+                  color: p % 3 === 0 ? "#c084fc" : p % 3 === 1 ? "#9333ea" : "#fef08a",
+                  size: 3.5,
+                  life: 22,
+                  maxLife: 22,
+                });
+              }
+
+              if (keyBoss.hp <= 0) {
+                keyDuel.isDefeated = true;
+                keyDuel.inCombat = false;
+                keyBoss.state = "defeated";
+                keyBoss.isFriend = true;
+                sound.playWin();
+                sound.playCoin();
+                screenShakeRef.current = 12;
+                damageNumbersRef.current.push({
+                  x: keyBoss.x,
+                  y: GROUND_Y - 105,
+                  text: "✨ KEY DIKALAHKAN • PERSAHABATAN TERBENTUK! ✨",
+                  color: "#fbbf24",
+                  life: 75,
+                  maxLife: 75,
+                  vy: -1.0,
+                  isCrit: true,
+                });
+                onTriggerDialogue("key_defeat");
+              }
             }
           }
 
@@ -1486,6 +1740,182 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
 
           adifState.x = Math.max(300, Math.min(2700, adifState.x));
+        } else if (adifState.isFriend) {
+          // COMPANION / BEFRIENDED MODE: Adif joins squad, fights alongside Dani, Jihan & Hairi!
+          const monster = monsterRef.current;
+          const keyBoss = keyRef.current;
+          const keyDuel = battleKeyRef.current;
+
+          if (keyDuel.inCombat && !keyDuel.isDefeated && keyBoss.hp > 0) {
+            // Priority 1: Charge and attack Key (Mage Bantar Gebang)
+            const kDist = Math.abs(keyBoss.x - adifState.x);
+            adifState.facingLeft = keyBoss.x < adifState.x;
+
+            if (kDist >= 75 && kDist <= 190 && adifState.attackCooldown <= 0) {
+              // Mid-Range Cowboy Lasso Whip Attack on Key
+              adifState.state = "combat";
+              adifState.combatType = "whip";
+              if (adifState.animTimer % 4 === 0) {
+                adifState.animFrame++;
+                if (adifState.animFrame === 4) {
+                  adifState.lassoActive = true;
+                  adifState.lassoTargetX = keyBoss.x;
+                  adifState.lassoTargetY = keyBoss.y - 35;
+                  adifState.lassoTimer = 18;
+                  sound.playWhip();
+                  screenShakeRef.current = 5;
+
+                  keyBoss.hp = Math.max(0, keyBoss.hp - 35);
+                  keyBoss.hitFlash = 16;
+                  keyBoss.shake = 12;
+
+                  damageNumbersRef.current.push({
+                    x: keyBoss.x,
+                    y: keyBoss.y - 80,
+                    text: "💥 ADIF LASSO STRIKE! -35",
+                    color: "#f59e0b",
+                    life: 36,
+                    maxLife: 36,
+                    vy: -1.6,
+                    isCrit: true,
+                  });
+
+                  for (let p = 0; p < 12; p++) {
+                    combatParticlesRef.current.push({
+                      x: keyBoss.x + (Math.random() - 0.5) * 16,
+                      y: keyBoss.y - 45 + (Math.random() - 0.5) * 16,
+                      vx: (Math.random() - 0.5) * 5,
+                      vy: (Math.random() - 0.5) * 5,
+                      color: p % 2 === 0 ? "#fbbf24" : "#ffffff",
+                      size: 3,
+                      life: 18,
+                      maxLife: 18,
+                    });
+                  }
+                  adifState.attackCooldown = 70;
+                }
+                if (adifState.animFrame >= 8) {
+                  adifState.animFrame = 0;
+                  adifState.combatType = "stance";
+                }
+              }
+            } else if (kDist < 75 && adifState.attackCooldown <= 0) {
+              // Close-Range Knuckle Rush Combo on Key
+              adifState.state = "combat";
+              adifState.combatType = "punch";
+              if (adifState.animTimer % 4 === 0) {
+                adifState.animFrame++;
+                if (adifState.animFrame === 5) {
+                  sound.playStomp();
+                  screenShakeRef.current = 6;
+                  keyBoss.hp = Math.max(0, keyBoss.hp - 40);
+                  keyBoss.hitFlash = 16;
+                  keyBoss.shake = 12;
+
+                  damageNumbersRef.current.push({
+                    x: keyBoss.x,
+                    y: keyBoss.y - 85,
+                    text: "⭐ ADIF KNUCKLE RUSH! -40",
+                    color: "#fbbf24",
+                    life: 34,
+                    maxLife: 34,
+                    vy: -1.5,
+                    isCrit: true,
+                  });
+
+                  for (let p = 0; p < 14; p++) {
+                    combatParticlesRef.current.push({
+                      x: keyBoss.x + (Math.random() - 0.5) * 16,
+                      y: keyBoss.y - 45 + (Math.random() - 0.5) * 16,
+                      vx: (Math.random() - 0.5) * 6,
+                      vy: -1.2 - Math.random() * 3,
+                      color: p % 2 === 0 ? "#f59e0b" : "#fde68a",
+                      size: 3.5,
+                      life: 20,
+                      maxLife: 20,
+                    });
+                  }
+                  adifState.attackCooldown = 65;
+                }
+                if (adifState.animFrame >= 8) {
+                  adifState.animFrame = 0;
+                  adifState.combatType = "stance";
+                }
+              }
+            } else if (kDist > 190) {
+              adifState.state = "run";
+              adifState.combatType = "stance";
+              adifState.vx = adifState.facingLeft ? -3.2 : 3.2;
+              adifState.x += adifState.vx;
+              if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+            } else {
+              adifState.state = "walk";
+              adifState.combatType = "stance";
+              adifState.vx = adifState.facingLeft ? -1.6 : 1.6;
+              adifState.x += adifState.vx;
+              if (adifState.animTimer % 5 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+            }
+          } else if (monster.isActive && !monster.isDefeated && monster.hp > 0) {
+            // Priority 2: Charge and attack Batara Panci Siluman
+            const mDist = Math.abs(monster.x - adifState.x);
+            adifState.facingLeft = monster.x < adifState.x;
+
+            if (mDist > 75) {
+              adifState.state = "run";
+              adifState.vx = monster.x < adifState.x ? -3.2 : 3.2;
+              adifState.x += adifState.vx;
+              if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+            } else {
+              adifState.state = "combat";
+              adifState.vx = 0;
+              if (adifState.animTimer % 4 === 0) {
+                adifState.animFrame++;
+                if (adifState.animFrame === 4 && adifState.attackCooldown <= 0) {
+                  monster.hp = Math.max(0, monster.hp - 35);
+                  monster.hitFlash = 16;
+                  monster.shake = 12;
+                  sound.playHitImpact();
+                  screenShakeRef.current = 6;
+                  damageNumbersRef.current.push({
+                    x: monster.x,
+                    y: monster.y - 110,
+                    text: "💥 ADIF ALLY STRIKE! -35",
+                    color: "#f59e0b",
+                    life: 38,
+                    maxLife: 38,
+                    vy: -1.6,
+                    isCrit: true,
+                  });
+                  adifState.attackCooldown = 50;
+                }
+                if (adifState.animFrame >= 8) adifState.animFrame = 0;
+              }
+            }
+          } else {
+            // Priority 3: Peacefully follow Dani & Jihan squad (Comfortable distance ~125px)
+            const targetDist = active.facingLeft ? 125 : -125;
+            const targetX = active.x + targetDist;
+            const compDiff = targetX - adifState.x;
+            adifState.facingLeft = compDiff < 0;
+
+            if (Math.abs(compDiff) > 190) {
+              adifState.state = "run";
+              adifState.vx = Math.sign(compDiff) * 3.3;
+              adifState.x += adifState.vx;
+              if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+            } else if (Math.abs(compDiff) > 35) {
+              adifState.state = "walk";
+              adifState.vx = Math.sign(compDiff) * 1.8;
+              adifState.x += adifState.vx;
+              if (adifState.animTimer % 5 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+            } else {
+              adifState.state = "idle";
+              adifState.vx = 0;
+              adifState.facingLeft = active.facingLeft;
+              if (adifState.animTimer % 7 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+            }
+          }
+          adifState.x = Math.max(100, Math.min(2900, adifState.x));
         } else {
           // Calm idle
           adifState.state = "idle";
@@ -1522,11 +1952,63 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const hairiSpeedMult = hairiState.isEnraged ? 1.35 : 1.0;
       const hairiCdMult = hairiState.isEnraged ? 0.65 : 1.0;
 
-      // COMPANION / BEFRIENDED MODE: Hairi follows player and attacks any active monster!
+      // COMPANION / BEFRIENDED MODE: Hairi follows player and attacks any active monster or boss!
       if (hairiState.isFriend) {
         const monster = monsterRef.current;
-        if (monster.isActive && !monster.isDefeated && monster.hp > 0) {
-          // Priority 1: Charge and attack monster!
+        const keyBoss = keyRef.current;
+        const keyDuel = battleKeyRef.current;
+
+        if (keyDuel.inCombat && !keyDuel.isDefeated && keyBoss.hp > 0) {
+          // Priority 1: Charge and attack Key (Mage Bantar Gebang)
+          const kDist = Math.abs(keyBoss.x - hairiState.x);
+          hairiState.facingLeft = keyBoss.x < hairiState.x;
+
+          if (kDist > 75) {
+            hairiState.state = "run";
+            hairiState.vx = keyBoss.x < hairiState.x ? -3.4 : 3.4;
+            hairiState.x += hairiState.vx;
+            if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
+          } else {
+            hairiState.state = "combat";
+            hairiState.vx = 0;
+            if (hairiState.animTimer % 4 === 0) {
+              hairiState.animFrame++;
+              if (hairiState.animFrame === 4 && hairiState.attackCooldown <= 0) {
+                // Hairi strikes Key!
+                keyBoss.hp = Math.max(0, keyBoss.hp - 35);
+                keyBoss.hitFlash = 16;
+                keyBoss.shake = 12;
+                sound.playHitImpact();
+                screenShakeRef.current = 6;
+                damageNumbersRef.current.push({
+                  x: keyBoss.x,
+                  y: keyBoss.y - 110,
+                  text: "💥 HAIRI ALLY STRIKE! -35",
+                  color: "#38bdf8",
+                  life: 38,
+                  maxLife: 38,
+                  vy: -1.6,
+                  isCrit: true,
+                });
+                for (let p = 0; p < 12; p++) {
+                  combatParticlesRef.current.push({
+                    x: keyBoss.x + (Math.random() - 0.5) * 20,
+                    y: keyBoss.y - 45 + (Math.random() - 0.5) * 20,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    color: p % 2 === 0 ? "#38bdf8" : "#fbbf24",
+                    size: 3.5,
+                    life: 20,
+                    maxLife: 20,
+                  });
+                }
+                hairiState.attackCooldown = 50;
+              }
+              if (hairiState.animFrame >= 8) hairiState.animFrame = 0;
+            }
+          }
+        } else if (monster.isActive && !monster.isDefeated && monster.hp > 0) {
+          // Priority 2: Charge and attack monster!
           const mDist = Math.abs(monster.x - hairiState.x);
           hairiState.facingLeft = monster.x < hairiState.x;
 
@@ -1575,23 +2057,26 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
         } else {
-          // Priority 2: Follow Dani & Jihan peacefully
-          const pDist = Math.abs(active.x - hairiState.x);
-          hairiState.facingLeft = active.x < hairiState.x;
+          // Priority 3: Follow Dani & Jihan peacefully (Comfortable distance ~65px)
+          const targetDist = active.facingLeft ? 65 : -65;
+          const targetX = active.x + targetDist;
+          const compDiff = targetX - hairiState.x;
+          hairiState.facingLeft = compDiff < 0;
 
-          if (pDist > 220) {
+          if (Math.abs(compDiff) > 180) {
             hairiState.state = "run";
-            hairiState.vx = (active.x < hairiState.x ? -3.2 : 3.2);
+            hairiState.vx = Math.sign(compDiff) * 3.2;
             hairiState.x += hairiState.vx;
             if (hairiState.animTimer % 4 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
-          } else if (pDist > 85) {
+          } else if (Math.abs(compDiff) > 30) {
             hairiState.state = "walk";
-            hairiState.vx = (active.x < hairiState.x ? -1.6 : 1.6);
+            hairiState.vx = Math.sign(compDiff) * 1.6;
             hairiState.x += hairiState.vx;
             if (hairiState.animTimer % 5 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
           } else {
             hairiState.state = "idle";
             hairiState.vx = 0;
+            hairiState.facingLeft = active.facingLeft;
             if (hairiState.animTimer % 7 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
           }
         }
@@ -1965,6 +2450,226 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       });
       cyberProjectilesRef.current = cyberProjectilesRef.current.filter((p) => p.life > 0 && p.x > 0 && p.x < 3000);
 
+      // 2.95 Key AI & Flying Trash Projectiles (Bekasi Bantar Gebang Boss)
+      const keyState = keyRef.current;
+      const keyCombatState = battleKeyRef.current;
+
+      keyState.animTimer++;
+      if (keyState.hitFlash > 0) keyState.hitFlash--;
+      if (keyState.shake > 0) keyState.shake *= 0.85;
+      if (keyState.teleportTimer > 0) keyState.teleportTimer--;
+      if (keyState.teleportCooldown > 0) keyState.teleportCooldown--;
+      if (keyState.attackCooldown > 0) keyState.attackCooldown--;
+
+      if (keyCombatState.inCombat && !keyCombatState.isDefeated && keyState.hp > 0) {
+        keyState.facingLeft = active.x < keyState.x;
+        const dist = Math.abs(active.x - keyState.x);
+
+        // OP Teleport Mechanic: If player or companion gets too close (< 120px) and teleport is ready
+        if (dist < 120 && keyState.teleportCooldown <= 0) {
+          keyState.teleportCooldown = 90;
+          keyState.teleportTimer = 16;
+          sound.playTeleportWhoosh();
+          screenShakeRef.current = 6;
+
+          // Vanish particles at old spot
+          for (let p = 0; p < 16; p++) {
+            combatParticlesRef.current.push({
+              x: keyState.x + (Math.random() - 0.5) * 20,
+              y: GROUND_Y - 40 + (Math.random() - 0.5) * 35,
+              vx: (Math.random() - 0.5) * 5,
+              vy: (Math.random() - 0.5) * 5,
+              color: p % 2 === 0 ? "#a855f7" : "#10b981",
+              size: 3.5,
+              life: 18,
+              maxLife: 18,
+            });
+          }
+
+          // Teleport to opposite side or far distance
+          const teleportSide = active.facingLeft ? -1 : 1;
+          const jumpDist = 260 + Math.random() * 100;
+          keyState.x = Math.max(250, Math.min(2750, active.x + teleportSide * jumpDist));
+          keyState.facingLeft = active.x < keyState.x;
+
+          // Arrival particles
+          for (let p = 0; p < 16; p++) {
+            combatParticlesRef.current.push({
+              x: keyState.x + (Math.random() - 0.5) * 20,
+              y: GROUND_Y - 40 + (Math.random() - 0.5) * 35,
+              vx: (Math.random() - 0.5) * 5,
+              vy: (Math.random() - 0.5) * 5,
+              color: p % 2 === 0 ? "#c084fc" : "#34d399",
+              size: 4,
+              life: 18,
+              maxLife: 18,
+            });
+          }
+
+          damageNumbersRef.current.push({
+            x: keyState.x,
+            y: keyState.y - 85,
+            text: "🌀 TELEPORT EVASION!",
+            color: "#c084fc",
+            life: 35,
+            maxLife: 35,
+            vy: -1.4,
+            isCrit: true,
+          });
+        }
+
+        // Long-Range Trash Magic Barrage
+        if (keyState.attackCooldown <= 0) {
+          keyState.state = "combat";
+          if (keyState.animTimer % 4 === 0) {
+            keyState.animFrame++;
+            if (keyState.animFrame === 4) {
+              // FIRE TRASH BARRAGE!
+              sound.playTrashThrow();
+              screenShakeRef.current = 5;
+
+              // Fire 3 flying trash items: plastic bag, bottle, cardboard box
+              const trashTypes: Array<"bag" | "bottle" | "box"> = ["bag", "bottle", "box"];
+              trashTypes.forEach((type, idx) => {
+                const speed = (keyState.facingLeft ? -5.5 : 5.5) * (0.85 + idx * 0.18);
+                trashProjectilesRef.current.push({
+                  x: keyState.x + (keyState.facingLeft ? -25 : 25),
+                  y: GROUND_Y - 45 - idx * 8,
+                  vx: speed,
+                  vy: -1.8 + idx * 1.0,
+                  type,
+                  rot: Math.random() * Math.PI * 2,
+                  rotSpeed: (Math.random() - 0.5) * 0.35,
+                  life: 75,
+                  maxLife: 75,
+                  damage: 30 + idx * 8,
+                });
+              });
+
+              for (let p = 0; p < 12; p++) {
+                combatParticlesRef.current.push({
+                  x: keyState.x + (keyState.facingLeft ? -20 : 20),
+                  y: GROUND_Y - 45,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: -Math.random() * 3,
+                  color: p % 2 === 0 ? "#10b981" : "#a855f7",
+                  size: 3,
+                  life: 16,
+                  maxLife: 16,
+                });
+              }
+            }
+            if (keyState.animFrame >= 8) {
+              keyState.animFrame = 0;
+              keyState.attackCooldown = 75;
+              keyState.state = "idle";
+            }
+          }
+        } else {
+          // Tactical Pacing & Spacing (stays at 200..350px distance)
+          if (dist < 180) {
+            // Back away / evade
+            keyState.state = "run";
+            keyState.vx = keyState.facingLeft ? 2.5 : -2.5;
+            keyState.x += keyState.vx;
+            if (keyState.animTimer % 4 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          } else if (dist > 450) {
+            // Approach to attack range
+            keyState.state = "walk";
+            keyState.vx = keyState.facingLeft ? -1.8 : 1.8;
+            keyState.x += keyState.vx;
+            if (keyState.animTimer % 5 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          } else {
+            keyState.state = "idle";
+            keyState.vx = 0;
+            if (keyState.animTimer % 6 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+          }
+        }
+        keyState.x = Math.max(200, Math.min(2800, keyState.x));
+      } else if (keyState.isFriend) {
+        // Friendly companion state in Bekasi or wherever squad travels
+        const pDist = Math.abs(active.x - keyState.x);
+        keyState.facingLeft = active.x < keyState.x;
+
+        if (pDist > 250) {
+          keyState.state = "run";
+          keyState.vx = active.x < keyState.x ? -3.2 : 3.2;
+          keyState.x += keyState.vx;
+          if (keyState.animTimer % 4 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+        } else if (pDist > 110) {
+          keyState.state = "walk";
+          keyState.vx = active.x < keyState.x ? -1.6 : 1.6;
+          keyState.x += keyState.vx;
+          if (keyState.animTimer % 5 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+        } else {
+          keyState.state = "idle";
+          keyState.vx = 0;
+          if (keyState.animTimer % 7 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+        }
+      } else {
+        // Idle waiting for challenge
+        keyState.state = "idle";
+        keyState.vx = 0;
+        if (keyState.animTimer % 7 === 0) keyState.animFrame = (keyState.animFrame + 1) % 8;
+      }
+
+      // Update Flying Trash Projectiles
+      trashProjectilesRef.current.forEach((proj) => {
+        proj.x += proj.vx;
+        proj.y += proj.vy;
+        proj.vy += 0.06; // slight gravity arc
+        proj.rot += proj.rotSpeed;
+        proj.life--;
+
+        // Toxic smelly debris trail
+        if (proj.life % 2 === 0) {
+          combatParticlesRef.current.push({
+            x: proj.x,
+            y: proj.y,
+            vx: -proj.vx * 0.1,
+            vy: (Math.random() - 0.5) * 1.2,
+            color: Math.random() < 0.5 ? "#10b981" : "#a855f7",
+            size: 2.8,
+            life: 14,
+            maxLife: 14,
+          });
+        }
+
+        // Collision with Active Player
+        if (Math.abs(proj.x - active.x) < 32 && Math.abs(proj.y - (active.y - 35)) < 42 && proj.life > 0) {
+          proj.life = 0;
+          sound.playHitImpact();
+          screenShakeRef.current = 7;
+          active.vx = proj.vx > 0 ? 4.5 : -4.5;
+          active.x += active.vx;
+
+          damageNumbersRef.current.push({
+            x: active.x,
+            y: active.y - 80,
+            text: `🗑️ SAMPAH BANTAR GEBANG! -${proj.damage}`,
+            color: "#10b981",
+            life: 36,
+            maxLife: 36,
+            vy: -1.6,
+            isCrit: true,
+          });
+
+          for (let p = 0; p < 18; p++) {
+            combatParticlesRef.current.push({
+              x: active.x + (Math.random() - 0.5) * 20,
+              y: active.y - 40 + (Math.random() - 0.5) * 20,
+              vx: (Math.random() - 0.5) * 6,
+              vy: (Math.random() - 0.5) * 6,
+              color: p % 3 === 0 ? "#10b981" : p % 3 === 1 ? "#a855f7" : "#78716c",
+              size: 3.5,
+              life: 20,
+              maxLife: 20,
+            });
+          }
+        }
+      });
+      trashProjectilesRef.current = trashProjectilesRef.current.filter((p) => p.life > 0 && p.y < GROUND_Y + 20 && p.x > 0 && p.x < 3000);
+
       // 3. Update Active Character Physics
       if (!isDialogueOpen && !attack.isAttacking) {
         const speed = isRun ? 4.8 : 2.6;
@@ -2091,6 +2796,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         hairiSuperCombat: hairiSuperCombatImg,
         hairiV3Master: hairiV3MasterImg,
         hairiV3Combat: hairiV3CombatImg,
+        krlStation: krlStationImg,
+        envBekasi: envBekasiImg,
+        keyMaster: keyMasterImg,
+        keyCombat: keyCombatImg,
       } = imagesRef.current;
 
       // Screen shake calculation
@@ -2380,7 +3089,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (monster.isDefeated) {
           drawPortal(ctx, 2240 - camX, GROUND_Y, globalTimer, "🌀 PORTAL PERKAMPUNGAN");
         }
-      } else {
+      } else if (currentZone === "perkampungan") {
         // ==============================================================
         // ZONE 2: PERKAMPUNGAN MENARA SINYAL (JARINGAN TRANSMISI KABEL)
         // ==============================================================
@@ -2621,10 +3330,151 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Return Portal to Pantai Losari at x = 180
         drawPortal(ctx, 180 - camX, GROUND_Y, globalTimer, "🌀 PORTAL PANTAI LOSARI");
+
+        // KRL Commuter Line Station at x = 2780 (Stasiun Perkampungan Menara)
+        if (krlStationImg) {
+          const stationX = 2780;
+          const krlFrame = Math.floor(globalTimer / 8) % 8;
+          const krlFrameW = 320;
+          const krlFrameH = 240;
+          const krlSx = krlFrame * krlFrameW;
+          const krlDestW = 280;
+          const krlDestH = 210;
+          const krlDrawX = stationX - camX - krlDestW / 2;
+          const krlDrawY = GROUND_Y + 16 - krlDestH;
+
+          ctx.save();
+          // Animated KRL Train & Station Platform
+          ctx.drawImage(krlStationImg, krlSx, 0, krlFrameW, krlFrameH, krlDrawX, krlDrawY, krlDestW, krlDestH);
+
+          // Platform Signboard
+          ctx.fillStyle = "#1e3a8a";
+          ctx.fillRect(krlDrawX + krlDestW / 2 - 80, krlDrawY - 18, 160, 20);
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(krlDrawX + krlDestW / 2 - 80, krlDrawY - 18, 160, 20);
+          ctx.font = "bold 9px 'Courier New', monospace";
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.fillText("🚉 STASIUN KAMPUNG MENARA", krlDrawX + krlDestW / 2, krlDrawY - 8);
+          ctx.font = "bold 8px 'Courier New', monospace";
+          ctx.fillStyle = "#facc15";
+          ctx.fillText("JALUR KRL COMMUTER LINE -> BEKASI", krlDrawX + krlDestW / 2, krlDrawY + 0);
+          ctx.restore();
+        }
+      } else if (currentZone === "bekasi") {
+        // ==============================================================
+        // ZONE 3: KOTA BEKASI & TPST BANTAR GEBANG (GUNUNG SAMPAH OP)
+        // ==============================================================
+
+        // Layer 1: Scorching Tropical Sky Gradient (Hot haze & smog)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+        skyGrad.addColorStop(0, "#ea580c"); // deep fiery amber
+        skyGrad.addColorStop(0.35, "#f97316"); // blazing orange
+        skyGrad.addColorStop(0.65, "#fdba74"); // hot pale dust
+        skyGrad.addColorStop(1, "#fef3c7"); // desert heat haze
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Layer 1.5: Blazing Scorching Sun with Radial Glare
+        const sunX = 640 - (camX * 0.05);
+        const sunY = 75;
+        ctx.save();
+        const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 110);
+        sunGlow.addColorStop(0, "rgba(255, 255, 255, 1)");
+        sunGlow.addColorStop(0.2, "rgba(254, 240, 138, 0.95)");
+        sunGlow.addColorStop(0.5, "rgba(251, 146, 60, 0.4)");
+        sunGlow.addColorStop(1, "rgba(234, 88, 12, 0)");
+        ctx.fillStyle = sunGlow;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 110, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Layer 2: Parallax Mountain of Trash & Landfill Backdrop (envBekasiImg)
+        if (envBekasiImg) {
+          const bgW = 1376;
+          const bgH = 540;
+          const bgOffX = -(camX * 0.45) % bgW;
+          ctx.drawImage(envBekasiImg, bgOffX - bgW, 0, bgW, bgH);
+          ctx.drawImage(envBekasiImg, bgOffX, 0, bgW, bgH);
+          ctx.drawImage(envBekasiImg, bgOffX + bgW, 0, bgW, bgH);
+          ctx.drawImage(envBekasiImg, bgOffX + bgW * 2, 0, bgW, bgH);
+        }
+
+        // Layer 3: Atmospheric Heatwave Shimmer Overlay & Rising Mirage Waves
+        ctx.save();
+        ctx.fillStyle = "rgba(245, 158, 11, 0.12)";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // Rising Heat Mirage Waves
+        ctx.strokeStyle = "rgba(254, 215, 170, 0.22)";
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 5; i++) {
+          const waveY = GROUND_Y - 15 - i * 16;
+          ctx.beginPath();
+          for (let wx = 0; wx < CANVAS_W; wx += 25) {
+            const wy = waveY + Math.sin((wx + globalTimer * 2.5 + i * 35) * 0.035) * 3.5;
+            if (wx === 0) ctx.moveTo(wx, wy);
+            else ctx.lineTo(wx, wy);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // Layer 4: Asphalt Road & Landfill Ground
+        ctx.save();
+        ctx.fillStyle = "#3f3f46"; // dark hot asphalt
+        ctx.fillRect(0, GROUND_Y + 16, CANVAS_W, CANVAS_H - (GROUND_Y + 16));
+
+        // Yellow Road Markings
+        const roadOffX = -(camX % 60);
+        ctx.fillStyle = "#eab308";
+        for (let rx = roadOffX - 60; rx < CANVAS_W + 60; rx += 60) {
+          ctx.fillRect(rx, GROUND_Y + 45, 35, 4);
+        }
+
+        // Curb Stone Edge
+        ctx.fillStyle = "#71717a";
+        ctx.fillRect(0, GROUND_Y + 16, CANVAS_W, 3);
+        ctx.fillStyle = "#a1a1aa";
+        ctx.fillRect(0, GROUND_Y + 19, CANVAS_W, 1);
+        ctx.restore();
+
+        // Layer 4.5: KRL Commuter Line Return Platform at x = 180 (Arrival station in Bekasi)
+        if (krlStationImg) {
+          const stationX = 180;
+          const krlFrame = Math.floor(globalTimer / 8) % 8;
+          const krlFrameW = 320;
+          const krlFrameH = 240;
+          const krlSx = krlFrame * krlFrameW;
+          const krlDestW = 280;
+          const krlDestH = 210;
+          const krlDrawX = stationX - camX - krlDestW / 2;
+          const krlDrawY = GROUND_Y + 16 - krlDestH;
+
+          ctx.save();
+          ctx.drawImage(krlStationImg, krlSx, 0, krlFrameW, krlFrameH, krlDrawX, krlDrawY, krlDestW, krlDestH);
+
+          // Station Signboard
+          ctx.fillStyle = "#1e3a8a";
+          ctx.fillRect(krlDrawX + krlDestW / 2 - 85, krlDrawY - 18, 170, 20);
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(krlDrawX + krlDestW / 2 - 85, krlDrawY - 18, 170, 20);
+          ctx.font = "bold 9px 'Courier New', monospace";
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.fillText("🚉 STASIUN BEKASI BARAT", krlDrawX + krlDestW / 2, krlDrawY - 8);
+          ctx.font = "bold 8px 'Courier New', monospace";
+          ctx.fillStyle = "#facc15";
+          ctx.fillText("PINTU KELUAR TPST BANTAR GEBANG", krlDrawX + krlDestW / 2, krlDrawY + 0);
+          ctx.restore();
+        }
       }
 
-      // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone
-      if (adifMasterImg && currentZone === "perkampungan") {
+      // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone or Befriended Companion
+      if (adifMasterImg && (currentZone === "perkampungan" || adifState.isFriend)) {
         const destW = 104;
         const destH = 138;
         const frameW = 180;
@@ -2770,6 +3620,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.fillStyle = "#fef3c7";
             ctx.textAlign = "center";
             ctx.fillText("ADIF", aScreenX, drawY - 16);
+            ctx.restore();
+          } else if (adifState.isFriend) {
+            ctx.save();
+            ctx.font = "bold 9px 'Courier New', monospace";
+            ctx.fillStyle = "#fbbf24";
+            ctx.textAlign = "center";
+            ctx.fillText("ADIF 🤠 REKAN", aScreenX, drawY - 14);
             ctx.restore();
           }
         }
@@ -2971,6 +3828,147 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.restore();
         }
       }
+
+      // Layer 5.65: Key (Sang Mage Penguasa Sampah Bantar Gebang)
+      if (keyMasterImg && (currentZone === "bekasi" || keyState.isFriend)) {
+        const destW = 104;
+        const destH = 138;
+        const frameW = 180;
+        const frameH = 240;
+
+        let activeSheet = keyMasterImg;
+        let kRow = 0;
+        let kCol = keyState.animFrame % 8;
+
+        if (keyCombatState.inCombat && !keyCombatState.isDefeated) {
+          if (keyState.hitFlash > 6) {
+            activeSheet = keyCombatImg || keyMasterImg;
+            kRow = 2; // Hurt Stagger
+          } else if (keyState.state === "combat") {
+            activeSheet = keyCombatImg || keyMasterImg;
+            kRow = 0; // Combat Trash Barrage
+          } else if (keyState.state === "run") {
+            activeSheet = keyMasterImg;
+            kRow = 2; // Run
+          } else if (keyState.state === "walk") {
+            activeSheet = keyMasterImg;
+            kRow = 1; // Walk
+          } else {
+            activeSheet = keyMasterImg;
+            kRow = 0; // Idle
+          }
+        } else if (keyState.isFriend) {
+          if (keyState.state === "run") {
+            activeSheet = keyMasterImg;
+            kRow = 2;
+          } else if (keyState.state === "walk") {
+            activeSheet = keyMasterImg;
+            kRow = 1;
+          } else {
+            activeSheet = keyMasterImg;
+            kRow = 0;
+          }
+        } else if (keyCombatState.isDefeated) {
+          activeSheet = keyCombatImg || keyMasterImg;
+          kRow = 3; // Friendly / Defeated Stance
+        } else {
+          activeSheet = keyMasterImg;
+          kRow = 0;
+        }
+
+        const sx = kCol * frameW;
+        const sy = kRow * frameH;
+        const drawY = keyState.y + 18 - destH * (230 / 240);
+        const kScreenX = keyState.x - camX + (keyState.shake > 0 ? (Math.random() - 0.5) * keyState.shake : 0);
+
+        ctx.save();
+        // Teleport ghosting aura when teleports
+        if (keyState.teleportTimer > 0) {
+          ctx.globalAlpha = 0.4 + 0.6 * (1 - keyState.teleportTimer / 16);
+          ctx.shadowColor = "#c084fc";
+          ctx.shadowBlur = 18;
+        }
+
+        // Ground shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.beginPath();
+        ctx.ellipse(kScreenX, keyState.y + 16, 22, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (keyState.hitFlash > 0 && Math.floor(keyState.hitFlash / 2) % 2 === 0) {
+          ctx.filter = "brightness(2.2)";
+        }
+
+        if (keyState.facingLeft) {
+          ctx.translate(kScreenX, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(activeSheet, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+        } else {
+          ctx.drawImage(activeSheet, sx, sy, frameW, frameH, kScreenX - destW / 2, drawY, destW, destH);
+        }
+        ctx.restore();
+
+        // Mini HP Bar in Combat
+        if (keyCombatState.inCombat && !keyCombatState.isDefeated && keyState.hp > 0) {
+          const barW = 64;
+          const barH = 5;
+          const hpRatio = Math.max(0, keyState.hp / keyState.maxHp);
+          ctx.save();
+          ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+          ctx.fillRect(kScreenX - barW / 2 - 1, drawY - 14, barW + 2, barH + 2);
+          ctx.fillStyle = "#a855f7";
+          ctx.fillRect(kScreenX - barW / 2, drawY - 13, barW * hpRatio, barH);
+          ctx.font = "bold 8px 'Courier New', monospace";
+          ctx.fillStyle = "#f3e8ff";
+          ctx.textAlign = "center";
+          ctx.fillText("KEY • MAGE", kScreenX, drawY - 16);
+          ctx.restore();
+        } else if (keyState.isFriend) {
+          ctx.save();
+          ctx.font = "bold 9px 'Courier New', monospace";
+          ctx.fillStyle = "#c084fc";
+          ctx.textAlign = "center";
+          ctx.fillText("KEY 🤝 REKAN", kScreenX, drawY - 14);
+          ctx.restore();
+        }
+      }
+
+      // Layer 5.66: Flying Trash Projectiles (Bantar Gebang Projectiles)
+      trashProjectilesRef.current.forEach((proj) => {
+        const pScreenX = proj.x - camX;
+        ctx.save();
+        ctx.translate(pScreenX, proj.y);
+        ctx.rotate(proj.rot);
+
+        if (proj.type === "bag") {
+          // Crumpled black & toxic green garbage bag
+          ctx.fillStyle = "#1e293b";
+          ctx.beginPath();
+          ctx.arc(0, 0, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#22c55e";
+          ctx.fillRect(-4, -6, 8, 4);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(-2, -9, 4, 3);
+        } else if (proj.type === "bottle") {
+          // Plastic soda bottle with blue cap
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillRect(-4, -9, 8, 16);
+          ctx.fillStyle = "#0284c7";
+          ctx.fillRect(-3, -12, 6, 3);
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(-4, -3, 8, 5); // label
+        } else {
+          // Cardboard delivery box
+          ctx.fillStyle = "#b45309";
+          ctx.fillRect(-10, -8, 20, 16);
+          ctx.fillStyle = "#d97706";
+          ctx.fillRect(-8, -6, 16, 12);
+          ctx.fillStyle = "#78350f";
+          ctx.fillRect(-10, -1, 20, 2); // tape
+        }
+        ctx.restore();
+      });
 
       // Layer 5.7: Boss Monster (Batara Siluman Panci Purba) - Losari Zone Only
       if (currentZone === "losari" && monster.isActive && (!monster.isEmerging || monster.isDefeated) && monsterMasterImg) {
@@ -3430,6 +4428,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 hairiState.vx = 0;
                 hairiState.facingLeft = false;
               }
+              if (adifState.isFriend) {
+                adifState.x = 200;
+                adifState.vx = 0;
+                adifState.facingLeft = false;
+                adifState.y = GROUND_Y;
+              }
               cameraXRef.current = 0;
               zoneBannerRef.current = {
                 title: "PERKAMPUNGAN MENARA SINYAL",
@@ -3464,6 +4468,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 hairiState.vx = 0;
                 hairiState.facingLeft = true;
               }
+              if (adifState.isFriend) {
+                adifState.x = 2100;
+                adifState.vx = 0;
+                adifState.facingLeft = true;
+                adifState.y = GROUND_Y;
+              }
               cameraXRef.current = 1500;
               zoneBannerRef.current = {
                 title: "PANTAI LOSARI, MAKASSAR",
@@ -3480,6 +4490,34 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 vy: -1.2,
                 isCrit: true,
               });
+              return;
+            }
+
+            if (nearestPromptObj.id === "krl_station_to_bekasi") {
+              sound.playTrainChime();
+              onTriggerDialogue("krl_station_1");
+              return;
+            }
+
+            if (nearestPromptObj.id === "krl_station_to_kampung") {
+              sound.playTrainChime();
+              teleportFlashRef.current = 24;
+              zoneRef.current = "perkampungan";
+              setCurrentZone("perkampungan");
+              active.x = 2700;
+              active.vx = 0;
+              companion.x = 2640;
+              companion.vx = 0;
+              hairiState.x = 2580;
+              hairiState.vx = 0;
+              adifState.x = 2520;
+              adifState.vx = 0;
+              cameraXRef.current = 2200;
+              zoneBannerRef.current = {
+                title: "PERKAMPUNGAN MENARA SINYAL",
+                subtitle: "STASIUN KRL & MENARA TRANSMISI",
+                timer: 180,
+              };
               return;
             }
 
@@ -3694,6 +4732,48 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           : `🛡️ HAIRI (LV.1) ${hairiState.hp}/${hairiState.maxHp}`;
         ctx.fillText(hairiLabel, rightX + halfW / 2, barY + barH / 2 + 3);
 
+        ctx.restore();
+      }
+
+      // Layer 7.66: Key Boss Bar HUD (Mage Penguasa Sampah Bantar Gebang) - Bekasi Zone Only
+      if (currentZone === "bekasi" && keyCombatState.inCombat && !keyCombatState.isDefeated) {
+        ctx.save();
+        const barW = 340;
+        const barH = 16;
+        const centerX = CANVAS_W / 2;
+        const barY = 24;
+
+        // Banner Frame
+        ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
+        ctx.strokeStyle = "#a855f7";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(centerX - barW / 2 - 14, barY - 16, barW + 28, barH + 34, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Title
+        ctx.font = "bold 11px 'Courier New', monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#e9d5ff";
+        ctx.fillText("⚔️ PERTARUNGAN PENDEKAR BEKASI: KEY • MAGE BANTAR GEBANG ⚔️", centerX, barY - 4);
+
+        // Key HP Bar
+        const keyRatio = Math.max(0, keyState.hp / keyState.maxHp);
+        ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
+        ctx.fillRect(centerX - barW / 2, barY, barW, barH);
+
+        const keyGrad = ctx.createLinearGradient(centerX - barW / 2, barY, centerX + barW / 2, barY);
+        keyGrad.addColorStop(0, "#9333ea");
+        keyGrad.addColorStop(0.5, "#a855f7");
+        keyGrad.addColorStop(1, "#10b981");
+        ctx.fillStyle = keyGrad;
+        ctx.fillRect(centerX - barW / 2, barY, barW * keyRatio, barH);
+
+        ctx.font = "bold 9px 'Courier New', monospace";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText(`💜 KEY • MAGE BANTAR GEBANG [LV.BOSS OP] ${keyState.hp}/${keyState.maxHp} HP`, centerX, barY + barH / 2 + 3);
         ctx.restore();
       }
 

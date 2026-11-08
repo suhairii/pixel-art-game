@@ -429,6 +429,73 @@ class SoundSystem {
     } catch {}
   }
 
+  // Indonesian KRL Door Chime / Warning Bell (2-tone melodious chime C5 -> G4 -> E5)
+  public playTrainChime() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const tones = [523.25, 392.0, 659.25];
+      tones.forEach((freq, idx) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+        gain.gain.setValueAtTime(0.18, now + idx * 0.14);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.32);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.14);
+        osc.stop(now + idx * 0.14 + 0.32);
+      });
+    } catch {}
+  }
+
+  // Mystic Teleport Phase Shift Whoosh
+  public playTeleportWhoosh() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(1400, now + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.22);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch {}
+  }
+
+  // Bantar Gebang Trash Magic Throw / Junk Barrage Swirl
+  public playTrashThrow() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(550, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.24);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.24);
+    } catch {}
+  }
+
   // Cyber BGM: Driving 8-bit Cyberpunk / IT Mage Theme (Square Wave Arpeggio + Bitcrush Bass)
   private cyberBgmTimer: NodeJS.Timeout | null = null;
   private cyberBgmStep: number = 0;
