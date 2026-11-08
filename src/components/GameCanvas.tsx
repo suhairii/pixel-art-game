@@ -1937,10 +1937,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Layer 5.63: Hairi (Pemuda Kaos Abu-abu)
       if (hairiMasterImg) {
-        const destW = 92;
-        const destH = 118;
-        const frameW = 172;
-        const frameH = 192;
+        const destW = 104;
+        const destH = 138;
+        const frameW = 180;
+        const frameH = 240;
 
         let activeSheet = hairiMasterImg;
         let hRow = 0;
@@ -1972,7 +1972,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         const sx = hCol * frameW;
         const sy = hRow * frameH;
-        const drawY = hairiState.y + 18 - destH * (190 / 192);
+        const drawY = hairiState.y + 18 - destH * (229 / 240);
         const hScreenX = hairiState.x - camX + (hairiState.shake > 0 ? (Math.random() - 0.5) * hairiState.shake : 0);
 
         ctx.save();
