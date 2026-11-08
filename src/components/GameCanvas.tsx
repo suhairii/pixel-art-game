@@ -157,6 +157,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterMaster: HTMLImageElement | null;
     towerListrik: HTMLImageElement | null;
     adifMaster: HTMLImageElement | null;
+    adifCombat: HTMLImageElement | null;
     hairiMaster: HTMLImageElement | null;
   }>({
     bg: null,
@@ -174,6 +175,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterMaster: null,
     towerListrik: null,
     adifMaster: null,
+    adifCombat: null,
     hairiMaster: null,
   });
 
@@ -185,7 +187,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     y: number;
     vx: number;
     facingLeft: boolean;
-    state: "climb" | "rappel" | "idle" | "run" | "combat" | "defeated";
+    state: "climb" | "rappel" | "idle" | "walk" | "run" | "combat" | "defeated";
+    combatType?: "stance" | "whip" | "punch";
     animFrame: number;
     animTimer: number;
     hp: number;
@@ -207,6 +210,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     vx: 0,
     facingLeft: true,
     state: "climb",
+    combatType: "stance",
     animFrame: 0,
     animTimer: 0,
     hp: 300,
@@ -433,9 +437,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/monster_master_sheet.png"),
       loadImage("/tower_listrik.png"),
       loadImage("/adif_master_sheet.png"),
+      loadImage("/adif_combat_sheet.png"),
       loadImage("/hairi_master_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, hairiMaster]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, hairiMaster };
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster };
     });
   }, []);
 
@@ -1043,6 +1048,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (dist >= 75 && dist <= 180 && adifState.attackCooldown <= 0) {
             // Mid-Range Cowboy Lasso Whip Attack
             adifState.state = "combat";
+            adifState.combatType = "whip";
             if (adifState.animTimer % 4 === 0) {
               adifState.animFrame++;
               if (adifState.animFrame === 4) {
@@ -1084,12 +1090,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               }
               if (adifState.animFrame >= 8) {
                 adifState.animFrame = 0;
+                adifState.combatType = "stance";
                 adifState.attackCooldown = 75;
               }
             }
           } else if (dist < 75 && adifState.attackCooldown <= 0) {
             // Close-Range Knuckle Rush Combo
             adifState.state = "combat";
+            adifState.combatType = "punch";
             if (adifState.animTimer % 4 === 0) {
               adifState.animFrame++;
               if (adifState.animFrame === 5) {
@@ -1127,16 +1135,25 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 adifState.vx = adifState.facingLeft ? 4.2 : -4.2;
                 adifState.evasionTimer = 10;
                 adifState.animFrame = 0;
+                adifState.combatType = "stance";
                 adifState.attackCooldown = 65;
               }
             }
-          } else if (dist > 180 && dist < 650) {
+          } else if (dist > 180 && dist <= 330) {
+            adifState.state = "walk";
+            adifState.combatType = "stance";
+            adifState.vx = adifState.facingLeft ? -1.3 : 1.3;
+            adifState.x += adifState.vx;
+            if (adifState.animTimer % 5 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
+          } else if (dist > 330 && dist < 650) {
             adifState.state = "run";
-            adifState.vx = adifState.facingLeft ? -1.6 : 1.6;
+            adifState.combatType = "stance";
+            adifState.vx = adifState.facingLeft ? -2.2 : 2.2;
             adifState.x += adifState.vx;
             if (adifState.animTimer % 4 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
           } else {
             adifState.state = "idle";
+            adifState.combatType = "stance";
             if (adifState.animTimer % 6 === 0) adifState.animFrame = (adifState.animFrame + 1) % 8;
           }
 
@@ -1459,6 +1476,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         monsterMaster: monsterMasterImg,
         towerListrik: towerListrikImg,
         adifMaster: adifMasterImg,
+        adifCombat: adifCombatImg,
         hairiMaster: hairiMasterImg,
       } = imagesRef.current;
 
@@ -1775,8 +1793,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.stroke();
             ctx.restore();
 
-            // Adif rappelling down on rope (Row 3)
-            const sx = (adifState.animFrame % 8) * frameW;
+            // Adif rappelling down on rope (Row 3, frames 1..7)
+            const rappelFrame = 1 + (adifState.animFrame % 7);
+            const sx = rappelFrame * frameW;
             const sy = 3 * frameH;
             const drawX = towerScreenX - destW / 2 - 5;
             const drawY = adifState.y - destH * (219 / 224);
@@ -1789,18 +1808,38 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         } else {
           // Adif on Ground
+          let activeSheet = adifMasterImg;
           let aRow = 0;
+          let aCol = adifState.animFrame % 8;
+
           if (duelState.inCombat && !duelState.isDefeated) {
-            aRow = 2; // Combat with lasso & punch
+            if (adifCombatImg) {
+              activeSheet = adifCombatImg;
+              if (adifState.combatType === "whip") {
+                aRow = 1; // Whip attack
+              } else if (adifState.combatType === "punch") {
+                aRow = 2; // Punch rush
+              } else {
+                aRow = 0; // Overhead lasso spin & stance
+              }
+            } else {
+              aRow = 2;
+            }
           } else if (adifState.state === "run") {
-            aRow = 1; // Run
+            aRow = 2; // Run
+          } else if (adifState.state === "walk") {
+            aRow = 1; // Walk
           } else if (adifState.state === "defeated") {
-            aRow = 3; // Friendly salute
+            if (adifCombatImg) {
+              activeSheet = adifCombatImg;
+              aRow = 3; // Friendly dismount / salute
+            } else {
+              aRow = 0;
+            }
           } else {
-            aRow = 0; // Idle (no weapons)
+            aRow = 0; // Idle
           }
 
-          const aCol = adifState.animFrame % 8;
           const sx = aCol * frameW;
           const sy = aRow * frameH;
           const drawY = adifState.y + 18 - destH * (219 / 224);
@@ -1817,8 +1856,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.filter = "brightness(2.2)";
           }
 
-          // Overhead Spinning Lasso Loop (Frames 0-3 in Combat)
-          if (duelState.inCombat && !duelState.isDefeated && aRow === 2 && aCol <= 3) {
+          // Overhead Spinning Lasso Loop (in combat stance)
+          if (duelState.inCombat && !duelState.isDefeated && aRow === 0 && activeSheet === adifCombatImg) {
             ctx.save();
             ctx.strokeStyle = "#fbbf24";
             ctx.lineWidth = 2.5;
@@ -1833,9 +1872,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (adifState.facingLeft) {
             ctx.translate(aScreenX, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            ctx.drawImage(activeSheet, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
           } else {
-            ctx.drawImage(adifMasterImg, sx, sy, frameW, frameH, aScreenX - destW / 2, drawY, destW, destH);
+            ctx.drawImage(activeSheet, sx, sy, frameW, frameH, aScreenX - destW / 2, drawY, destW, destH);
           }
           ctx.restore();
 
