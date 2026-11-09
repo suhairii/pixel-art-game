@@ -535,6 +535,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanTransWalk: HTMLImageElement | null;
     jihanTransRun: HTMLImageElement | null;
     jihanTransCombat: HTMLImageElement | null;
+    daniIdle: HTMLImageElement | null;
+    daniInteract: HTMLImageElement | null;
+    daniWalk: HTMLImageElement | null;
+    daniRun: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -583,6 +587,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanTransWalk: null,
     jihanTransRun: null,
     jihanTransCombat: null,
+    daniIdle: null,
+    daniInteract: null,
+    daniWalk: null,
+    daniRun: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara vs Stasiun Menara vs Stasiun Bekasi vs Bekasi TPST)
@@ -1237,8 +1245,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/jihan_trans_walk_sheet.png"),
       loadImage("/jihan_trans_run_sheet.png"),
       loadImage("/jihan_trans_combat_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat };
+      loadImage("/dani_idle_sheet.png"),
+      loadImage("/dani_interact_sheet.png"),
+      loadImage("/dani_walk_sheet.png"),
+      loadImage("/dani_run_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat, daniIdle, daniInteract, daniWalk, daniRun]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat, daniIdle, daniInteract, daniWalk, daniRun };
     });
   }, []);
 
@@ -6684,6 +6696,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.drawImage(tImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
             } else {
               ctx.drawImage(tImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+            }
+            ctx.restore();
+            return;
+          }
+        }
+
+        // 0.08 Dedicated 5-Action Sprite Sheet Animation for Dani (Idle, Interact, Walk, Run, Combat)
+        if (charId === "dani" && !isTransforming && !isUltimate && !(isCurrentActive && transformStateRef.current.isActive)) {
+          let daniActionImg: HTMLImageElement | null = null;
+          let frameIdx = 0;
+          const destW = 135;
+          const destH = 135;
+
+          if (isAttacking) {
+            daniActionImg = imagesRef.current.daniCombat;
+            frameIdx = Math.min(7, Math.max(0, attackStateRef.current.frame));
+          } else if (isSpecialEmote) {
+            daniActionImg = imagesRef.current.daniInteract;
+            frameIdx = Math.floor(pos.animTimer / 7) % 8;
+          } else if (isMoving) {
+            if (isRun) {
+              daniActionImg = imagesRef.current.daniRun;
+              frameIdx = Math.floor(pos.walkTimer / 3) % 8;
+            } else {
+              daniActionImg = imagesRef.current.daniWalk;
+              frameIdx = Math.floor(pos.walkTimer / 5) % 8;
+            }
+          } else {
+            daniActionImg = imagesRef.current.daniIdle;
+            frameIdx = Math.floor(pos.animTimer / 8) % 8;
+          }
+
+          if (daniActionImg) {
+            const frameW = 256;
+            const frameH = 256;
+            const sx = frameIdx * frameW;
+            const sy = 0;
+            const footYOffset = destH * (228 / 256);
+            const drawY = pos.y + 18 - footYOffset;
+
+            ctx.save();
+            if (pos.facingLeft) {
+              ctx.translate(screenX, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(daniActionImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            } else {
+              ctx.drawImage(daniActionImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
             }
             ctx.restore();
             return;
