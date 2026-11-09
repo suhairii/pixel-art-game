@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, ArrowRight, Zap, MessageCircle, Users, Sword } from "lucide-react";
+import { ArrowLeft, ArrowRight, Zap, MessageCircle, Users, Sword, Sparkles } from "lucide-react";
 
 interface TouchControlsProps {
-  onInput: (input: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean }) => void;
-  currentInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean };
+  onInput: (input: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean }) => void;
+  currentInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean };
   onSwitchCharacter: () => void;
   activeCharacter: "jihan" | "dani";
 }
@@ -157,7 +157,7 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
           }}
           onMouseUp={() => onInput({ ...currentInput, attack: false })}
           onMouseLeave={() => onInput({ ...currentInput, attack: false })}
-          className={`h-14 px-3.5 sm:h-18 sm:px-6 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1.5 sm:gap-2 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
+          className={`h-14 px-3 sm:h-18 sm:px-5 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1 sm:gap-1.5 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
             currentInput.attack
               ? "bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 scale-95 shadow-[0_0_25px_rgba(244,63,94,0.9)]"
               : "bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 border border-rose-400/40 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
@@ -168,6 +168,43 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
           <Sword className="w-5 h-5 sm:w-6 sm:h-6" />
           <span className="hidden xs:inline">SERANG</span>
           <span className="text-[10px] opacity-75 font-mono">[J]</span>
+        </button>
+
+        {/* Ultimate Skill Button [U / K] */}
+        <button
+          type="button"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            triggerHaptic(40);
+            onInput({ ...currentInput, ultimate: true });
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, ultimate: false });
+          }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, ultimate: false });
+          }}
+          onMouseDown={() => {
+            triggerHaptic(40);
+            onInput({ ...currentInput, ultimate: true });
+          }}
+          onMouseUp={() => onInput({ ...currentInput, ultimate: false })}
+          onMouseLeave={() => onInput({ ...currentInput, ultimate: false })}
+          className={`h-14 px-3 sm:h-18 sm:px-5 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1 sm:gap-1.5 font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
+            currentInput.ultimate
+              ? "bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 scale-95 shadow-[0_0_35px_rgba(250,204,21,1)] text-slate-950 font-black ring-2 ring-white"
+              : isJihan
+              ? "bg-gradient-to-r from-amber-500 via-rose-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white border border-yellow-300/60 shadow-[0_0_20px_rgba(251,191,36,0.4)]"
+              : "bg-gradient-to-r from-emerald-600 via-teal-600 to-amber-500 hover:from-emerald-500 hover:to-amber-400 text-white border border-emerald-300/60 shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+          }`}
+          aria-label="Ultimate [U]"
+          title="Ultimate Skill [U]"
+        >
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse text-yellow-300" />
+          <span className="hidden xs:inline">ULTI</span>
+          <span className="text-[10px] opacity-80 font-mono">[U]</span>
         </button>
 
         {/* Interact / Action Button [E] */}

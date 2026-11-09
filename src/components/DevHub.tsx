@@ -51,6 +51,7 @@ export interface DevActions {
   setSpeedMult: (mult: number) => void;
   triggerDialogue: (dialogueId: string) => void;
   switchActiveChar: () => void;
+  fillUltimate: () => void;
   getDevState: () => DevState;
 }
 
@@ -635,6 +636,15 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                 >
                   <Flame className="w-4 h-4" />
                   <span>1-HIT KILL {devState?.oneHitKill ? "(ON)" : "(OFF)"}</span>
+                </button>
+
+                {/* Instant Max Ultimate */}
+                <button
+                  onClick={() => actions?.fillUltimate()}
+                  className="col-span-2 p-2 rounded-lg font-bold border border-yellow-400/50 bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-orange-500/20 text-yellow-300 hover:from-amber-500/30 hover:to-orange-500/30 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(250,204,21,0.25)] transition-all active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+                  <span>⚡ ISI ULTIMATE 100% READY [U]</span>
                 </button>
               </div>
 

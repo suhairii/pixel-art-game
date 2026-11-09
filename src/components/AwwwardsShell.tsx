@@ -78,12 +78,14 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
     run: boolean;
     interact: boolean;
     attack: boolean;
+    ultimate: boolean;
   }>({
     left: false,
     right: false,
     run: false,
     interact: false,
     attack: false,
+    ultimate: false,
   });
 
   const handleSoundToggle = () => {

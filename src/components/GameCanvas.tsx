@@ -292,7 +292,7 @@ interface GameCanvasProps {
   isDialogueOpen: boolean;
   currentDialogueId?: string | null;
   scanlines: boolean;
-  virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean };
+  virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate?: boolean };
   onRegisterDevActions?: (actions: DevActions) => void;
 }
 
@@ -309,12 +309,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Keyboard input state
-  const keysRef = useRef<{ left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean }>({
+  const keysRef = useRef<{ left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean }>({
     left: false,
     right: false,
     run: false,
     interact: false,
     attack: false,
+    ultimate: false,
   });
 
   // Combat Mode State & Training Dummies
@@ -331,6 +332,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     hasHit: false,
     slashPlayed: false,
   });
+
+  // Ultimate Skill State (Dani & Jihan)
+  const ultimateStateRef = useRef<{
+    isActive: boolean;
+    character: "dani" | "jihan";
+    frame: number;
+    timer: number;
+    cinematicTimer: number;
+    hitCount: number;
+  }>({
+    isActive: false,
+    character: "dani",
+    frame: 0,
+    timer: 0,
+    cinematicTimer: 0,
+    hitCount: 0,
+  });
+  const ultimateChargeRef = useRef<number>(100); // 0 to 100% (defaults to 100 for instant excitement!)
 
   const screenShakeRef = useRef(0);
   const comboRef = useRef({ count: 0, timer: 0 });
@@ -480,6 +499,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterBekasiEmerge: HTMLImageElement | null;
     monsterBekasiWalk: HTMLImageElement | null;
     monsterBekasiAttack: HTMLImageElement | null;
+    daniUltimate: HTMLImageElement | null;
+    jihanUltimate: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -514,6 +535,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterBekasiEmerge: null,
     monsterBekasiWalk: null,
     monsterBekasiAttack: null,
+    daniUltimate: null,
+    jihanUltimate: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara vs Stasiun Menara vs Stasiun Bekasi vs Bekasi TPST)
@@ -1154,8 +1177,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/monster_bekasi_emerge.png"),
       loadImage("/monster_bekasi_walk.png"),
       loadImage("/monster_bekasi_attack.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack };
+      loadImage("/dani_ultimate_sheet.png"),
+      loadImage("/jihan_ultimate_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate };
     });
   }, []);
 
@@ -1178,6 +1203,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (e.key === " " || e.key === "j" || e.key === "J" || e.key === "f" || e.key === "F") {
         keysRef.current.attack = true;
       }
+      if (e.key === "u" || e.key === "U" || e.key === "k" || e.key === "K" || e.key === "r" || e.key === "R") {
+        keysRef.current.ultimate = true;
+      }
       if (e.key === "q" || e.key === "Q") {
         onSwitchCharacter();
         sound.playInteract();
@@ -1199,6 +1227,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       if (e.key === " " || e.key === "j" || e.key === "J" || e.key === "f" || e.key === "F") {
         keysRef.current.attack = false;
+      }
+      if (e.key === "u" || e.key === "U" || e.key === "k" || e.key === "K" || e.key === "r" || e.key === "R") {
+        keysRef.current.ultimate = false;
       }
     };
 
@@ -1690,6 +1721,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       switchActiveChar: () => {
         onSwitchCharacter();
       },
+      fillUltimate: () => {
+        ultimateChargeRef.current = 100;
+        sound.playWhoosh();
+        screenShakeRef.current = 8;
+      },
       getDevState: () => {
         const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
         return {
@@ -1760,7 +1796,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const isRun = keysRef.current.run || virtualInput.run;
       const isInteract = keysRef.current.interact || virtualInput.interact;
       const isAttackInput = keysRef.current.attack || virtualInput.attack;
+      const isUltimateInput = keysRef.current.ultimate || virtualInput.ultimate;
       const attack = attackStateRef.current;
+      const ultimate = ultimateStateRef.current;
 
       // 2. Active & Companion Reference
       const isJihanActive = activeCharacter === "jihan";
@@ -1801,6 +1839,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const dist = Math.abs(active.x - monster.x);
             if (dist < 105 && facingMatches) {
               attack.hasHit = true;
+              ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 12);
               sound.playHitImpact();
               screenShakeRef.current = 8;
               monster.hitFlash = 16;
@@ -1883,6 +1922,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const dist = Math.abs(active.x - adifBoss.x);
               if (dist < 95 && facingMatches) {
                 attack.hasHit = true;
+                ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 12);
                 sound.playHitImpact();
                 screenShakeRef.current = 6;
                 adifBoss.hitFlash = 16;
@@ -1932,6 +1972,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const dist = Math.abs(active.x - hairiBoss.x);
               if (dist < 95 && facingMatches) {
                 attack.hasHit = true;
+                ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 12);
                 const isCrit = Math.random() < 0.35;
                 const baseDmg = oneHitKillRef.current
                   ? 9999
@@ -2141,6 +2182,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const dist = Math.abs(active.x - keyBoss.x);
             if (dist < 105 && facingMatches) {
               attack.hasHit = true;
+              ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 12);
               const isCrit = Math.random() < 0.35;
               const baseDmg = oneHitKillRef.current
                 ? 9999
@@ -2229,6 +2271,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const dist = Math.abs(active.x - stMonster.x);
             if (dist < 115 && facingMatches) {
               attack.hasHit = true;
+              ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 12);
               const isCrit = Math.random() < 0.35;
               const baseDmg = oneHitKillRef.current
                 ? 9999
@@ -2286,6 +2329,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const dist = Math.abs(active.x - dummy.x);
               if (dist < 95 && facingMatches) {
                 attack.hasHit = true;
+                ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 12);
                 sound.playHitImpact();
                 screenShakeRef.current = 6;
                 dummy.shake = 16;
@@ -2343,6 +2387,222 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             attack.timer = 0;
             attack.hasHit = false;
             attack.slashPlayed = false;
+          }
+        }
+      }
+
+      // 2.45 Ultimate Skill State Machine (Dani Keris Garuda & Jihan Lotus Fan Cyclone)
+      if (isUltimateInput && !ultimate.isActive && !attack.isAttacking && !isDialogueOpen && (ultimateChargeRef.current >= 100 || godModeRef.current)) {
+        ultimateChargeRef.current = 0;
+        ultimate.isActive = true;
+        ultimate.character = isJihanActive ? "jihan" : "dani";
+        ultimate.frame = 0;
+        ultimate.timer = 0;
+        ultimate.cinematicTimer = 34; // Dramatic freeze frame banner
+        ultimate.hitCount = 0;
+        screenShakeRef.current = 18;
+        sound.playWhoosh();
+      }
+
+      if (ultimate.isActive) {
+        ultimate.timer++;
+        if (ultimate.cinematicTimer > 0) {
+          ultimate.cinematicTimer--;
+        } else {
+          // Advance frame every 6 ticks (8 frames = 48 ticks total)
+          if (ultimate.timer % 6 === 0) {
+            ultimate.frame++;
+            if (ultimate.frame >= 8) {
+              ultimate.isActive = false;
+              ultimate.frame = 0;
+              ultimate.timer = 0;
+            }
+          }
+        }
+
+        // Forward airborne momentum during frames 2 to 5
+        if (ultimate.frame >= 2 && ultimate.frame <= 5) {
+          const ultLunge = isJihanActive ? 3.0 : 2.5;
+          active.x += active.facingLeft ? -ultLunge : ultLunge;
+          active.x = Math.max(100, Math.min(WORLD_W - 80, active.x));
+        }
+
+        // Multi-hit damage bursts at frames 3, 5, 6
+        if ((ultimate.frame === 3 || ultimate.frame === 5 || ultimate.frame === 6) && ultimate.timer % 6 === 1) {
+          ultimate.hitCount++;
+          sound.playHitImpact();
+          screenShakeRef.current = 14;
+
+          const isCrit = Math.random() < 0.65;
+          const baseUltDmg = oneHitKillRef.current
+            ? 9999
+            : isCrit
+            ? Math.floor(160 + Math.random() * 80)
+            : Math.floor(110 + Math.random() * 50);
+
+          // 1. Monster Losari
+          const monster = monsterRef.current;
+          if (monster.isActive && !monster.isEmerging && !monster.isDefeated && Math.abs(active.x - monster.x) < 380) {
+            monster.hitFlash = 18;
+            monster.shake = 16;
+            monster.hp = Math.max(0, monster.hp - baseUltDmg);
+            damageNumbersRef.current.push({
+              x: monster.x + (Math.random() - 0.5) * 40,
+              y: monster.y - 110,
+              text: `ULTI! -${baseUltDmg}`,
+              color: isJihanActive ? "#f43f5e" : "#f59e0b",
+              life: 45,
+              maxLife: 45,
+              vy: -2.2,
+              isCrit: true,
+            });
+            if (monster.hp <= 0) {
+              monster.hp = 0;
+              monster.isDefeated = true;
+              monster.state = "defeated";
+              sound.playWin();
+              onTriggerDialogue("monster_defeated_1");
+            }
+          }
+
+          // 2. Adif on Tower
+          const adif = adifRef.current;
+          if (!adif.isFriend && adif.hp > 0 && Math.abs(active.x - adif.x) < 380) {
+            adif.shake = 16;
+            adif.hp = Math.max(0, adif.hp - baseUltDmg);
+            damageNumbersRef.current.push({
+              x: adif.x + (Math.random() - 0.5) * 40,
+              y: adif.y - 100,
+              text: `ULTI! -${baseUltDmg}`,
+              color: "#fbbf24",
+              life: 45,
+              maxLife: 45,
+              vy: -2.2,
+              isCrit: true,
+            });
+            if (adif.hp <= 0) {
+              adif.hp = 0;
+              adif.onTower = false;
+              adif.y = GROUND_Y;
+            }
+          }
+
+          // 3. Hairi Boss
+          const hairi = hairiRef.current;
+          if (!hairi.isFriend && hairi.hp > 0 && Math.abs(active.x - hairi.x) < 380) {
+            hairi.shake = 16;
+            hairi.hp = Math.max(0, hairi.hp - baseUltDmg);
+            damageNumbersRef.current.push({
+              x: hairi.x + (Math.random() - 0.5) * 40,
+              y: hairi.y - 100,
+              text: `ULTI! -${baseUltDmg}`,
+              color: "#38bdf8",
+              life: 45,
+              maxLife: 45,
+              vy: -2.2,
+              isCrit: true,
+            });
+            if (hairi.hp <= 0) {
+              hairi.hp = 0;
+              hairi.isFriend = true;
+              hairi.phase = 3;
+            }
+          }
+
+          // 4. Station Monster Bekasi
+          const stMonster = stationMonsterRef.current;
+          if (stMonster.isActive && !stMonster.isEmerging && !stMonster.isDefeated && Math.abs(active.x - stMonster.x) < 380) {
+            stMonster.hitFlash = 18;
+            stMonster.shake = 16;
+            stMonster.hp = Math.max(0, stMonster.hp - baseUltDmg);
+            damageNumbersRef.current.push({
+              x: stMonster.x + (Math.random() - 0.5) * 40,
+              y: GROUND_Y - 110,
+              text: `ULTI! -${baseUltDmg}`,
+              color: isJihanActive ? "#f43f5e" : "#f59e0b",
+              life: 45,
+              maxLife: 45,
+              vy: -2.2,
+              isCrit: true,
+            });
+            if (stMonster.hp <= 0) {
+              stMonster.hp = 0;
+              stMonster.isActive = false;
+              stMonster.isDefeated = true;
+              sound.playWin();
+              onTriggerDialogue("bekasi_monster_defeat_1");
+            }
+          }
+
+          // 5. Key Boss
+          const keyBoss = battleKeyRef.current;
+          if (keyBoss.inCombat && !keyBoss.isDefeated && Math.abs(active.x - keyRef.current.x) < 380) {
+            keyRef.current.hp = Math.max(0, keyRef.current.hp - baseUltDmg);
+            damageNumbersRef.current.push({
+              x: keyRef.current.x + (Math.random() - 0.5) * 40,
+              y: keyRef.current.y - 100,
+              text: `ULTI! -${baseUltDmg}`,
+              color: "#a855f7",
+              life: 45,
+              maxLife: 45,
+              vy: -2.2,
+              isCrit: true,
+            });
+            if (keyRef.current.hp <= 0) {
+              keyRef.current.hp = 0;
+              keyRef.current.isFriend = true;
+              keyBoss.inCombat = false;
+              keyBoss.isDefeated = true;
+              onTriggerDialogue("key_defeat");
+            }
+          }
+
+          // 6. Training Dummies
+          for (const dummy of trainingDummiesRef.current) {
+            if (Math.abs(active.x - dummy.x) < 380) {
+              dummy.shake = 22;
+              dummy.hitTimer = 30;
+              damageNumbersRef.current.push({
+                x: dummy.x + (Math.random() - 0.5) * 30,
+                y: dummy.y - 100,
+                text: `ULTI! -${baseUltDmg}`,
+                color: isJihanActive ? "#f43f5e" : "#facc15",
+                life: 40,
+                maxLife: 40,
+                vy: -2.2,
+                isCrit: true,
+              });
+            }
+          }
+
+          // Elemental ultimate burst particles!
+          const pDir = active.facingLeft ? -1 : 1;
+          for (let i = 0; i < 28; i++) {
+            if (isJihanActive) {
+              // Lotus blossoms, cyan gale wind & starlight
+              combatParticlesRef.current.push({
+                x: active.x + pDir * 40 + (Math.random() - 0.5) * 120,
+                y: active.y - 40 + (Math.random() - 0.5) * 80,
+                vx: pDir * (4 + Math.random() * 8) + (Math.random() - 0.5) * 4,
+                vy: -Math.random() * 5 - 1.5,
+                color: Math.random() < 0.4 ? "#f43f5e" : Math.random() < 0.7 ? "#06b6d4" : "#facc15",
+                size: 3.5 + Math.random() * 3,
+                life: 30,
+                maxLife: 30,
+              });
+            } else {
+              // Golden phoenix feathers, lightning & volcanic embers
+              combatParticlesRef.current.push({
+                x: active.x + pDir * 40 + (Math.random() - 0.5) * 120,
+                y: active.y - 40 + (Math.random() - 0.5) * 80,
+                vx: pDir * (5 + Math.random() * 9) + (Math.random() - 0.5) * 4,
+                vy: -Math.random() * 6 - 2.0,
+                color: Math.random() < 0.4 ? "#f59e0b" : Math.random() < 0.7 ? "#38bdf8" : "#ef4444",
+                size: 3.5 + Math.random() * 3,
+                life: 30,
+                maxLife: 30,
+              });
+            }
           }
         }
       }
@@ -6112,6 +6372,47 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
+        // 0.0 Dedicated Ultimate Skill Animation (Dani Keris Garuda & Jihan Lotus Fan Cyclone)
+        const isUltimate = isCurrentActive && ultimateStateRef.current.isActive;
+        if (isUltimate) {
+          const ultImg = charId === "jihan" ? imagesRef.current.jihanUltimate : imagesRef.current.daniUltimate;
+          if (ultImg) {
+            const frameIdx = Math.min(7, Math.max(0, ultimateStateRef.current.frame));
+            const frameW = 256;
+            const frameH = 256;
+            const sx = frameIdx * frameW;
+            const sy = 0;
+            const destW = 185;
+            const destH = 185;
+            const drawY = pos.y + 18 - destH * (236 / 256);
+
+            ctx.save();
+            // Golden / Rosy Radiance Aura
+            const ultAura = ctx.createRadialGradient(screenX, drawY + destH / 2, 10, screenX, drawY + destH / 2, 110);
+            if (charId === "jihan") {
+              ultAura.addColorStop(0, "rgba(244, 63, 94, 0.55)");
+              ultAura.addColorStop(0.5, "rgba(251, 191, 36, 0.25)");
+              ultAura.addColorStop(1, "rgba(0, 0, 0, 0)");
+            } else {
+              ultAura.addColorStop(0, "rgba(234, 179, 8, 0.6)");
+              ultAura.addColorStop(0.5, "rgba(56, 189, 248, 0.3)");
+              ultAura.addColorStop(1, "rgba(0, 0, 0, 0)");
+            }
+            ctx.fillStyle = ultAura;
+            ctx.fillRect(screenX - 110, drawY, 220, destH);
+
+            if (pos.facingLeft) {
+              ctx.translate(screenX, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(ultImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            } else {
+              ctx.drawImage(ultImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+            }
+            ctx.restore();
+            return;
+          }
+        }
+
         // 0. Dedicated Combat Mode Animation
         if (isAttacking && charId === "jihan" && jihanCombatImg) {
           const col = Math.min(7, Math.max(0, attackStateRef.current.frame));
@@ -6664,6 +6965,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
+      // Layer 7.4: Ultimate Skill Meter HUD (Top Left Screen)
+      const ultCharge = ultimateChargeRef.current;
+      const isUltReady = ultCharge >= 100;
+      const ultBarW = 150;
+      const ultBarH = 10;
+      const ultBarX = 24;
+      const ultBarY = 24;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(10, 15, 26, 0.9)";
+      ctx.fillRect(ultBarX - 4, ultBarY - 14, ultBarW + 8, ultBarH + 22);
+      ctx.strokeStyle = isUltReady ? "#facc15" : "#475569";
+      ctx.lineWidth = isUltReady ? 1.8 : 1;
+      ctx.strokeRect(ultBarX - 4, ultBarY - 14, ultBarW + 8, ultBarH + 22);
+
+      // Label
+      ctx.font = "bold 8px 'Courier New', monospace";
+      ctx.fillStyle = isUltReady ? (globalTimer % 20 < 10 ? "#facc15" : "#ffffff") : "#94a3b8";
+      ctx.textAlign = "left";
+      ctx.fillText(isUltReady ? "⚡ ULTIMATE READY! [U]" : `⚡ ULTI GAUGE: ${Math.floor(ultCharge)}%`, ultBarX, ultBarY - 4);
+
+      // Track
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(ultBarX, ultBarY, ultBarW, ultBarH);
+
+      // Progress Fill
+      const fillPct = Math.min(1, ultCharge / 100);
+      const uGrad = ctx.createLinearGradient(ultBarX, 0, ultBarX + ultBarW, 0);
+      if (isUltReady) {
+        uGrad.addColorStop(0, "#f59e0b");
+        uGrad.addColorStop(0.5, "#ec4899");
+        uGrad.addColorStop(1, "#38bdf8");
+      } else {
+        uGrad.addColorStop(0, "#0284c7");
+        uGrad.addColorStop(1, "#38bdf8");
+      }
+      ctx.fillStyle = uGrad;
+      ctx.fillRect(ultBarX, ultBarY, ultBarW * fillPct, ultBarH);
+
+      // Subtle pulse sheen on max
+      if (isUltReady) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        const sheenX = ultBarX + ((globalTimer * 4) % (ultBarW + 20)) - 10;
+        ctx.fillRect(Math.max(ultBarX, sheenX), ultBarY, 8, ultBarH);
+      }
+      ctx.restore();
+
       // Layer 7.5: Combo Counter HUD (Top Right Screen)
       if (comboRef.current.count > 0) {
         ctx.save();
@@ -6925,6 +7273,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.save();
         ctx.fillStyle = `rgba(192, 132, 252, ${flashAlpha * 0.75})`;
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+      }
+
+      // Layer 8.4: Cinematic Ultimate Cutscene Freeze & Title Banner
+      const ultState = ultimateStateRef.current;
+      if (ultState.isActive && ultState.cinematicTimer > 0) {
+        ctx.save();
+        // Cinematic Black Letterbox Bars
+        ctx.fillStyle = "rgba(0, 0, 0, 0.92)";
+        ctx.fillRect(0, 0, CANVAS_W, 46);
+        ctx.fillRect(0, CANVAS_H - 46, CANVAS_W, 46);
+
+        // Ambient Dark Vignette during freeze
+        ctx.fillStyle = "rgba(2, 6, 23, 0.45)";
+        ctx.fillRect(0, 46, CANVAS_W, CANVAS_H - 92);
+
+        // Center Epic Banner
+        const bannerW = 620;
+        const bannerH = 68;
+        const bannerX = CANVAS_W / 2;
+        const bannerY = CANVAS_H / 2 - 20;
+
+        ctx.fillStyle = "rgba(10, 15, 26, 0.96)";
+        ctx.strokeStyle = ultState.character === "jihan" ? "#f43f5e" : "#eab308";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(bannerX - bannerW / 2, bannerY - bannerH / 2, bannerW, bannerH, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        if (ultState.character === "jihan") {
+          ctx.font = "bold 15px 'Courier New', monospace";
+          ctx.fillStyle = "#f43f5e";
+          ctx.textAlign = "center";
+          ctx.fillText("🌸 SERANGAN PAMUNGKAS: BADAI KIPAS SUTRA SAMUDERA! 🌸", bannerX, bannerY - 8);
+          ctx.font = "bold 11px 'Courier New', monospace";
+          ctx.fillStyle = "#facc15";
+          ctx.fillText("JIHAN • PENDEKAR ANGGUN MAKASSAR", bannerX, bannerY + 16);
+        } else {
+          ctx.font = "bold 15px 'Courier New', monospace";
+          ctx.fillStyle = "#facc15";
+          ctx.textAlign = "center";
+          ctx.fillText("⚡ SERANGAN PAMUNGKAS: AMUK KERIS GARUDA PETIR! ⚡", bannerX, bannerY - 8);
+          ctx.font = "bold 11px 'Courier New', monospace";
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillText("DANI • PENDEKAR SILAT MALAYSIA", bannerX, bannerY + 16);
+        }
         ctx.restore();
       }
 
