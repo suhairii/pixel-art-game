@@ -30,6 +30,7 @@ export interface DevState {
   godMode: boolean;
   oneHitKill: boolean;
   speedMult: number;
+  animSpeed?: number;
   bossStatus: {
     monster: { active: boolean; hp: number; maxHp: number; defeated: boolean };
     adif: { hp: number; maxHp: number; onTower: boolean };
@@ -49,6 +50,7 @@ export interface DevActions {
   setGodMode: (enabled: boolean) => void;
   setOneHitKill: (enabled: boolean) => void;
   setSpeedMult: (mult: number) => void;
+  setAnimSpeed?: (speed: number) => void;
   triggerDialogue: (dialogueId: string) => void;
   switchActiveChar: () => void;
   fillUltimate: () => void;
@@ -673,6 +675,34 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                       }`}
                     >
                       {speed}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Animation Speed Frame Rate Control */}
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">KECEPATAN ANIMASI PLAYER & DUNIA (PERGANTIAN FRAME):</label>
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { label: "0.5x (Lambat)", val: 0.5 },
+                    { label: "0.75x (Default)", val: 0.75 },
+                    { label: "1.0x (Normal)", val: 1.0 },
+                    { label: "1.25x (Cepat)", val: 1.25 },
+                  ].map((item) => (
+                    <button
+                      key={item.val}
+                      onClick={() => {
+                        actions?.setAnimSpeed?.(item.val);
+                        setDevState(prev => prev ? { ...prev, animSpeed: item.val } : prev);
+                      }}
+                      className={`py-1 rounded font-bold border text-center text-[10px] transition-all ${
+                        (devState?.animSpeed ?? 0.75) === item.val
+                          ? "bg-purple-500/30 text-purple-200 border-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.4)]"
+                          : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      {item.label}
                     </button>
                   ))}
                 </div>

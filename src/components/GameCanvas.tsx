@@ -373,6 +373,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     durationTimer: 0,
   });
 
+  const animSpeedRef = useRef<number>(0.75); // Animation speed multiplier (0.5 to 1.5, default 0.75 relaxed)
   const screenShakeRef = useRef(0);
   const comboRef = useRef({ count: 0, timer: 0 });
 
@@ -1283,6 +1284,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         onSwitchCharacter();
         sound.playInteract();
       }
+      if (e.key === "[" || e.key === "{") {
+        const speeds = [0.5, 0.75, 1.0, 1.25];
+        const curIdx = speeds.indexOf(animSpeedRef.current);
+        const nextIdx = curIdx <= 0 ? speeds.length - 1 : curIdx - 1;
+        animSpeedRef.current = speeds[nextIdx];
+        sound.playInteract();
+      }
+      if (e.key === "]" || e.key === "}") {
+        const speeds = [0.5, 0.75, 1.0, 1.25];
+        const curIdx = speeds.indexOf(animSpeedRef.current);
+        const nextIdx = (curIdx + 1) % speeds.length;
+        animSpeedRef.current = speeds[nextIdx];
+        sound.playInteract();
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -1791,6 +1806,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       setSpeedMult: (mult) => {
         speedMultRef.current = mult;
       },
+      setAnimSpeed: (speed) => {
+        animSpeedRef.current = speed;
+      },
       triggerDialogue: (dialogueId) => {
         onTriggerDialogue(dialogueId);
       },
@@ -1826,6 +1844,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           godMode: godModeRef.current,
           oneHitKill: oneHitKillRef.current,
           speedMult: speedMultRef.current,
+          animSpeed: animSpeedRef.current,
           bossStatus: {
             monster: {
               active: monsterRef.current.isActive,
@@ -2465,8 +2484,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        // Advance frames every 3 ticks
-        if (attack.timer % 3 === 0) {
+        // Advance combat attack frames (calibrated relaxed pacing: default 7 ticks per frame)
+        const attackTicksPerFrame = Math.max(2, Math.round(7 / animSpeedRef.current));
+        if (attack.timer % attackTicksPerFrame === 0) {
           attack.frame++;
           if (attack.frame >= 8) {
             attack.isAttacking = false;
@@ -6663,6 +6683,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const isJihanT = charId === "jihan";
           let tImg: HTMLImageElement | null = null;
           let frameIdx = 0;
+          const speedMult = animSpeedRef.current;
 
           if (isAttacking) {
             tImg = isJihanT ? imagesRef.current.jihanTransCombat : imagesRef.current.daniTransCombat;
@@ -6670,14 +6691,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           } else if (isMoving) {
             if (isRun) {
               tImg = isJihanT ? imagesRef.current.jihanTransRun : imagesRef.current.daniTransRun;
-              frameIdx = Math.floor(pos.animTimer / 4) % 8;
+              frameIdx = Math.floor((pos.animTimer * speedMult) / 6) % 8;
             } else {
               tImg = isJihanT ? imagesRef.current.jihanTransWalk : imagesRef.current.daniTransWalk;
-              frameIdx = Math.floor(pos.animTimer / 6) % 8;
+              frameIdx = Math.floor((pos.animTimer * speedMult) / 8) % 8;
             }
           } else {
             tImg = isJihanT ? imagesRef.current.jihanTransIdle : imagesRef.current.daniTransIdle;
-            frameIdx = Math.floor(pos.animTimer / 7) % 8;
+            frameIdx = Math.floor((pos.animTimer * speedMult) / 12) % 8;
           }
 
           if (tImg) {
@@ -6685,9 +6706,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const destW = 142;
-            const destH = 142;
-            const drawY = pos.y + 18 - destH * (228 / 256);
+            const destW = 145;
+            const destH = 145;
+            const drawY = pos.y + 18 - destH * (232 / 256);
 
             ctx.save();
             if (pos.facingLeft) {
@@ -6706,26 +6727,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (charId === "dani" && !isTransforming && !isUltimate && !(isCurrentActive && transformStateRef.current.isActive)) {
           let daniActionImg: HTMLImageElement | null = null;
           let frameIdx = 0;
-          const destW = 135;
-          const destH = 135;
+          const destW = 145;
+          const destH = 145;
+          const speedMult = animSpeedRef.current;
 
           if (isAttacking) {
             daniActionImg = imagesRef.current.daniCombat;
             frameIdx = Math.min(7, Math.max(0, attackStateRef.current.frame));
           } else if (isSpecialEmote) {
             daniActionImg = imagesRef.current.daniInteract;
-            frameIdx = Math.floor(pos.animTimer / 7) % 8;
+            frameIdx = Math.floor((pos.animTimer * speedMult) / 10) % 8;
           } else if (isMoving) {
             if (isRun) {
               daniActionImg = imagesRef.current.daniRun;
-              frameIdx = Math.floor(pos.walkTimer / 3) % 8;
+              frameIdx = Math.floor((pos.walkTimer * speedMult) / 6) % 8;
             } else {
               daniActionImg = imagesRef.current.daniWalk;
-              frameIdx = Math.floor(pos.walkTimer / 5) % 8;
+              frameIdx = Math.floor((pos.walkTimer * speedMult) / 8) % 8;
             }
           } else {
             daniActionImg = imagesRef.current.daniIdle;
-            frameIdx = Math.floor(pos.animTimer / 8) % 8;
+            frameIdx = Math.floor((pos.animTimer * speedMult) / 12) % 8;
           }
 
           if (daniActionImg) {
@@ -6733,7 +6755,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const footYOffset = destH * (228 / 256);
+            const footYOffset = destH * (232 / 256);
             const drawY = pos.y + 18 - footYOffset;
 
             ctx.save();
@@ -6824,17 +6846,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (masterImg && !isSpecialEmote) {
             let col = 0;
             let row = 0;
+            const speedMult = animSpeedRef.current;
             if (isMoving) {
               if (isRun) {
                 row = 2; // RUN (8 frames)
-                col = Math.floor(pos.walkTimer / 3) % 8;
+                col = Math.floor((pos.walkTimer * speedMult) / 6) % 8;
               } else {
                 row = 1; // WALK (8 frames)
-                col = Math.floor(pos.walkTimer / 6) % 8;
+                col = Math.floor((pos.walkTimer * speedMult) / 8) % 8;
               }
             } else {
               row = 0; // IDLE (8 frames breathing & blink)
-              col = Math.floor(pos.animTimer / 8) % 8;
+              col = Math.floor((pos.animTimer * speedMult) / 12) % 8;
             }
 
             const frameW = 210;
@@ -7398,6 +7421,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       ctx.restore();
 
+      // Layer 7.46: Animation Speed Indicator HUD (below transform bar)
+      const animSpeedPillX = 24;
+      const animSpeedPillY = transBarY + 24;
+      ctx.save();
+      ctx.fillStyle = "rgba(10, 15, 26, 0.9)";
+      ctx.fillRect(animSpeedPillX - 4, animSpeedPillY - 10, transBarW + 8, 18);
+      ctx.strokeStyle = "#a855f7";
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(animSpeedPillX - 4, animSpeedPillY - 10, transBarW + 8, 18);
+      ctx.font = "bold 8px 'Courier New', monospace";
+      ctx.fillStyle = "#c084fc";
+      ctx.textAlign = "left";
+      ctx.fillText(`⏱️ ANIM SPEED: ${animSpeedRef.current}x [ [ / ] ]`, animSpeedPillX, animSpeedPillY + 2);
+      ctx.restore();
+
       // Layer 7.5: Combo Counter HUD (Top Right Screen)
       if (comboRef.current.count > 0) {
         ctx.save();
@@ -7781,8 +7819,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         width={CANVAS_W}
         height={CANVAS_H}
         className="w-full h-full object-contain image-rendering-pixelated cursor-pointer"
-        onClick={() => {
+        onClick={(e) => {
           if (!isDialogueOpen) {
+            const canvas = canvasRef.current;
+            if (canvas) {
+              const rect = canvas.getBoundingClientRect();
+              const scaleX = CANVAS_W / rect.width;
+              const scaleY = CANVAS_H / rect.height;
+              const clickX = (e.clientX - rect.left) * scaleX;
+              const clickY = (e.clientY - rect.top) * scaleY;
+
+              // Check if clicking anim speed pill (x: 20..182, y: 64..94)
+              if (clickX >= 20 && clickX <= 182 && clickY >= 64 && clickY <= 94) {
+                const speeds = [0.5, 0.75, 1.0, 1.25];
+                const curIdx = speeds.indexOf(animSpeedRef.current);
+                const nextIdx = (curIdx + 1) % speeds.length;
+                animSpeedRef.current = speeds[nextIdx];
+                sound.playInteract();
+                return;
+              }
+            }
+
             keysRef.current.interact = true;
             setTimeout(() => (keysRef.current.interact = false), 150);
           }
