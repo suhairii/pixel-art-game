@@ -6974,8 +6974,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const destW = 145;
-            const destH = 145;
+            const destW = 168;
+            const destH = 168;
             const drawY = pos.y + 18 - destH * (232 / 256);
 
             ctx.save();
@@ -7124,8 +7124,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const destW = 145;
-            const destH = 145;
+            // Enlarged transform mode sprites (165px neutral, 182px combat) to prevent shrinking during dynamic combat stances
+            const destW = isAttacking ? 182 : 165;
+            const destH = isAttacking ? 182 : 165;
             const drawY = pos.y + 18 - destH * (232 / 256);
 
             ctx.save();
@@ -7173,6 +7174,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
+            // Enlarged normal combat sprite (176px combat, 145px standard) to match standing proportions
+            const destW = isAttacking ? 176 : 145;
+            const destH = isAttacking ? 176 : 145;
             const footYOffset = destH * (232 / 256);
             const drawY = pos.y + 18 - footYOffset;
 
@@ -7221,6 +7225,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
+            // Enlarged normal combat sprite (176px combat, 145px standard) to match standing proportions
+            const destW = isAttacking ? 176 : 145;
+            const destH = isAttacking ? 176 : 145;
             const footYOffset = destH * (232 / 256);
             const drawY = pos.y + 18 - footYOffset;
 
@@ -7244,8 +7251,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const frameH = 240;
           const sx = col * 240;
           const sy = 0;
-          const destW = 135;
-          const destH = 135;
+          const destW = 176;
+          const destH = 176;
 
           // Align foot precisely to pos.y + 18 (ground level)
           const footYOffset = destH * (229 / 240);
@@ -7266,8 +7273,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const frameH = 240;
           const sx = col * 240;
           const sy = 0;
-          const destW = 135;
-          const destH = 135;
+          const destW = 176;
+          const destH = 176;
 
           // Align foot precisely to pos.y + 18 (ground level)
           // foot_y in 240 frame is 225px
@@ -7435,8 +7442,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const frameH = 256;
           const sx = Math.min(7, img.frame) * frameW;
           const sy = 0;
-          const destW = 145;
-          const destH = 145;
+          // Match enlarged transform combat size (182px)
+          const destW = 182;
+          const destH = 182;
           const footYOffset = destH * (232 / 256);
           const drawY = img.y + 18 - footYOffset;
           const screenX = img.x - camX;
