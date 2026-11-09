@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, ArrowRight, Zap, MessageCircle, Users, Sword, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Zap, MessageCircle, Users, Sword, Sparkles, Flame } from "lucide-react";
 
 interface TouchControlsProps {
-  onInput: (input: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean }) => void;
-  currentInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean };
+  onInput: (input: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean; transform: boolean }) => void;
+  currentInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean; transform: boolean };
   onSwitchCharacter: () => void;
   activeCharacter: "jihan" | "dani";
 }
@@ -192,19 +192,56 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
           }}
           onMouseUp={() => onInput({ ...currentInput, ultimate: false })}
           onMouseLeave={() => onInput({ ...currentInput, ultimate: false })}
-          className={`h-14 px-3 sm:h-18 sm:px-5 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1 sm:gap-1.5 font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
+          className={`h-14 px-2.5 sm:h-18 sm:px-4 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1 font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
             currentInput.ultimate
               ? "bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 scale-95 shadow-[0_0_35px_rgba(250,204,21,1)] text-slate-950 font-black ring-2 ring-white"
               : isJihan
               ? "bg-gradient-to-r from-amber-500 via-rose-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white border border-yellow-300/60 shadow-[0_0_20px_rgba(251,191,36,0.4)]"
-              : "bg-gradient-to-r from-emerald-600 via-teal-600 to-amber-500 hover:from-emerald-500 hover:to-amber-400 text-white border border-emerald-300/60 shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+              : "bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-500 hover:from-amber-500 hover:to-orange-400 text-white border border-yellow-300/60 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
           }`}
           aria-label="Ultimate [U]"
           title="Ultimate Skill [U]"
         >
-          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse text-yellow-300" />
+          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse text-yellow-300" />
           <span className="hidden xs:inline">ULTI</span>
           <span className="text-[10px] opacity-80 font-mono">[U]</span>
+        </button>
+
+        {/* Transform / Awakening Skill Button [T] */}
+        <button
+          type="button"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            triggerHaptic(45);
+            onInput({ ...currentInput, transform: true });
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, transform: false });
+          }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            onInput({ ...currentInput, transform: false });
+          }}
+          onMouseDown={() => {
+            triggerHaptic(45);
+            onInput({ ...currentInput, transform: true });
+          }}
+          onMouseUp={() => onInput({ ...currentInput, transform: false })}
+          onMouseLeave={() => onInput({ ...currentInput, transform: false })}
+          className={`h-14 px-2.5 sm:h-18 sm:px-4 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1 font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-75 active:scale-95 cursor-pointer shadow-xl ${
+            currentInput.transform
+              ? "bg-gradient-to-r from-amber-400 via-red-500 to-purple-600 scale-95 shadow-[0_0_35px_rgba(239,68,68,1)] text-white font-black ring-2 ring-yellow-300"
+              : isJihan
+              ? "bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:from-purple-500 hover:to-rose-400 text-white border border-pink-300/60 shadow-[0_0_20px_rgba(236,72,153,0.4)]"
+              : "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white border border-amber-300/60 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
+          }`}
+          aria-label="Transform [T]"
+          title="Transform Awakening [T]"
+        >
+          <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 animate-bounce" />
+          <span className="hidden xs:inline">TRANS</span>
+          <span className="text-[10px] opacity-80 font-mono">[T]</span>
         </button>
 
         {/* Interact / Action Button [E] */}

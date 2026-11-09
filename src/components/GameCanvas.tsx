@@ -292,7 +292,7 @@ interface GameCanvasProps {
   isDialogueOpen: boolean;
   currentDialogueId?: string | null;
   scanlines: boolean;
-  virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate?: boolean };
+  virtualInput: { left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate?: boolean; transform?: boolean };
   onRegisterDevActions?: (actions: DevActions) => void;
 }
 
@@ -309,13 +309,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Keyboard input state
-  const keysRef = useRef<{ left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean }>({
+  const keysRef = useRef<{ left: boolean; right: boolean; run: boolean; interact: boolean; attack: boolean; ultimate: boolean; transform: boolean }>({
     left: false,
     right: false,
     run: false,
     interact: false,
     attack: false,
     ultimate: false,
+    transform: false,
   });
 
   // Combat Mode State & Training Dummies
@@ -333,7 +334,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     slashPlayed: false,
   });
 
-  // Ultimate Skill State (Dani & Jihan)
+  // Ultimate Skill State (Dani & Jihan) - Extended Cinematic
   const ultimateStateRef = useRef<{
     isActive: boolean;
     character: "dani" | "jihan";
@@ -341,6 +342,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     timer: number;
     cinematicTimer: number;
     hitCount: number;
+    lingerTimer: number;
   }>({
     isActive: false,
     character: "dani",
@@ -348,8 +350,28 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     timer: 0,
     cinematicTimer: 0,
     hitCount: 0,
+    lingerTimer: 0,
   });
   const ultimateChargeRef = useRef<number>(100); // 0 to 100% (defaults to 100 for instant excitement!)
+
+  // Transform Skill State (Awakened Super Form)
+  const transformStateRef = useRef<{
+    isActive: boolean;
+    character: "dani" | "jihan";
+    isTransforming: boolean;
+    frame: number;
+    timer: number;
+    cinematicTimer: number;
+    durationTimer: number;
+  }>({
+    isActive: false,
+    character: "dani",
+    isTransforming: false,
+    frame: 0,
+    timer: 0,
+    cinematicTimer: 0,
+    durationTimer: 0,
+  });
 
   const screenShakeRef = useRef(0);
   const comboRef = useRef({ count: 0, timer: 0 });
@@ -501,6 +523,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterBekasiAttack: HTMLImageElement | null;
     daniUltimate: HTMLImageElement | null;
     jihanUltimate: HTMLImageElement | null;
+    daniTransform: HTMLImageElement | null;
+    jihanTransform: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -537,6 +561,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     monsterBekasiAttack: null,
     daniUltimate: null,
     jihanUltimate: null,
+    daniTransform: null,
+    jihanTransform: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara vs Stasiun Menara vs Stasiun Bekasi vs Bekasi TPST)
@@ -1179,8 +1205,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/monster_bekasi_attack.png"),
       loadImage("/dani_ultimate_sheet.png"),
       loadImage("/jihan_ultimate_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate };
+      loadImage("/dani_transform_sheet.png"),
+      loadImage("/jihan_transform_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform };
     });
   }, []);
 
@@ -1206,6 +1234,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (e.key === "u" || e.key === "U" || e.key === "k" || e.key === "K" || e.key === "r" || e.key === "R") {
         keysRef.current.ultimate = true;
       }
+      if (e.key === "t" || e.key === "T" || e.key === "y" || e.key === "Y") {
+        keysRef.current.transform = true;
+      }
       if (e.key === "q" || e.key === "Q") {
         onSwitchCharacter();
         sound.playInteract();
@@ -1230,6 +1261,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       if (e.key === "u" || e.key === "U" || e.key === "k" || e.key === "K" || e.key === "r" || e.key === "R") {
         keysRef.current.ultimate = false;
+      }
+      if (e.key === "t" || e.key === "T" || e.key === "y" || e.key === "Y") {
+        keysRef.current.transform = false;
       }
     };
 
@@ -1725,6 +1759,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ultimateChargeRef.current = 100;
         sound.playWhoosh();
         screenShakeRef.current = 8;
+      },
+      triggerTransform: () => {
+        const trans = transformStateRef.current;
+        trans.character = activeCharacter === "jihan" ? "jihan" : "dani";
+        trans.isTransforming = true;
+        trans.frame = 0;
+        trans.timer = 0;
+        trans.cinematicTimer = 70;
+        trans.durationTimer = 1800; // 30s
+        screenShakeRef.current = 16;
+        sound.playWhoosh();
       },
       getDevState: () => {
         const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
@@ -2391,15 +2436,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // 2.45 Ultimate Skill State Machine (Dani Keris Garuda & Jihan Lotus Fan Cyclone)
-      if (isUltimateInput && !ultimate.isActive && !attack.isAttacking && !isDialogueOpen && (ultimateChargeRef.current >= 100 || godModeRef.current)) {
+      // 2.45 Ultimate Skill State Machine (Dani Keris Garuda & Jihan Lotus Fan Cyclone) - Revamped Extended Pacing
+      if (isUltimateInput && !ultimate.isActive && !attack.isAttacking && !transformStateRef.current.isTransforming && !isDialogueOpen && (ultimateChargeRef.current >= 100 || godModeRef.current)) {
         ultimateChargeRef.current = 0;
         ultimate.isActive = true;
         ultimate.character = isJihanActive ? "jihan" : "dani";
         ultimate.frame = 0;
         ultimate.timer = 0;
-        ultimate.cinematicTimer = 34; // Dramatic freeze frame banner
+        ultimate.cinematicTimer = 75; // 1.25s dramatic cinematic slow-mo freeze frame
         ultimate.hitCount = 0;
+        ultimate.lingerTimer = 40; // 0.65s victory finish pose linger
         screenShakeRef.current = 18;
         sound.playWhoosh();
       }
@@ -2409,13 +2455,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (ultimate.cinematicTimer > 0) {
           ultimate.cinematicTimer--;
         } else {
-          // Advance frame every 6 ticks (8 frames = 48 ticks total)
-          if (ultimate.timer % 6 === 0) {
-            ultimate.frame++;
-            if (ultimate.frame >= 8) {
-              ultimate.isActive = false;
-              ultimate.frame = 0;
-              ultimate.timer = 0;
+          // Advance frame every 10 ticks (8 frames = 80 ticks ~ 1.35s)
+          if (ultimate.timer % 10 === 0) {
+            if (ultimate.frame < 7) {
+              ultimate.frame++;
+            } else {
+              if (ultimate.lingerTimer > 0) {
+                ultimate.lingerTimer--;
+              } else {
+                ultimate.isActive = false;
+                ultimate.frame = 0;
+                ultimate.timer = 0;
+                ultimate.lingerTimer = 0;
+              }
             }
           }
         }
@@ -2427,11 +2479,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           active.x = Math.max(100, Math.min(WORLD_W - 80, active.x));
         }
 
-        // Multi-hit damage bursts at frames 3, 5, 6
-        if ((ultimate.frame === 3 || ultimate.frame === 5 || ultimate.frame === 6) && ultimate.timer % 6 === 1) {
+        // Multi-hit damage bursts at frames 3, 4, 5, 6
+        if ((ultimate.frame === 3 || ultimate.frame === 4 || ultimate.frame === 5 || ultimate.frame === 6) && ultimate.timer % 10 === 1) {
           ultimate.hitCount++;
           sound.playHitImpact();
-          screenShakeRef.current = 14;
+          screenShakeRef.current = 15;
 
           const isCrit = Math.random() < 0.65;
           const baseUltDmg = oneHitKillRef.current
@@ -2461,7 +2513,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               monster.isDefeated = true;
               monster.state = "defeated";
               sound.playWin();
-              onTriggerDialogue("monster_defeated_1");
+              onTriggerDialogue("panci_defeat");
             }
           }
 
@@ -2604,6 +2656,65 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               });
             }
           }
+        }
+      }
+
+      // 2.46 Transform / Awakening Skill State Machine (Dani Super Garuda & Jihan Dewi Teratai)
+      const isTransformInput = keysRef.current.transform || virtualInput.transform;
+      const trans = transformStateRef.current;
+      if (isTransformInput && !trans.isTransforming && !ultimate.isActive && !attack.isAttacking && !isDialogueOpen) {
+        trans.character = isJihanActive ? "jihan" : "dani";
+        trans.isTransforming = true;
+        trans.frame = 0;
+        trans.timer = 0;
+        trans.cinematicTimer = 70; // 1.15s dramatic freeze
+        trans.durationTimer = 1800; // 30s active duration
+        screenShakeRef.current = 16;
+        sound.playWhoosh();
+      }
+
+      if (trans.isTransforming) {
+        trans.timer++;
+        if (trans.cinematicTimer > 0) {
+          trans.cinematicTimer--;
+        } else {
+          // Advance frame every 9 ticks (8 frames = 72 ticks ~ 1.2s)
+          if (trans.timer % 9 === 0) {
+            trans.frame++;
+            if (trans.frame >= 8) {
+              trans.isTransforming = false;
+              trans.isActive = true;
+              trans.frame = 0;
+              trans.timer = 0;
+              sound.playWin();
+              screenShakeRef.current = 14;
+            }
+          }
+        }
+      }
+
+      if (trans.isActive) {
+        if (trans.durationTimer > 0) {
+          trans.durationTimer--;
+          if (trans.durationTimer <= 0) {
+            trans.isActive = false;
+          }
+        }
+        // Ambient aura particles around active character while awakened
+        if (globalTimer % 4 === 0) {
+          const isJihanT = trans.character === "jihan";
+          combatParticlesRef.current.push({
+            x: active.x + (Math.random() - 0.5) * 45,
+            y: active.y - 15 - Math.random() * 50,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: -1.2 - Math.random() * 1.5,
+            color: isJihanT
+              ? (Math.random() < 0.5 ? "#f472b6" : "#38bdf8")
+              : (Math.random() < 0.5 ? "#fbbf24" : "#ef4444"),
+            size: 2.5 + Math.random() * 2.5,
+            life: 25,
+            maxLife: 25,
+          });
         }
       }
 
@@ -3928,8 +4039,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       trashProjectilesRef.current = trashProjectilesRef.current.filter((p) => p.life > 0 && p.y < GROUND_Y + 20 && p.x > 0 && p.x < 3000);
 
       // 3. Update Active Character Physics
-      if (!isDialogueOpen && !attack.isAttacking) {
-        const speed = (isRun ? 4.8 : 2.6) * speedMultRef.current;
+      if (!isDialogueOpen && !attack.isAttacking && !transformStateRef.current.isTransforming && !ultimate.isActive) {
+        const transSpeedMult = transformStateRef.current.isActive ? 1.35 : 1.0;
+        const speed = (isRun ? 4.8 : 2.6) * speedMultRef.current * transSpeedMult;
         if (isLeft && !isRight) {
           active.vx = -speed;
           active.facingLeft = true;
@@ -6372,6 +6484,71 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
+        // 0.00 Dedicated Transform Animation (Dani Super Garuda & Jihan Dewi Teratai)
+        const isTransforming = isCurrentActive && transformStateRef.current.isTransforming;
+        if (isTransforming) {
+          const transImg = charId === "jihan" ? imagesRef.current.jihanTransform : imagesRef.current.daniTransform;
+          if (transImg) {
+            const frameIdx = Math.min(7, Math.max(0, transformStateRef.current.frame));
+            const frameW = 256;
+            const frameH = 256;
+            const sx = frameIdx * frameW;
+            const sy = 0;
+            const destW = 190;
+            const destH = 190;
+            const drawY = pos.y + 18 - destH * (236 / 256);
+
+            ctx.save();
+            const transAura = ctx.createRadialGradient(screenX, drawY + destH / 2, 10, screenX, drawY + destH / 2, 130);
+            if (charId === "jihan") {
+              transAura.addColorStop(0, "rgba(236, 72, 153, 0.7)");
+              transAura.addColorStop(0.5, "rgba(56, 189, 248, 0.35)");
+              transAura.addColorStop(1, "rgba(0, 0, 0, 0)");
+            } else {
+              transAura.addColorStop(0, "rgba(251, 191, 36, 0.8)");
+              transAura.addColorStop(0.5, "rgba(245, 158, 11, 0.4)");
+              transAura.addColorStop(1, "rgba(0, 0, 0, 0)");
+            }
+            ctx.fillStyle = transAura;
+            ctx.fillRect(screenX - 130, drawY - 20, 260, destH + 40);
+
+            if (pos.facingLeft) {
+              ctx.translate(screenX, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(transImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            } else {
+              ctx.drawImage(transImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+            }
+            ctx.restore();
+            return;
+          }
+        }
+
+        // Awakened Form Halo & Ambient Radiance (Active during 30s transformation)
+        if (isCurrentActive && transformStateRef.current.isActive) {
+          ctx.save();
+          const haloY = pos.y - 78;
+          ctx.strokeStyle = charId === "jihan" ? "rgba(244, 114, 182, 0.85)" : "rgba(254, 240, 138, 0.85)";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(screenX, haloY, 20 + Math.sin(globalTimer * 0.12) * 3, 7, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          const bodyAura = ctx.createRadialGradient(screenX, pos.y - 45, 8, screenX, pos.y - 45, 70);
+          if (charId === "jihan") {
+            bodyAura.addColorStop(0, "rgba(236, 72, 153, 0.35)");
+            bodyAura.addColorStop(0.7, "rgba(56, 189, 248, 0.15)");
+            bodyAura.addColorStop(1, "rgba(0, 0, 0, 0)");
+          } else {
+            bodyAura.addColorStop(0, "rgba(245, 158, 11, 0.4)");
+            bodyAura.addColorStop(0.7, "rgba(239, 68, 68, 0.15)");
+            bodyAura.addColorStop(1, "rgba(0, 0, 0, 0)");
+          }
+          ctx.fillStyle = bodyAura;
+          ctx.fillRect(screenX - 70, pos.y - 115, 140, 140);
+          ctx.restore();
+        }
+
         // 0.0 Dedicated Ultimate Skill Animation (Dani Keris Garuda & Jihan Lotus Fan Cyclone)
         const isUltimate = isCurrentActive && ultimateStateRef.current.isActive;
         if (isUltimate) {
@@ -7012,6 +7189,56 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       ctx.restore();
 
+      // Layer 7.45: Transform Awakening Status HUD (Top Left, below Ulti meter)
+      const tState = transformStateRef.current;
+      const transBarW = 150;
+      const transBarH = 8;
+      const transBarX = 24;
+      const transBarY = ultBarY + 28;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(10, 15, 26, 0.9)";
+      ctx.fillRect(transBarX - 4, transBarY - 12, transBarW + 8, transBarH + 18);
+      ctx.strokeStyle = tState.isActive ? (tState.character === "jihan" ? "#f472b6" : "#f59e0b") : "#334155";
+      ctx.lineWidth = tState.isActive ? 1.8 : 1;
+      ctx.strokeRect(transBarX - 4, transBarY - 12, transBarW + 8, transBarH + 18);
+
+      const transLabel = tState.isActive
+        ? (tState.character === "jihan"
+            ? `🌸 DEWI TERATAI (${Math.ceil(tState.durationTimer / 60)}s)`
+            : `🔥 SUPER GARUDA (${Math.ceil(tState.durationTimer / 60)}s)`)
+        : "🔥 TRANSFORM: READY! [T]";
+
+      ctx.font = "bold 8px 'Courier New', monospace";
+      ctx.fillStyle = tState.isActive
+        ? (tState.character === "jihan" ? "#f472b6" : "#fbbf24")
+        : (globalTimer % 24 < 12 ? "#cbd5e1" : "#94a3b8");
+      ctx.textAlign = "left";
+      ctx.fillText(transLabel, transBarX, transBarY - 3);
+
+      // Track
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(transBarX, transBarY, transBarW, transBarH);
+
+      // Fill
+      if (tState.isActive) {
+        const transPct = Math.max(0, Math.min(1, tState.durationTimer / 1800));
+        const tGrad = ctx.createLinearGradient(transBarX, 0, transBarX + transBarW, 0);
+        if (tState.character === "jihan") {
+          tGrad.addColorStop(0, "#ec4899");
+          tGrad.addColorStop(1, "#38bdf8");
+        } else {
+          tGrad.addColorStop(0, "#f59e0b");
+          tGrad.addColorStop(1, "#ef4444");
+        }
+        ctx.fillStyle = tGrad;
+        ctx.fillRect(transBarX, transBarY, transBarW * transPct, transBarH);
+      } else {
+        ctx.fillStyle = "rgba(245, 158, 11, 0.3)";
+        ctx.fillRect(transBarX, transBarY, transBarW, transBarH);
+      }
+      ctx.restore();
+
       // Layer 7.5: Combo Counter HUD (Top Right Screen)
       if (comboRef.current.count > 0) {
         ctx.save();
@@ -7319,6 +7546,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.font = "bold 11px 'Courier New', monospace";
           ctx.fillStyle = "#38bdf8";
           ctx.fillText("DANI • PENDEKAR SILAT MALAYSIA", bannerX, bannerY + 16);
+        }
+        ctx.restore();
+      }
+
+      // Layer 8.5: Cinematic Transformation Cutscene Freeze & Title Banner
+      const transState = transformStateRef.current;
+      if (transState.isTransforming && transState.cinematicTimer > 0) {
+        ctx.save();
+        // Cinematic Black Letterbox Bars
+        ctx.fillStyle = "rgba(0, 0, 0, 0.92)";
+        ctx.fillRect(0, 0, CANVAS_W, 46);
+        ctx.fillRect(0, CANVAS_H - 46, CANVAS_W, 46);
+
+        // Ambient Dark Vignette during freeze
+        ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+        ctx.fillRect(0, 46, CANVAS_W, CANVAS_H - 92);
+
+        // Center Epic Banner
+        const bannerW = 640;
+        const bannerH = 70;
+        const bannerX = CANVAS_W / 2;
+        const bannerY = CANVAS_H / 2 - 20;
+
+        ctx.fillStyle = "rgba(8, 12, 22, 0.96)";
+        ctx.strokeStyle = transState.character === "jihan" ? "#ec4899" : "#f59e0b";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(bannerX - bannerW / 2, bannerY - bannerH / 2, bannerW, bannerH, 14);
+        ctx.fill();
+        ctx.stroke();
+
+        if (transState.character === "jihan") {
+          ctx.font = "bold 15px 'Courier New', monospace";
+          ctx.fillStyle = "#f472b6";
+          ctx.textAlign = "center";
+          ctx.fillText("🌸 AWAKENING: DEWI TERATAI SURGAWI SULAWESI! 🌸", bannerX, bannerY - 8);
+          ctx.font = "bold 11px 'Courier New', monospace";
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillText("JIHAN • CELESTIAL FORM (SPEED +35% • ATK +50% • CELESTIAL AURA)", bannerX, bannerY + 16);
+        } else {
+          ctx.font = "bold 15px 'Courier New', monospace";
+          ctx.fillStyle = "#fbbf24";
+          ctx.textAlign = "center";
+          ctx.fillText("🔥 AWAKENING: PENDEKAR SAKTI GARUDA EMAS! 🔥", bannerX, bannerY - 8);
+          ctx.font = "bold 11px 'Courier New', monospace";
+          ctx.fillStyle = "#ef4444";
+          ctx.fillText("DANI • SUPER GARUDA FORM (SPEED +35% • ATK +50% • DIVINE AURA)", bannerX, bannerY + 16);
         }
         ctx.restore();
       }

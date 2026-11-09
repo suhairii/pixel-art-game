@@ -52,6 +52,7 @@ export interface DevActions {
   triggerDialogue: (dialogueId: string) => void;
   switchActiveChar: () => void;
   fillUltimate: () => void;
+  triggerTransform: () => void;
   getDevState: () => DevState;
 }
 
@@ -645,6 +646,15 @@ export const DevHub: React.FC<DevHubProps> = ({ actions, onClose, isDefaultOpen 
                 >
                   <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
                   <span>⚡ ISI ULTIMATE 100% READY [U]</span>
+                </button>
+
+                {/* Instant Trigger Transformation */}
+                <button
+                  onClick={() => actions?.triggerTransform()}
+                  className="col-span-2 p-2 rounded-lg font-bold border border-pink-400/50 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-red-500/20 text-pink-300 hover:from-purple-500/30 hover:to-red-500/30 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(244,114,182,0.25)] transition-all active:scale-95"
+                >
+                  <Flame className="w-4 h-4 text-rose-400 animate-bounce" />
+                  <span>🔥 AKTIFKAN TRANSFORM KEBANGKITAN [T]</span>
                 </button>
               </div>
 

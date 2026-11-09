@@ -79,6 +79,7 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
     interact: boolean;
     attack: boolean;
     ultimate: boolean;
+    transform: boolean;
   }>({
     left: false,
     right: false,
@@ -86,6 +87,7 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
     interact: false,
     attack: false,
     ultimate: false,
+    transform: false,
   });
 
   const handleSoundToggle = () => {
@@ -105,6 +107,10 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
   };
 
   const handleTriggerDialogue = (dialogueId: string) => {
+    if (!DIALOGUES[dialogueId]) {
+      console.warn(`[StoryDialogue] Dialogue "${dialogueId}" not found in DIALOGUES registry. Skipping to prevent game freeze.`);
+      return;
+    }
     setCurrentDialogueId(dialogueId);
     if (dialogueId === "cat_1") {
       setDiscoveries((prev) => ({ ...prev, catPetted: true }));
@@ -322,7 +328,7 @@ export const AwwwardsShell: React.FC<AwwwardsShellProps> = ({
                   </div>
 
                   <p className="text-[10px] sm:text-[11px] font-mono text-white/50 tracking-wider">
-                    Gunakan [A/D] Berjalan • [Shift] Lari • [E] Interaksi • [Q] Ganti Karakter • [Spasi/J/F] Serang (Combat Mode)
+                    Gunakan [A/D] Berjalan • [Shift] Lari • [E] Interaksi • [Q] Ganti • [Spasi/J] Serang • [U] Ultimate • [T] Transform
                   </p>
                 </motion.div>
               )}
