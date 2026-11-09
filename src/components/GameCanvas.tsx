@@ -7692,7 +7692,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillText("🔥 AWAKENING: PENDEKAR SILAT SAKTI DANI! 🔥", bannerX, bannerY - 8);
           ctx.font = "bold 11px 'Courier New', monospace";
           ctx.fillStyle = "#ef4444";
-          ctx.fillText("JURUS SILAT PETIR DUA KERIS • SPEED +35% • ATK +50% • KI HARIMAU", bannerX, bannerY + 16);
+          ctx.fillText("PENDEKAR MELAYU BERHIJAB • SPEED +35% • ATK +50% • KI KERIS EMAS", bannerX, bannerY + 16);
         }
         ctx.restore();
       }
