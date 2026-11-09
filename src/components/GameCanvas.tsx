@@ -1945,6 +1945,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const isJihanActive = activeCharacter === "jihan";
       const active = isJihanActive ? jihanPosRef.current : daniPosRef.current;
       const companion = isJihanActive ? daniPosRef.current : jihanPosRef.current;
+      const isJihanTransformCombat = isJihanActive && transformStateRef.current.isActive;
 
       // 2.5 Combat State Machine
       if (isAttackInput && !attack.isAttacking && !isDialogueOpen) {
@@ -1953,6 +1954,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         attack.timer = 0;
         attack.hasHit = false;
         attack.slashPlayed = false;
+        if (isJihanTransformCombat) {
+          sound.playTeleportWhoosh();
+        }
       }
 
       if (attack.isAttacking) {
@@ -1964,15 +1968,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           sound.playSwordSlash();
         }
 
-        // Lunge forward slightly during crescent slash (frames 2 to 4)
-        if (attack.frame >= 2 && attack.frame <= 4) {
+        // Lunge forward slightly during crescent slash (frames 2 to 4) - only for normal combat
+        if (!isJihanTransformCombat && attack.frame >= 2 && attack.frame <= 4) {
           const lungeSpeed = isJihanActive ? 1.6 : 1.2;
           active.x += active.facingLeft ? -lungeSpeed : lungeSpeed;
           active.x = Math.max(100, Math.min(WORLD_W - 80, active.x));
         }
 
-        // Hit detection on crescent slash (frames 3 & 4)
-        if ((attack.frame === 3 || attack.frame === 4) && !attack.hasHit) {
+        // Hit detection on crescent slash (frames 3 & 4) - standard combat only (transformed Jihan uses dedicated Minato Yellow Flash loop)
+        if (!isJihanTransformCombat && (attack.frame === 3 || attack.frame === 4) && !attack.hasHit) {
           const monster = monsterRef.current;
           // 1. Check Monster hit if active, not emerging, and not defeated
           if (monster.isActive && !monster.isEmerging && !monster.isDefeated) {
@@ -2519,118 +2523,383 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        // Advance combat attack frames (calibrated relaxed pacing: default 7 ticks per frame; transformed Jihan lightning fast 3 ticks)
-        const isJihanTransformCombat = isJihanActive && transformStateRef.current.isActive;
+        // Advance combat attack frames
+        // Standard attack: 7 ticks per frame (~116ms)
+        // Transformed Jihan "Kilat Kuning Minato" Flying Raijin: 9 ticks per frame (~150ms per strike, rhythmic & readable)
         const attackTicksPerFrame = isJihanTransformCombat
-          ? Math.max(1, Math.round(3 / animSpeedRef.current))
+          ? Math.max(5, Math.round(9 / animSpeedRef.current))
           : Math.max(2, Math.round(7 / animSpeedRef.current));
 
         if (attack.timer % attackTicksPerFrame === 0) {
           attack.frame++;
 
-          // Jihan Transformed Unique Lightning Teleport Combo (Left & Right lightning teleports with Yellow, Red, Black VFX)
-          if (isJihanTransformCombat && attack.frame < 8) {
-            attack.hasHit = false; // reset to allow every teleport slash to hit!
+          // =========================================================================
+          // Jihan Transformed: Kilat Kuning Minato (Flying Raijin / Hiraishin Jutsu)
+          // 5-strike rhythmic teleport combo delivering balanced damage per slash!
+          // =========================================================================
+          if (isJihanTransformCombat && attack.frame >= 1 && attack.frame <= 5) {
+            // Find closest active enemy or training dummy within 380px range
+            type CombatTarget = {
+              type: "stationMonster" | "monster" | "key" | "adif" | "hairi" | "dummy";
+              targetX: number;
+              targetY: number;
+              refObj: any;
+            };
 
-            let targetX = active.x + (active.facingLeft ? -65 : 65);
-            let minD = 9999;
-            for (const dummy of trainingDummiesRef.current) {
-              const d = Math.abs(active.x - dummy.x);
-              if (d < minD && d < 280) {
-                minD = d;
-                targetX = dummy.x;
+            let closestTarget: CombatTarget | null = null;
+            let minDistance = 380;
+
+            // 1. Station Monster (Stasiun Bekasi)
+            const sm = stationMonsterRef.current;
+            if (sm.isActive && !sm.isEmerging && !sm.isDefeated && sm.hp > 0) {
+              const d = Math.abs(active.x - sm.x);
+              if (d < minDistance) {
+                minDistance = d;
+                closestTarget = { type: "stationMonster", targetX: sm.x, targetY: sm.y, refObj: sm };
               }
             }
-            if (monsterRef.current.isActive) {
-              const d = Math.abs(active.x - monsterRef.current.x);
-              if (d < minD && d < 300) {
-                minD = d;
-                targetX = monsterRef.current.x;
+
+            // 2. Siluman Kuali Monster
+            const m = monsterRef.current;
+            if (m.isActive && !m.isEmerging && !m.isDefeated && m.hp > 0) {
+              const d = Math.abs(active.x - m.x);
+              if (d < minDistance) {
+                minDistance = d;
+                closestTarget = { type: "monster", targetX: m.x, targetY: m.y, refObj: m };
+              }
+            }
+
+            // 3. Key Boss
+            const kd = battleKeyRef.current;
+            const kb = keyRef.current;
+            if (kd.inCombat && !kd.isDefeated && kb.hp > 0) {
+              const d = Math.abs(active.x - kb.x);
+              if (d < minDistance) {
+                minDistance = d;
+                closestTarget = { type: "key", targetX: kb.x, targetY: kb.y, refObj: kb };
+              }
+            }
+
+            // 4. Duel Bosses (Adif & Hairi)
+            const duel = battleAdifHairiRef.current;
+            if (duel.inCombat && !duel.isDefeated) {
+              const adifBoss = adifRef.current;
+              if (adifBoss.hp > 0 && !adifBoss.onTower) {
+                const d = Math.abs(active.x - adifBoss.x);
+                if (d < minDistance) {
+                  minDistance = d;
+                  closestTarget = { type: "adif", targetX: adifBoss.x, targetY: adifBoss.y, refObj: adifBoss };
+                }
+              }
+              const hairiBoss = hairiRef.current;
+              if (hairiBoss.hp > 0) {
+                const d = Math.abs(active.x - hairiBoss.x);
+                if (d < minDistance) {
+                  minDistance = d;
+                  closestTarget = { type: "hairi", targetX: hairiBoss.x, targetY: hairiBoss.y, refObj: hairiBoss };
+                }
+              }
+            }
+
+            // 5. Training Dummies
+            for (const dummy of trainingDummiesRef.current) {
+              const d = Math.abs(active.x - dummy.x);
+              if (d < minDistance) {
+                minDistance = d;
+                closestTarget = { type: "dummy", targetX: dummy.x, targetY: dummy.y, refObj: dummy };
               }
             }
 
             const prevX = active.x;
             const prevY = active.y;
+            const isFinisher = attack.frame === 5;
 
-            // Teleport alternating left & right of target
-            const sideOffset = attack.frame % 2 === 0 ? -65 : 65;
-            active.x = Math.max(80, Math.min(WORLD_W - 80, targetX + sideOffset));
-            active.facingLeft = sideOffset > 0; // face toward target center
+            // Positioning for each distinct Minato Flying Raijin strike
+            if (closestTarget) {
+              const tX = closestTarget.targetX;
+              if (attack.frame === 1) {
+                // Strike 1: Left flank flash
+                active.x = Math.max(80, Math.min(WORLD_W - 80, tX - 58));
+                active.y = GROUND_Y;
+                active.facingLeft = false;
+              } else if (attack.frame === 2) {
+                // Strike 2: Instant Hiraishin Flash behind target (Right side)
+                active.x = Math.max(80, Math.min(WORLD_W - 80, tX + 58));
+                active.y = GROUND_Y;
+                active.facingLeft = true;
+              } else if (attack.frame === 3) {
+                // Strike 3: Mid-air Aerial Dive Flash
+                active.x = Math.max(80, Math.min(WORLD_W - 80, tX - 42));
+                active.y = GROUND_Y - 32;
+                active.facingLeft = false;
+              } else if (attack.frame === 4) {
+                // Strike 4: Low Ground Cross-Cut Flash
+                active.x = Math.max(80, Math.min(WORLD_W - 80, tX + 48));
+                active.y = GROUND_Y;
+                active.facingLeft = true;
+              } else if (attack.frame === 5) {
+                // Strike 5: Hiraishin Grand Finisher Flash (Pierce through)
+                active.x = Math.max(80, Math.min(WORLD_W - 80, tX - 68));
+                active.y = GROUND_Y;
+                active.facingLeft = false;
+              }
+            } else {
+              // Free-space Flash Step (Forward Hiraishin Dash)
+              const dashDist = 45;
+              active.x = Math.max(80, Math.min(WORLD_W - 80, active.x + (active.facingLeft ? -dashDist : dashDist)));
+              active.y = attack.frame === 3 ? GROUND_Y - 26 : GROUND_Y;
+            }
 
-            // Afterimage in Yellow, Red, and Void Black
-            const afterimageColor = attack.frame % 3 === 0
-              ? "rgba(251, 191, 36, 0.75)" // Yellow
-              : attack.frame % 3 === 1
-              ? "rgba(239, 68, 68, 0.75)"  // Red
-              : "rgba(10, 10, 10, 0.85)";  // Black
-
+            // Minato Yellow Flash Afterimage (Glowing translucent gold)
             jihanAfterimagesRef.current.push({
               x: prevX,
               y: prevY,
               facingLeft: !active.facingLeft,
               frame: attack.frame,
-              color: afterimageColor,
-              life: 14,
-              maxLife: 14,
+              color: "rgba(250, 204, 21, 0.78)", // Vibrant Minato Golden Yellow
+              life: 18,
+              maxLife: 18,
             });
 
-            // Multi-segment jagged lightning bolts from (prevX, prevY - 45) to (active.x, active.y - 45)
+            if (isFinisher) {
+              // Finisher accent crimson shadow
+              jihanAfterimagesRef.current.push({
+                x: prevX,
+                y: prevY,
+                facingLeft: !active.facingLeft,
+                frame: attack.frame,
+                color: "rgba(239, 68, 68, 0.65)",
+                life: 16,
+                maxLife: 16,
+              });
+            }
+
+            // Lightning Bolt trajectory from departure to arrival
             const boltPoints: { x: number; y: number }[] = [];
             const segments = 6;
             for (let s = 0; s <= segments; s++) {
               const t = s / segments;
               const bx = prevX + (active.x - prevX) * t;
-              const by = prevY - 45 + (active.y - prevY) * t + (s > 0 && s < segments ? (Math.random() - 0.5) * 55 : 0);
+              const by = prevY - 45 + (active.y - prevY) * t + (s > 0 && s < segments ? (Math.random() - 0.5) * 40 : 0);
               boltPoints.push({ x: bx, y: by });
             }
 
-            // 1. Electric Yellow Lightning Bolt
+            // 1. Radiant Golden Yellow Lightning (Minato Yellow Flash Core)
             jihanLightningRef.current.push({
               points: boltPoints,
-              color: "#fbbf24",
-              width: 2.8,
+              color: "#facc15",
+              width: isFinisher ? 4.2 : 3.2,
+              life: 14,
+              maxLife: 14,
+            });
+
+            // 2. High-voltage White-Yellow Core
+            jihanLightningRef.current.push({
+              points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 3, y: p.y + (Math.random() - 0.5) * 3 })),
+              color: "#fef08a",
+              width: 1.6,
               life: 12,
               maxLife: 12,
             });
 
-            // 2. Crimson Red Lightning Bolt
+            // 3. Accent Crimson Red Streak
             jihanLightningRef.current.push({
-              points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 8, y: p.y + (Math.random() - 0.5) * 8 })),
+              points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 6, y: p.y + (Math.random() - 0.5) * 6 })),
               color: "#ef4444",
-              width: 2.4,
-              life: 11,
-              maxLife: 11,
-            });
-
-            // 3. Void Black Lightning Bolt
-            jihanLightningRef.current.push({
-              points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 12, y: p.y + (Math.random() - 0.5) * 12 })),
-              color: "#050505",
-              width: 3.6,
+              width: 2.0,
               life: 10,
               maxLife: 10,
             });
 
-            // Spawn Yellow, Red, and Black lightning spark particles
-            const sparkPalette = ["#fbbf24", "#ef4444", "#18181b", "#fde047", "#dc2626", "#000000"];
-            for (let p = 0; p < 8; p++) {
-              const ang = Math.random() * Math.PI * 2;
-              const spd = 2 + Math.random() * 6;
-              combatParticlesRef.current.push({
-                x: active.x,
-                y: active.y - 45,
-                vx: Math.cos(ang) * spd,
-                vy: Math.sin(ang) * spd - 1,
-                color: sparkPalette[p % sparkPalette.length],
-                size: 2.5 + Math.random() * 3,
-                life: 14 + Math.floor(Math.random() * 8),
-                maxLife: 22,
+            if (isFinisher) {
+              // 4. Void Black Accent Lightning for Finisher
+              jihanLightningRef.current.push({
+                points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 10, y: p.y + (Math.random() - 0.5) * 10 })),
+                color: "#050505",
+                width: 3.5,
+                life: 12,
+                maxLife: 12,
               });
             }
 
-            screenShakeRef.current = 8;
+            // Audio & Screen Feedback
             sound.playSwordSlash();
             sound.playHitImpact();
+            if (attack.frame === 1) sound.playTeleportWhoosh();
+            if (isFinisher) sound.playStomp();
+            screenShakeRef.current = isFinisher ? 9 : 4;
+
+            // =========================================================================
+            // APPLY DAMAGE TO TARGET (Balanced damage per teleport strike)
+            // =========================================================================
+            if (closestTarget) {
+              const isCrit = isFinisher ? Math.random() < 0.55 : Math.random() < 0.30;
+              const baseHitDmg = isFinisher
+                ? (isCrit ? Math.floor(65 + Math.random() * 25) : Math.floor(45 + Math.random() * 15))
+                : (isCrit ? Math.floor(34 + Math.random() * 10) : Math.floor(24 + Math.random() * 8));
+              const damage = oneHitKillRef.current ? 9999 : baseHitDmg;
+
+              comboRef.current.count++;
+              comboRef.current.timer = 120;
+              ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + (isFinisher ? 8 : 3));
+
+              // Damage number popup (Bright yellow with lightning glyph)
+              const hitPopupX = closestTarget.targetX + (Math.random() - 0.5) * 18;
+              const hitPopupY = closestTarget.targetY - (isFinisher ? 100 : 85);
+              damageNumbersRef.current.push({
+                x: hitPopupX,
+                y: hitPopupY,
+                text: isCrit ? `⚡ CRIT! -${damage}` : `⚡ -${damage}`,
+                color: isCrit ? "#f59e0b" : "#facc15",
+                life: 34,
+                maxLife: 34,
+                vy: -1.7,
+                isCrit,
+              });
+
+              // Sparks particles at target impact point
+              const sparkColors = ["#facc15", "#fef08a", "#eab308", "#ef4444", "#18181b"];
+              const sparkCount = isFinisher ? 20 : 8;
+              for (let p = 0; p < sparkCount; p++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = (isFinisher ? 3 : 2) + Math.random() * 5;
+                combatParticlesRef.current.push({
+                  x: closestTarget.targetX,
+                  y: closestTarget.targetY - 45,
+                  vx: Math.cos(ang) * spd,
+                  vy: Math.sin(ang) * spd - 1,
+                  color: sparkColors[p % sparkColors.length],
+                  size: 2.5 + Math.random() * 2.5,
+                  life: 14 + Math.floor(Math.random() * 8),
+                  maxLife: 22,
+                });
+              }
+
+              // Target specific reaction and health decrement
+              if (closestTarget.type === "stationMonster") {
+                const targetObj = closestTarget.refObj;
+                targetObj.shake = 12;
+                targetObj.hitFlash = 16;
+                targetObj.hp = Math.max(0, targetObj.hp - damage);
+                if (targetObj.hp <= 0 && !targetObj.isDefeated) {
+                  targetObj.isDefeated = true;
+                  targetObj.dissolveTimer = 90;
+                  sound.playWin();
+                  sound.playCoin();
+                  onTriggerDialogue("bekasi_monster_defeat_1");
+                }
+              } else if (closestTarget.type === "monster") {
+                const targetObj = closestTarget.refObj;
+                targetObj.shake = 14;
+                targetObj.hitFlash = 16;
+                targetObj.state = "hurt";
+                targetObj.animTimer = 0;
+                targetObj.hp = Math.max(0, targetObj.hp - damage);
+                if (targetObj.hp <= 0 && !targetObj.isDefeated) {
+                  targetObj.isDefeated = true;
+                  targetObj.dissolveTimer = 80;
+                  sound.playCoin();
+                  onTriggerDialogue("panci_defeat");
+                }
+              } else if (closestTarget.type === "key") {
+                const targetObj = closestTarget.refObj;
+                targetObj.shake = 12;
+                targetObj.hitFlash = 16;
+                targetObj.hp = Math.max(0, targetObj.hp - damage);
+                if (targetObj.hp <= 0 && !battleKeyRef.current.isDefeated) {
+                  battleKeyRef.current.isDefeated = true;
+                  battleKeyRef.current.inCombat = false;
+                  targetObj.state = "defeated";
+                  targetObj.isFriend = true;
+                  sound.playWin();
+                  sound.playCoin();
+                  damageNumbersRef.current.push({
+                    x: targetObj.x,
+                    y: GROUND_Y - 105,
+                    text: "✨ KEY DIKALAHKAN • PERSAHABATAN TERBENTUK! ✨",
+                    color: "#fbbf24",
+                    life: 75,
+                    maxLife: 75,
+                    vy: -1.0,
+                    isCrit: true,
+                  });
+                  onTriggerDialogue("key_defeat");
+                }
+              } else if (closestTarget.type === "adif") {
+                const targetObj = closestTarget.refObj;
+                targetObj.shake = 12;
+                targetObj.hitFlash = 16;
+                targetObj.hp = Math.max(0, targetObj.hp - damage);
+                if (targetObj.hp <= 0 && hairiRef.current.hp <= 0 && hairiRef.current.phase === 3 && !duel.isDefeated) {
+                  duel.isDefeated = true;
+                  duel.inCombat = false;
+                  sound.stopCyberBGM();
+                  targetObj.state = "defeated";
+                  targetObj.isFriend = true;
+                  hairiRef.current.state = "defeated";
+                  hairiRef.current.phase = 1;
+                  hairiRef.current.y = GROUND_Y;
+                  hairiRef.current.isFriend = true;
+                  sound.playWin();
+                  sound.playCoin();
+                  onTriggerDialogue("adif_hairi_defeat");
+                }
+              } else if (closestTarget.type === "hairi") {
+                const targetObj = closestTarget.refObj;
+                targetObj.shake = 12;
+                targetObj.hitFlash = 16;
+                targetObj.state = "hurt";
+                targetObj.hp = Math.max(0, targetObj.hp - damage);
+                if (targetObj.hp <= 0) {
+                  if (targetObj.phase === 1) {
+                    targetObj.phase = 2;
+                    targetObj.maxHp = 500;
+                    targetObj.hp = 500;
+                    targetObj.state = "combat";
+                    targetObj.animFrame = 0;
+                    targetObj.hitFlash = 35;
+                    pendingEvolutionBattleRef.current = true;
+                    duel.inCombat = false;
+                    onTriggerDialogue("hairi_evolution_1");
+                  } else if (targetObj.phase === 2) {
+                    targetObj.phase = 3;
+                    targetObj.maxHp = 750;
+                    targetObj.hp = 750;
+                    targetObj.y = GROUND_Y - 35;
+                    targetObj.state = "combat";
+                    targetObj.animFrame = 0;
+                    targetObj.hitFlash = 45;
+                    pendingEvolutionBattleRef.current = true;
+                    duel.inCombat = false;
+                    onTriggerDialogue("hairi_evolution_v3_1");
+                  } else {
+                    targetObj.state = "defeated";
+                    if (adifRef.current.hp <= 0 && !duel.isDefeated) {
+                      duel.isDefeated = true;
+                      duel.inCombat = false;
+                      sound.stopCyberBGM();
+                      adifRef.current.state = "defeated";
+                      adifRef.current.isFriend = true;
+                      targetObj.phase = 1;
+                      targetObj.y = GROUND_Y;
+                      targetObj.isFriend = true;
+                      sound.playWin();
+                      sound.playCoin();
+                      onTriggerDialogue("adif_hairi_defeat");
+                    }
+                  }
+                }
+              } else if (closestTarget.type === "dummy") {
+                const targetObj = closestTarget.refObj;
+                targetObj.shake = 14;
+                targetObj.hitTimer = 22;
+              }
+            }
+          }
+
+          // Frame 6 & 7: Sheathe Katana, stabilize y position
+          if (isJihanTransformCombat && attack.frame >= 6) {
+            active.y = GROUND_Y;
           }
 
           if (attack.frame >= 8) {
@@ -2639,6 +2908,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             attack.timer = 0;
             attack.hasHit = false;
             attack.slashPlayed = false;
+            if (isJihanTransformCombat) {
+              active.y = GROUND_Y;
+            }
           }
         }
       }
