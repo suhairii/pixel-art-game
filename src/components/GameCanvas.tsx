@@ -525,6 +525,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanUltimate: HTMLImageElement | null;
     daniTransform: HTMLImageElement | null;
     jihanTransform: HTMLImageElement | null;
+    ultIntro: HTMLImageElement | null;
+    ultOutro: HTMLImageElement | null;
+    daniTransIdle: HTMLImageElement | null;
+    daniTransWalk: HTMLImageElement | null;
+    daniTransRun: HTMLImageElement | null;
+    daniTransCombat: HTMLImageElement | null;
+    jihanTransIdle: HTMLImageElement | null;
+    jihanTransWalk: HTMLImageElement | null;
+    jihanTransRun: HTMLImageElement | null;
+    jihanTransCombat: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -563,6 +573,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     jihanUltimate: null,
     daniTransform: null,
     jihanTransform: null,
+    ultIntro: null,
+    ultOutro: null,
+    daniTransIdle: null,
+    daniTransWalk: null,
+    daniTransRun: null,
+    daniTransCombat: null,
+    jihanTransIdle: null,
+    jihanTransWalk: null,
+    jihanTransRun: null,
+    jihanTransCombat: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara vs Stasiun Menara vs Stasiun Bekasi vs Bekasi TPST)
@@ -1207,8 +1227,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/jihan_ultimate_sheet.png"),
       loadImage("/dani_transform_sheet.png"),
       loadImage("/jihan_transform_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform };
+      loadImage("/ultimate_intro_sheet.png"),
+      loadImage("/ultimate_outro_sheet.png"),
+      loadImage("/dani_trans_idle_sheet.png"),
+      loadImage("/dani_trans_walk_sheet.png"),
+      loadImage("/dani_trans_run_sheet.png"),
+      loadImage("/dani_trans_combat_sheet.png"),
+      loadImage("/jihan_trans_idle_sheet.png"),
+      loadImage("/jihan_trans_walk_sheet.png"),
+      loadImage("/jihan_trans_run_sheet.png"),
+      loadImage("/jihan_trans_combat_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat };
     });
   }, []);
 
@@ -6549,12 +6579,38 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.restore();
         }
 
-        // 0.0 Dedicated Ultimate Skill Animation (Dani Keris Garuda & Jihan Lotus Fan Cyclone)
+        // 0.0 Dedicated Ultimate Skill Animation with Emergence Intro & Vanishing Outro FX
         const isUltimate = isCurrentActive && ultimateStateRef.current.isActive;
         if (isUltimate) {
+          const ult = ultimateStateRef.current;
           const ultImg = charId === "jihan" ? imagesRef.current.jihanUltimate : imagesRef.current.daniUltimate;
+
+          // Emergence Intro Summoning FX (during cinematicTimer > 0)
+          if (ult.cinematicTimer > 0 && imagesRef.current.ultIntro) {
+            const introProgress = Math.max(0, Math.min(1, 1 - ult.cinematicTimer / 75));
+            const introFrame = Math.min(7, Math.floor(introProgress * 8));
+            const destW = 210;
+            const destH = 210;
+            const drawY = pos.y + 18 - destH * (230 / 256);
+            ctx.save();
+            ctx.drawImage(imagesRef.current.ultIntro, introFrame * 256, 0, 256, 256, screenX - destW / 2, drawY, destW, destH);
+            ctx.restore();
+          }
+
+          // Vanishing Outro Teleport FX (during lingerTimer > 0 at final frame)
+          if (ult.frame === 7 && ult.lingerTimer > 0 && imagesRef.current.ultOutro) {
+            const outroProgress = Math.max(0, Math.min(1, 1 - ult.lingerTimer / 40));
+            const outroFrame = Math.min(7, Math.floor(outroProgress * 8));
+            const destW = 210;
+            const destH = 210;
+            const drawY = pos.y + 18 - destH * (230 / 256);
+            ctx.save();
+            ctx.drawImage(imagesRef.current.ultOutro, outroFrame * 256, 0, 256, 256, screenX - destW / 2, drawY, destW, destH);
+            ctx.restore();
+          }
+
           if (ultImg) {
-            const frameIdx = Math.min(7, Math.max(0, ultimateStateRef.current.frame));
+            const frameIdx = Math.min(7, Math.max(0, ult.frame));
             const frameW = 256;
             const frameH = 256;
             const sx = frameIdx * frameW;
@@ -6584,6 +6640,50 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.drawImage(ultImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
             } else {
               ctx.drawImage(ultImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+            }
+            ctx.restore();
+            return;
+          }
+        }
+
+        // 0.05 Dedicated Awakened Transformed Character Animation (Super Garuda Dani & Samurai Berhijab Jihan)
+        if (isCurrentActive && transformStateRef.current.isActive) {
+          const isJihanT = charId === "jihan";
+          let tImg: HTMLImageElement | null = null;
+          let frameIdx = 0;
+
+          if (isAttacking) {
+            tImg = isJihanT ? imagesRef.current.jihanTransCombat : imagesRef.current.daniTransCombat;
+            frameIdx = Math.min(7, Math.max(0, attackStateRef.current.frame));
+          } else if (isMoving) {
+            if (isRun) {
+              tImg = isJihanT ? imagesRef.current.jihanTransRun : imagesRef.current.daniTransRun;
+              frameIdx = Math.floor(pos.animTimer / 4) % 8;
+            } else {
+              tImg = isJihanT ? imagesRef.current.jihanTransWalk : imagesRef.current.daniTransWalk;
+              frameIdx = Math.floor(pos.animTimer / 6) % 8;
+            }
+          } else {
+            tImg = isJihanT ? imagesRef.current.jihanTransIdle : imagesRef.current.daniTransIdle;
+            frameIdx = Math.floor(pos.animTimer / 7) % 8;
+          }
+
+          if (tImg) {
+            const frameW = 256;
+            const frameH = 256;
+            const sx = frameIdx * frameW;
+            const sy = 0;
+            const destW = 168;
+            const destH = 168;
+            const drawY = pos.y + 18 - destH * (236 / 256);
+
+            ctx.save();
+            if (pos.facingLeft) {
+              ctx.translate(screenX, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(tImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            } else {
+              ctx.drawImage(tImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
             }
             ctx.restore();
             return;
