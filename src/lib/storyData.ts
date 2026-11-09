@@ -231,7 +231,7 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "adif",
     speakerName: "Adif • Sang Koboi Menara",
     portrait: "/adif_portrait.png",
-    text: "Hup! Mendarat dengan mulus! Kenalkan, saya Adif sang penjaga jaringan menara sinyal perkampungan. Tapi eh, siapa itu kawan saya si Hairi yang jalan sambil marah-marah mukanya merah padam?",
+    text: "Hup! Mendarat dengan mulus! Kenalkan, saya Adif sang penjaga jaringan menara sinyal perkampungan. Tapi eh, itu siapa yang lagi jalan santai di stasiun? Wah, itu kawan lama kita si Hairi!",
     emotion: "surprised",
     nextId: "hairi_entry_1",
   },
@@ -240,8 +240,8 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "hairi",
     speakerName: "Hairi • Pemuda Kaos Abu-abu",
     portrait: "/hairi_portrait.png",
-    text: "PANTAS SAJA SINYAL NGADAT! Saya lagi sibuk kerja, kalian malah asyik main-main di sekitar tower transmisi! Muka saya sampai merah begini menahan emosi!",
-    emotion: "surprised",
+    text: "Halo kawan-kawan! Adif, Dani, Jihan! Kebetulan sekali saya lagi jalan-jalan santai di sekitar stasiun menara, malah ketemu kalian di sini! Sudah lama sekali ya kita nggak berjumpa!",
+    emotion: "happy",
     nextId: "hairi_entry_2",
   },
   hairi_entry_2: {
@@ -249,8 +249,8 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "hairi",
     speakerName: "Hairi • Pemuda Kaos Abu-abu",
     portrait: "/hairi_portrait.png",
-    text: "Jangan lari kalian! Aktifkan Perisai XL dan Sarung Tinju Merah saya! Mari kita buktikan siapa yang terkuat di Losari!",
-    emotion: "surprised",
+    text: "Mumpung kita kumpul lengkap begini, gimana kalau kita latih tanding persahabatan? Ayo kita tes ilmu silat dan ketangkasan masing-masing! Keluarkan jurus terbaik kalian, siap-siap ya!",
+    emotion: "happy",
     nextId: "adif_hairi_battle_start",
   },
   adif_hairi_battle_start: {
@@ -258,7 +258,7 @@ export const DIALOGUES: Record<string, DialogueLine> = {
     speaker: "adif",
     speakerName: "Adif • Sang Koboi Menara",
     portrait: "/adif_portrait.png",
-    text: "Wah Hairi sudah pasang mode tempur! Dani, Jihan, ayo uji ketangkasan kita berempat! Tali laso koboi saya juga siap berputar!",
+    text: "Wah usul yang mantap dari Hairi! Dani, Jihan, ayo kita sambut latih tanding persahabatan ini untuk mengasah ilmu! Tali laso koboi saya juga siap berputar!",
     emotion: "happy",
   },
   hairi_evolution_1: {
@@ -334,10 +334,10 @@ export const DIALOGUES: Record<string, DialogueLine> = {
   adif_hairi_defeat: {
     id: "adif_hairi_defeat",
     speaker: "hairi",
-    speakerName: "Hairi • Kembali ke Wujud Manusia",
+    speakerName: "Hairi • Pemuda Kaos Abu-abu",
     portrait: "/hairi_portrait.png",
-    text: "Hahh... hahh... Matriks dayaku padam perlahan. Aku melayang turun kembali menjejakkan kaki di tanah. Sirkuit dan kaca visorku sudah padam, dan aku kembali menjadi anak muda berkaos abu-abu biasa. Luar biasa, kalian sanggup menembus pertahanan Level 3 Cyber Mage-ku! Hatiku kini tenang dan damai. Sekarang izinkan aku bergabung mendampingi kalian sebagai sahabat sejati!",
-    emotion: "thoughtful",
+    text: "Hahh... hahh... Luar biasa sekali ketangkasan kalian bertiga! Jurus-jurus silat kalian benar-benar makin matang dan tangkas. Tes ilmu yang sangat memuaskan kawan! Sekarang rasanya makin seru kalau kita berpetualang bareng sebagai satu tim sahabat sejati!",
+    emotion: "happy",
     nextId: "adif_hairi_defeat_2",
   },
   adif_hairi_defeat_2: {
