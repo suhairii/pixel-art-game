@@ -404,6 +404,29 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }[]
   >([]);
 
+  // Jihan Transformed Unique Lightning Teleport Combo VFX (Yellow, Red, Black Lightning)
+  const jihanLightningRef = useRef<
+    {
+      points: { x: number; y: number }[];
+      color: string;
+      width: number;
+      life: number;
+      maxLife: number;
+    }[]
+  >([]);
+
+  const jihanAfterimagesRef = useRef<
+    {
+      x: number;
+      y: number;
+      facingLeft: boolean;
+      frame: number;
+      color: string;
+      life: number;
+      maxLife: number;
+    }[]
+  >([]);
+
   const damageNumbersRef = useRef<
     {
       x: number;
@@ -2496,10 +2519,120 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        // Advance combat attack frames (calibrated relaxed pacing: default 7 ticks per frame)
-        const attackTicksPerFrame = Math.max(2, Math.round(7 / animSpeedRef.current));
+        // Advance combat attack frames (calibrated relaxed pacing: default 7 ticks per frame; transformed Jihan lightning fast 3 ticks)
+        const isJihanTransformCombat = isJihanActive && transformStateRef.current.isActive;
+        const attackTicksPerFrame = isJihanTransformCombat
+          ? Math.max(1, Math.round(3 / animSpeedRef.current))
+          : Math.max(2, Math.round(7 / animSpeedRef.current));
+
         if (attack.timer % attackTicksPerFrame === 0) {
           attack.frame++;
+
+          // Jihan Transformed Unique Lightning Teleport Combo (Left & Right lightning teleports with Yellow, Red, Black VFX)
+          if (isJihanTransformCombat && attack.frame < 8) {
+            attack.hasHit = false; // reset to allow every teleport slash to hit!
+
+            let targetX = active.x + (active.facingLeft ? -65 : 65);
+            let minD = 9999;
+            for (const dummy of trainingDummiesRef.current) {
+              const d = Math.abs(active.x - dummy.x);
+              if (d < minD && d < 280) {
+                minD = d;
+                targetX = dummy.x;
+              }
+            }
+            if (monsterRef.current.isActive) {
+              const d = Math.abs(active.x - monsterRef.current.x);
+              if (d < minD && d < 300) {
+                minD = d;
+                targetX = monsterRef.current.x;
+              }
+            }
+
+            const prevX = active.x;
+            const prevY = active.y;
+
+            // Teleport alternating left & right of target
+            const sideOffset = attack.frame % 2 === 0 ? -65 : 65;
+            active.x = Math.max(80, Math.min(WORLD_W - 80, targetX + sideOffset));
+            active.facingLeft = sideOffset > 0; // face toward target center
+
+            // Afterimage in Yellow, Red, and Void Black
+            const afterimageColor = attack.frame % 3 === 0
+              ? "rgba(251, 191, 36, 0.75)" // Yellow
+              : attack.frame % 3 === 1
+              ? "rgba(239, 68, 68, 0.75)"  // Red
+              : "rgba(10, 10, 10, 0.85)";  // Black
+
+            jihanAfterimagesRef.current.push({
+              x: prevX,
+              y: prevY,
+              facingLeft: !active.facingLeft,
+              frame: attack.frame,
+              color: afterimageColor,
+              life: 14,
+              maxLife: 14,
+            });
+
+            // Multi-segment jagged lightning bolts from (prevX, prevY - 45) to (active.x, active.y - 45)
+            const boltPoints: { x: number; y: number }[] = [];
+            const segments = 6;
+            for (let s = 0; s <= segments; s++) {
+              const t = s / segments;
+              const bx = prevX + (active.x - prevX) * t;
+              const by = prevY - 45 + (active.y - prevY) * t + (s > 0 && s < segments ? (Math.random() - 0.5) * 55 : 0);
+              boltPoints.push({ x: bx, y: by });
+            }
+
+            // 1. Electric Yellow Lightning Bolt
+            jihanLightningRef.current.push({
+              points: boltPoints,
+              color: "#fbbf24",
+              width: 2.8,
+              life: 12,
+              maxLife: 12,
+            });
+
+            // 2. Crimson Red Lightning Bolt
+            jihanLightningRef.current.push({
+              points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 8, y: p.y + (Math.random() - 0.5) * 8 })),
+              color: "#ef4444",
+              width: 2.4,
+              life: 11,
+              maxLife: 11,
+            });
+
+            // 3. Void Black Lightning Bolt
+            jihanLightningRef.current.push({
+              points: boltPoints.map(p => ({ x: p.x + (Math.random() - 0.5) * 12, y: p.y + (Math.random() - 0.5) * 12 })),
+              color: "#050505",
+              width: 3.6,
+              life: 10,
+              maxLife: 10,
+            });
+
+            // Spawn Yellow, Red, and Black lightning spark particles
+            const sparkPalette = ["#fbbf24", "#ef4444", "#18181b", "#fde047", "#dc2626", "#000000"];
+            for (let p = 0; p < 8; p++) {
+              const ang = Math.random() * Math.PI * 2;
+              const spd = 2 + Math.random() * 6;
+              combatParticlesRef.current.push({
+                x: active.x,
+                y: active.y - 45,
+                vx: Math.cos(ang) * spd,
+                vy: Math.sin(ang) * spd - 1,
+                color: sparkPalette[p % sparkPalette.length],
+                size: 2.5 + Math.random() * 3,
+                life: 14 + Math.floor(Math.random() * 8),
+                maxLife: 22,
+              });
+            }
+
+            screenShakeRef.current = 8;
+            sound.playSwordSlash();
+            sound.playHitImpact();
+          }
+
           if (attack.frame >= 8) {
             attack.isAttacking = false;
             attack.frame = 0;
@@ -7015,6 +7148,75 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.restore();
         }
       };
+
+      // Layer 5.95: Transformed Jihan Teleport Afterimages
+      for (let i = jihanAfterimagesRef.current.length - 1; i >= 0; i--) {
+        const img = jihanAfterimagesRef.current[i];
+        img.life--;
+        if (img.life <= 0) {
+          jihanAfterimagesRef.current.splice(i, 1);
+          continue;
+        }
+        const tCombatImg = imagesRef.current.jihanTransCombat;
+        if (tCombatImg) {
+          const frameW = 256;
+          const frameH = 256;
+          const sx = Math.min(7, img.frame) * frameW;
+          const sy = 0;
+          const destW = 145;
+          const destH = 145;
+          const footYOffset = destH * (232 / 256);
+          const drawY = img.y + 18 - footYOffset;
+          const screenX = img.x - camX;
+          const alpha = (img.life / img.maxLife) * 0.7;
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          if (img.facingLeft) {
+            ctx.translate(screenX, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(tCombatImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+          } else {
+            ctx.drawImage(tCombatImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+          }
+          // Afterimage color glow overlay
+          ctx.globalCompositeOperation = "source-atop";
+          ctx.fillStyle = img.color;
+          ctx.fillRect(img.facingLeft ? -destW / 2 : screenX - destW / 2, drawY, destW, destH);
+          ctx.restore();
+        }
+      }
+
+      // Layer 5.96: Lightning Teleport Arcs (Yellow, Red, Black Lightning)
+      for (let i = jihanLightningRef.current.length - 1; i >= 0; i--) {
+        const bolt = jihanLightningRef.current[i];
+        bolt.life--;
+        if (bolt.life <= 0) {
+          jihanLightningRef.current.splice(i, 1);
+          continue;
+        }
+        const alpha = bolt.life / bolt.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = bolt.color;
+        ctx.lineWidth = bolt.width;
+        ctx.shadowColor = bolt.color === "#050505" ? "#ef4444" : bolt.color;
+        ctx.shadowBlur = bolt.color === "#050505" ? 6 : 10;
+        ctx.lineJoin = "miter";
+        ctx.lineCap = "square";
+        ctx.beginPath();
+        for (let ptIdx = 0; ptIdx < bolt.points.length; ptIdx++) {
+          const pt = bolt.points[ptIdx];
+          const ptScreenX = pt.x - camX;
+          if (ptIdx === 0) {
+            ctx.moveTo(ptScreenX, pt.y);
+          } else {
+            ctx.lineTo(ptScreenX, pt.y);
+          }
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Draw companion first, then active on top
       if (isJihanActive) {
