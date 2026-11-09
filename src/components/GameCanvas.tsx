@@ -540,6 +540,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     daniInteract: HTMLImageElement | null;
     daniWalk: HTMLImageElement | null;
     daniRun: HTMLImageElement | null;
+    jihanIdle: HTMLImageElement | null;
+    jihanInteract: HTMLImageElement | null;
+    jihanWalk: HTMLImageElement | null;
+    jihanRun: HTMLImageElement | null;
   }>({
     bg: null,
     props: null,
@@ -592,6 +596,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     daniInteract: null,
     daniWalk: null,
     daniRun: null,
+    jihanIdle: null,
+    jihanInteract: null,
+    jihanWalk: null,
+    jihanRun: null,
   });
 
   // Zone & Map State (Losari vs Perkampungan Menara vs Stasiun Menara vs Stasiun Bekasi vs Bekasi TPST)
@@ -1250,8 +1258,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       loadImage("/dani_interact_sheet.png"),
       loadImage("/dani_walk_sheet.png"),
       loadImage("/dani_run_sheet.png"),
-    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat, daniIdle, daniInteract, daniWalk, daniRun]) => {
-      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat, daniIdle, daniInteract, daniWalk, daniRun };
+      loadImage("/jihan_idle_sheet.png"),
+      loadImage("/jihan_interact_sheet.png"),
+      loadImage("/jihan_walk_sheet.png"),
+      loadImage("/jihan_run_sheet.png"),
+    ]).then(([bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat, daniIdle, daniInteract, daniWalk, daniRun, jihanIdle, jihanInteract, jihanWalk, jihanRun]) => {
+      imagesRef.current = { bg, props, micro, jihanSheet, jihanMaster, jihanCombat, gerobak24, daniSheet, daniMaster, daniCombat, panciProp, cauldronEmergence, monsterMaster, towerListrik, adifMaster, adifCombat, hairiMaster, hairiCombat, hairiSuperMaster, hairiSuperCombat, hairiV3Master, hairiV3Combat, undergroundStation, krlTrain, stasiunBekasi, envBekasi, keyMaster, keyCombat, bekasiBirds, bekasiTruckProps, monsterBekasiEmerge, monsterBekasiWalk, monsterBekasiAttack, daniUltimate, jihanUltimate, daniTransform, jihanTransform, ultIntro, ultOutro, daniTransIdle, daniTransWalk, daniTransRun, daniTransCombat, jihanTransIdle, jihanTransWalk, jihanTransRun, jihanTransCombat, daniIdle, daniInteract, daniWalk, daniRun, jihanIdle, jihanInteract, jihanWalk, jihanRun };
     });
   }, []);
 
@@ -6766,6 +6778,54 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               ctx.drawImage(daniActionImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
             } else {
               ctx.drawImage(daniActionImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
+            }
+            ctx.restore();
+            return;
+          }
+        }
+
+        // 0.08 Dedicated 5-Action Sprite Sheet Animation for Jihan (Idle, Interact, Walk, Run, Combat)
+        if (charId === "jihan" && !isTransforming && !isUltimate && !(isCurrentActive && transformStateRef.current.isActive)) {
+          let jihanActionImg: HTMLImageElement | null = null;
+          let frameIdx = 0;
+          const destW = 145;
+          const destH = 145;
+          const speedMult = animSpeedRef.current;
+
+          if (isAttacking) {
+            jihanActionImg = imagesRef.current.jihanCombat;
+            frameIdx = Math.min(7, Math.max(0, attackStateRef.current.frame));
+          } else if (isSpecialEmote) {
+            jihanActionImg = imagesRef.current.jihanInteract;
+            frameIdx = Math.floor((pos.animTimer * speedMult) / 10) % 8;
+          } else if (isMoving) {
+            if (isRun) {
+              jihanActionImg = imagesRef.current.jihanRun;
+              frameIdx = Math.floor((pos.walkTimer * speedMult) / 6) % 8;
+            } else {
+              jihanActionImg = imagesRef.current.jihanWalk;
+              frameIdx = Math.floor((pos.walkTimer * speedMult) / 8) % 8;
+            }
+          } else {
+            jihanActionImg = imagesRef.current.jihanIdle;
+            frameIdx = Math.floor((pos.animTimer * speedMult) / 12) % 8;
+          }
+
+          if (jihanActionImg) {
+            const frameW = 256;
+            const frameH = 256;
+            const sx = frameIdx * frameW;
+            const sy = 0;
+            const footYOffset = destH * (232 / 256);
+            const drawY = pos.y + 18 - footYOffset;
+
+            ctx.save();
+            if (pos.facingLeft) {
+              ctx.translate(screenX, 0);
+              ctx.scale(-1, 1);
+              ctx.drawImage(jihanActionImg, sx, sy, frameW, frameH, -destW / 2, drawY, destW, destH);
+            } else {
+              ctx.drawImage(jihanActionImg, sx, sy, frameW, frameH, screenX - destW / 2, drawY, destW, destH);
             }
             ctx.restore();
             return;
