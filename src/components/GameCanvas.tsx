@@ -2740,8 +2740,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (trans.cinematicTimer > 0) {
           trans.cinematicTimer--;
         } else {
-          // Advance frame every 9 ticks (8 frames = 72 ticks ~ 1.2s)
-          if (trans.timer % 9 === 0) {
+          // Advance frame based on animation speed
+          const transTicks = Math.max(3, Math.round(9 / animSpeedRef.current));
+          if (trans.timer % transTicks === 0) {
             trans.frame++;
             if (trans.frame >= 8) {
               trans.isTransforming = false;
@@ -6556,9 +6557,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const destW = 150;
-            const destH = 150;
-            const drawY = pos.y + 18 - destH * (228 / 256);
+            const destW = 145;
+            const destH = 145;
+            const drawY = pos.y + 18 - destH * (232 / 256);
 
             ctx.save();
             const transAura = ctx.createRadialGradient(screenX, drawY + destH / 2, 10, screenX, drawY + destH / 2, 110);
