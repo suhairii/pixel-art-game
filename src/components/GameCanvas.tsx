@@ -427,6 +427,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     }[]
   >([]);
 
+  // Dani Transformed Earth Wall & Stone Spikes Slam VFX (Dinding Tanah & Pilar Batu)
+  const earthWallsRef = useRef<
+    {
+      x: number;
+      baseY: number;
+      targetH: number;
+      currentH: number;
+      width: number;
+      delay: number;
+      life: number;
+      maxLife: number;
+      state: "emerging" | "solid" | "crumbling";
+      hasDamaged: boolean;
+      facingLeft: boolean;
+      fissureSeed: number;
+    }[]
+  >([]);
+
   const damageNumbersRef = useRef<
     {
       x: number;
@@ -1946,6 +1964,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const active = isJihanActive ? jihanPosRef.current : daniPosRef.current;
       const companion = isJihanActive ? daniPosRef.current : jihanPosRef.current;
       const isJihanTransformCombat = isJihanActive && transformStateRef.current.isActive;
+      const isDaniTransformCombat = !isJihanActive && transformStateRef.current.isActive;
 
       // 2.5 Combat State Machine
       if (isAttackInput && !attack.isAttacking && !isDialogueOpen) {
@@ -1956,6 +1975,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         attack.slashPlayed = false;
         if (isJihanTransformCombat) {
           sound.playTeleportWhoosh();
+        } else if (isDaniTransformCombat) {
+          sound.playWhoosh();
         }
       }
 
@@ -1969,14 +1990,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         // Lunge forward slightly during crescent slash (frames 2 to 4) - only for normal combat
-        if (!isJihanTransformCombat && attack.frame >= 2 && attack.frame <= 4) {
+        if (!isJihanTransformCombat && !isDaniTransformCombat && attack.frame >= 2 && attack.frame <= 4) {
           const lungeSpeed = isJihanActive ? 1.6 : 1.2;
           active.x += active.facingLeft ? -lungeSpeed : lungeSpeed;
           active.x = Math.max(100, Math.min(WORLD_W - 80, active.x));
         }
 
-        // Hit detection on crescent slash (frames 3 & 4) - standard combat only (transformed Jihan uses dedicated Minato Yellow Flash loop)
-        if (!isJihanTransformCombat && (attack.frame === 3 || attack.frame === 4) && !attack.hasHit) {
+        // Hit detection on crescent slash (frames 3 & 4) - standard combat only (transformed Jihan and transformed Dani use their dedicated loops)
+        if (!isJihanTransformCombat && !isDaniTransformCombat && (attack.frame === 3 || attack.frame === 4) && !attack.hasHit) {
           const monster = monsterRef.current;
           // 1. Check Monster hit if active, not emerging, and not defeated
           if (monster.isActive && !monster.isEmerging && !monster.isDefeated) {
@@ -2526,8 +2547,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Advance combat attack frames
         // Standard attack: 7 ticks per frame (~116ms)
         // Transformed Jihan "Kilat Kuning Minato" Flying Raijin: 9 ticks per frame (~150ms per strike, rhythmic & readable)
+        // Transformed Dani Earth Wall Slam: 8 ticks per frame (~133ms)
         const attackTicksPerFrame = isJihanTransformCombat
           ? Math.max(5, Math.round(9 / animSpeedRef.current))
+          : isDaniTransformCombat
+          ? Math.max(4, Math.round(8 / animSpeedRef.current))
           : Math.max(2, Math.round(7 / animSpeedRef.current));
 
         if (attack.timer % attackTicksPerFrame === 0) {
@@ -2893,6 +2917,97 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 const targetObj = closestTarget.refObj;
                 targetObj.shake = 14;
                 targetObj.hitTimer = 22;
+              }
+            }
+          }
+
+          // =========================================================================
+          // Dani Transformed: Earth Wall Slam (Hentakan Tangan Memunculkan Dinding Tanah)
+          // =========================================================================
+          if (isDaniTransformCombat) {
+            // Frame 3: Dani slams palms into the earth, erupting layered earth walls & stone spikes
+            if (attack.frame === 3) {
+              const dir = active.facingLeft ? -1 : 1;
+              sound.playStomp();
+              sound.playHitImpact();
+              screenShakeRef.current = 14;
+
+              // Spawn 4 Erupting Earth Walls & Stone Spikes in front of Dani
+              earthWallsRef.current.push({
+                x: active.x + dir * 60,
+                baseY: GROUND_Y + 18,
+                targetH: 75,
+                currentH: 0,
+                width: 36,
+                delay: 0,
+                life: 0,
+                maxLife: 95,
+                state: "emerging",
+                hasDamaged: false,
+                facingLeft: active.facingLeft,
+                fissureSeed: Math.random(),
+              });
+
+              earthWallsRef.current.push({
+                x: active.x + dir * 115,
+                baseY: GROUND_Y + 18,
+                targetH: 105,
+                currentH: 0,
+                width: 44,
+                delay: 4,
+                life: 0,
+                maxLife: 100,
+                state: "emerging",
+                hasDamaged: false,
+                facingLeft: active.facingLeft,
+                fissureSeed: Math.random(),
+              });
+
+              earthWallsRef.current.push({
+                x: active.x + dir * 175,
+                baseY: GROUND_Y + 18,
+                targetH: 135,
+                currentH: 0,
+                width: 52,
+                delay: 8,
+                life: 0,
+                maxLife: 105,
+                state: "emerging",
+                hasDamaged: false,
+                facingLeft: active.facingLeft,
+                fissureSeed: Math.random(),
+              });
+
+              earthWallsRef.current.push({
+                x: active.x + dir * 235,
+                baseY: GROUND_Y + 18,
+                targetH: 95,
+                currentH: 0,
+                width: 40,
+                delay: 12,
+                life: 0,
+                maxLife: 95,
+                state: "emerging",
+                hasDamaged: false,
+                facingLeft: active.facingLeft,
+                fissureSeed: Math.random(),
+              });
+
+              // Burst of flying rock shards & earth dust from the hand slam impact
+              const earthColors = ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#451a03", "#78716c", "#a8a29e"];
+              for (let p = 0; p < 28; p++) {
+                const ang = (dir > 0 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.5;
+                const spd = 2 + Math.random() * 8;
+                combatParticlesRef.current.push({
+                  x: active.x + dir * 25,
+                  y: GROUND_Y + 14,
+                  vx: Math.cos(ang) * spd,
+                  vy: -Math.sin(Math.random() * Math.PI) * spd - 2,
+                  color: earthColors[p % earthColors.length],
+                  size: 2.5 + Math.random() * 4,
+                  life: 20 + Math.floor(Math.random() * 14),
+                  maxLife: 34,
+                });
               }
             }
           }
@@ -7505,6 +7620,384 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       } else {
         renderCharacter("jihan", jihanPosRef.current, false);
         renderCharacter("dani", daniPosRef.current, true);
+      }
+
+      // =========================================================================
+      // Layer 6.0: Dani Transformed Earth Walls & Stone Spikes (Dinding Tanah & Pilar Batu)
+      // =========================================================================
+      const applyWallDamage = (wall: (typeof earthWallsRef.current)[0], targetObj: any, targetType: string) => {
+        wall.hasDamaged = true;
+        sound.playHitImpact();
+        sound.playStomp();
+        screenShakeRef.current = Math.max(screenShakeRef.current, 10);
+
+        const isCrit = Math.random() < 0.40;
+        const baseDmg = isCrit ? Math.floor(75 + Math.random() * 35) : Math.floor(45 + Math.random() * 20);
+        const damage = oneHitKillRef.current ? 9999 : baseDmg;
+
+        comboRef.current.count++;
+        comboRef.current.timer = 120;
+        ultimateChargeRef.current = Math.min(100, ultimateChargeRef.current + 8);
+
+        damageNumbersRef.current.push({
+          x: wall.x + (Math.random() - 0.5) * 16,
+          y: wall.baseY - wall.currentH - 15,
+          text: isCrit ? `💥 CRIT! 🪨 -${damage}` : `🪨 -${damage}`,
+          color: isCrit ? "#f59e0b" : "#fbbf24",
+          life: 35,
+          maxLife: 35,
+          vy: -1.8,
+          isCrit,
+        });
+
+        const debrisColors = ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#451a03"];
+        for (let p = 0; p < 18; p++) {
+          combatParticlesRef.current.push({
+            x: wall.x,
+            y: wall.baseY - wall.currentH * 0.6,
+            vx: (Math.random() - 0.5) * 8,
+            vy: -2 - Math.random() * 5,
+            color: debrisColors[p % debrisColors.length],
+            size: 3 + Math.random() * 3.5,
+            life: 18 + Math.floor(Math.random() * 8),
+            maxLife: 26,
+          });
+        }
+
+        if (targetType === "stationMonster") {
+          targetObj.shake = 14;
+          targetObj.hitFlash = 18;
+          targetObj.hp = Math.max(0, targetObj.hp - damage);
+          if (targetObj.hp <= 0 && !targetObj.isDefeated) {
+            targetObj.isDefeated = true;
+            targetObj.dissolveTimer = 90;
+            sound.playWin();
+            sound.playCoin();
+            onTriggerDialogue("bekasi_monster_defeat_1");
+          }
+        } else if (targetType === "monster") {
+          targetObj.shake = 16;
+          targetObj.hitFlash = 18;
+          targetObj.state = "hurt";
+          targetObj.animTimer = 0;
+          targetObj.hp = Math.max(0, targetObj.hp - damage);
+          if (targetObj.hp <= 0 && !targetObj.isDefeated) {
+            targetObj.isDefeated = true;
+            targetObj.dissolveTimer = 80;
+            sound.playCoin();
+            onTriggerDialogue("panci_defeat");
+          }
+        } else if (targetType === "key") {
+          targetObj.shake = 14;
+          targetObj.hitFlash = 18;
+          targetObj.hp = Math.max(0, targetObj.hp - damage);
+          if (targetObj.hp <= 0 && !battleKeyRef.current.isDefeated) {
+            battleKeyRef.current.isDefeated = true;
+            battleKeyRef.current.inCombat = false;
+            targetObj.state = "defeated";
+            targetObj.isFriend = true;
+            sound.playWin();
+            sound.playCoin();
+            damageNumbersRef.current.push({
+              x: targetObj.x,
+              y: GROUND_Y - 105,
+              text: "✨ KEY DIKALAHKAN • PERSAHABATAN TERBENTUK! ✨",
+              color: "#fbbf24",
+              life: 75,
+              maxLife: 75,
+              vy: -1.0,
+              isCrit: true,
+            });
+            onTriggerDialogue("key_defeat");
+          }
+        } else if (targetType === "adif") {
+          targetObj.shake = 14;
+          targetObj.hitFlash = 18;
+          targetObj.hp = Math.max(0, targetObj.hp - damage);
+          if (targetObj.hp <= 0 && hairiRef.current.hp <= 0 && hairiRef.current.phase === 3 && !battleAdifHairiRef.current.isDefeated) {
+            battleAdifHairiRef.current.isDefeated = true;
+            battleAdifHairiRef.current.inCombat = false;
+            sound.stopCyberBGM();
+            targetObj.state = "defeated";
+            targetObj.isFriend = true;
+            hairiRef.current.state = "defeated";
+            hairiRef.current.phase = 1;
+            hairiRef.current.y = GROUND_Y;
+            hairiRef.current.isFriend = true;
+            sound.playWin();
+            sound.playCoin();
+            onTriggerDialogue("adif_hairi_defeat");
+          }
+        } else if (targetType === "hairi") {
+          targetObj.shake = 14;
+          targetObj.hitFlash = 18;
+          targetObj.state = "hurt";
+          targetObj.hp = Math.max(0, targetObj.hp - damage);
+          if (targetObj.hp <= 0) {
+            if (targetObj.phase === 1) {
+              targetObj.phase = 2;
+              targetObj.maxHp = 500;
+              targetObj.hp = 500;
+              targetObj.state = "combat";
+              targetObj.animFrame = 0;
+              targetObj.hitFlash = 35;
+              pendingEvolutionBattleRef.current = true;
+              battleAdifHairiRef.current.inCombat = false;
+              onTriggerDialogue("hairi_evolution_1");
+            } else if (targetObj.phase === 2) {
+              targetObj.phase = 3;
+              targetObj.maxHp = 750;
+              targetObj.hp = 750;
+              targetObj.y = GROUND_Y - 35;
+              targetObj.state = "combat";
+              targetObj.animFrame = 0;
+              targetObj.hitFlash = 45;
+              pendingEvolutionBattleRef.current = true;
+              battleAdifHairiRef.current.inCombat = false;
+              onTriggerDialogue("hairi_evolution_v3_1");
+            } else {
+              targetObj.state = "defeated";
+              if (adifRef.current.hp <= 0 && !battleAdifHairiRef.current.isDefeated) {
+                battleAdifHairiRef.current.isDefeated = true;
+                battleAdifHairiRef.current.inCombat = false;
+                sound.stopCyberBGM();
+                adifRef.current.state = "defeated";
+                adifRef.current.isFriend = true;
+                targetObj.phase = 1;
+                targetObj.y = GROUND_Y;
+                targetObj.isFriend = true;
+                sound.playWin();
+                sound.playCoin();
+                onTriggerDialogue("adif_hairi_defeat");
+              }
+            }
+          }
+        } else if (targetType === "dummy") {
+          targetObj.shake = 18;
+          targetObj.hitTimer = 24;
+        }
+      };
+
+      for (let i = earthWallsRef.current.length - 1; i >= 0; i--) {
+        const wall = earthWallsRef.current[i];
+        if (wall.delay > 0) {
+          wall.delay--;
+          // Ground fissure effect while waiting to erupt
+          const fissureProgress = 1 - wall.delay / 14;
+          const crackW = wall.width * fissureProgress;
+          const crackScreenX = wall.x - camX;
+          ctx.save();
+          ctx.strokeStyle = "#f59e0b";
+          ctx.lineWidth = 3;
+          ctx.shadowColor = "#fbbf24";
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.moveTo(crackScreenX - crackW / 2, wall.baseY);
+          ctx.lineTo(crackScreenX + crackW / 2, wall.baseY);
+          ctx.stroke();
+          ctx.restore();
+
+          if (Math.random() < 0.35) {
+            combatParticlesRef.current.push({
+              x: wall.x + (Math.random() - 0.5) * (crackW * 0.8),
+              y: wall.baseY - 4,
+              vx: (Math.random() - 0.5) * 2,
+              vy: -1.5 - Math.random() * 2,
+              color: "#d97706",
+              size: 2.5,
+              life: 14,
+              maxLife: 14,
+            });
+          }
+          continue;
+        }
+
+        wall.life++;
+
+        // State Machine: emerging -> solid -> crumbling
+        if (wall.state === "emerging") {
+          wall.currentH += 22; // rapid surge upward
+          if (wall.currentH >= wall.targetH) {
+            wall.currentH = wall.targetH;
+            wall.state = "solid";
+            sound.playStomp();
+            screenShakeRef.current = Math.max(screenShakeRef.current, 8);
+            for (let p = 0; p < 12; p++) {
+              combatParticlesRef.current.push({
+                x: wall.x + (Math.random() - 0.5) * (wall.width * 0.8),
+                y: wall.baseY - wall.targetH,
+                vx: (Math.random() - 0.5) * 6,
+                vy: -2 - Math.random() * 4,
+                color: p % 2 === 0 ? "#b45309" : "#f59e0b",
+                size: 3 + Math.random() * 3,
+                life: 18,
+                maxLife: 18,
+              });
+            }
+          }
+        } else if (wall.state === "solid") {
+          if (wall.life >= wall.maxLife) {
+            wall.state = "crumbling";
+          }
+        } else if (wall.state === "crumbling") {
+          wall.currentH -= 5;
+          if (wall.currentH <= 0) {
+            earthWallsRef.current.splice(i, 1);
+            continue;
+          }
+          if (Math.random() < 0.4) {
+            combatParticlesRef.current.push({
+              x: wall.x + (Math.random() - 0.5) * wall.width,
+              y: wall.baseY - wall.currentH,
+              vx: (Math.random() - 0.5) * 3,
+              vy: 1 + Math.random() * 2,
+              color: "#78350f",
+              size: 3,
+              life: 16,
+              maxLife: 16,
+            });
+          }
+        }
+
+        // Damage detection while wall is emerging or solid
+        if (!wall.hasDamaged) {
+          const hitRadius = wall.width / 2 + 35;
+          const sm = stationMonsterRef.current;
+          if (sm.isActive && !sm.isEmerging && !sm.isDefeated && sm.hp > 0 && Math.abs(wall.x - sm.x) < hitRadius) {
+            applyWallDamage(wall, sm, "stationMonster");
+          } else {
+            const m = monsterRef.current;
+            if (m.isActive && !m.isEmerging && !m.isDefeated && m.hp > 0 && Math.abs(wall.x - m.x) < hitRadius) {
+              applyWallDamage(wall, m, "monster");
+            } else {
+              const kd = battleKeyRef.current;
+              const kb = keyRef.current;
+              if (kd.inCombat && !kd.isDefeated && kb.hp > 0 && Math.abs(wall.x - kb.x) < hitRadius) {
+                applyWallDamage(wall, kb, "key");
+              } else {
+                const duel = battleAdifHairiRef.current;
+                if (duel.inCombat && !duel.isDefeated) {
+                  const adifBoss = adifRef.current;
+                  if (adifBoss.hp > 0 && !adifBoss.onTower && Math.abs(wall.x - adifBoss.x) < hitRadius) {
+                    applyWallDamage(wall, adifBoss, "adif");
+                  } else {
+                    const hairiBoss = hairiRef.current;
+                    if (hairiBoss.hp > 0 && Math.abs(wall.x - hairiBoss.x) < hitRadius) {
+                      applyWallDamage(wall, hairiBoss, "hairi");
+                    }
+                  }
+                } else {
+                  for (const dummy of trainingDummiesRef.current) {
+                    if (Math.abs(wall.x - dummy.x) < hitRadius) {
+                      applyWallDamage(wall, dummy, "dummy");
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // DRAW EARTH WALL PILLAR
+        const screenX = wall.x - camX;
+        const h = wall.currentH;
+        if (h <= 0) continue;
+
+        const w = wall.width;
+        const baseY = wall.baseY;
+        const topY = baseY - h;
+        const alpha = wall.state === "crumbling" ? Math.max(0, wall.currentH / wall.targetH) : 1.0;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Base ground shadow
+        ctx.fillStyle = "rgba(20, 10, 5, 0.45)";
+        ctx.beginPath();
+        ctx.ellipse(screenX, baseY, w / 2 + 8, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Jagged Pillar Silhouette Points
+        const left = screenX - w / 2;
+        const right = screenX + w / 2;
+        const midX = screenX;
+
+        // Bedrock Base Silhouette
+        ctx.fillStyle = "#451a03";
+        ctx.beginPath();
+        ctx.moveTo(left - 4, baseY);
+        ctx.lineTo(left, topY + 12);
+        ctx.lineTo(left + 6, topY + 4);
+        ctx.lineTo(midX - 3, topY);
+        ctx.lineTo(midX + 4, topY + 6);
+        ctx.lineTo(right - 5, topY + 2);
+        ctx.lineTo(right, topY + 14);
+        ctx.lineTo(right + 4, baseY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Terracotta / Earth Strata Layer
+        ctx.fillStyle = "#78350f";
+        ctx.beginPath();
+        ctx.moveTo(left - 2, baseY - 6);
+        ctx.lineTo(left + 2, topY + 16);
+        ctx.lineTo(midX, topY + 6);
+        ctx.lineTo(right - 3, topY + 18);
+        ctx.lineTo(right + 2, baseY - 6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Sunlit Chiseled Rock Facet
+        ctx.fillStyle = "#b45309";
+        ctx.beginPath();
+        ctx.moveTo(midX, topY + 6);
+        ctx.lineTo(right - 3, topY + 18);
+        ctx.lineTo(right - 2, baseY - 8);
+        ctx.lineTo(midX + 2, baseY - 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // Highlighted Rock Ridges
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(left + 5, baseY - h * 0.75, 4, h * 0.35);
+        ctx.fillRect(midX + 4, baseY - h * 0.55, 5, h * 0.4);
+
+        // Glowing Earth Qi Fissure Vein
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 2.2;
+        ctx.shadowColor = "#f59e0b";
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(midX, baseY);
+        ctx.lineTo(midX - 4, baseY - h * 0.35);
+        ctx.lineTo(midX + 3, baseY - h * 0.7);
+        ctx.lineTo(midX - 1, topY + 4);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(midX, baseY);
+        ctx.lineTo(midX - 4, baseY - h * 0.35);
+        ctx.lineTo(midX + 3, baseY - h * 0.7);
+        ctx.lineTo(midX - 1, topY + 4);
+        ctx.stroke();
+
+        // Rocky Crest Peaks
+        ctx.fillStyle = "#f59e0b";
+        ctx.fillRect(midX - 4, topY - 1, 3, 3);
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(left + 5, topY + 3, 3, 3);
+        ctx.fillRect(right - 6, topY + 5, 3, 3);
+
+        // Base Debris Pebbles
+        ctx.fillStyle = "#3f1d0b";
+        ctx.fillRect(left - 8, baseY - 5, 6, 5);
+        ctx.fillRect(right + 2, baseY - 6, 7, 6);
+        ctx.fillRect(screenX - 3, baseY - 7, 6, 7);
+
+        ctx.restore();
       }
 
       // Layer 6.5: Combat Hit Spark Particles
