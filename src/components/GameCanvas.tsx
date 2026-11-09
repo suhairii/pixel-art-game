@@ -1487,10 +1487,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       daniPosRef.current.vx = 0;
       jihanPosRef.current.x = 180;
       jihanPosRef.current.vx = 0;
-      if (adifRef.current.isFriend) {
-        adifRef.current.x = 100;
-        adifRef.current.vx = 0;
-      }
+      // Adif stays guarding Perkampungan Menara
+      adifRef.current.x = 1710;
+      adifRef.current.vx = 0;
       if (hairiRef.current.isFriend) {
         hairiRef.current.x = 140;
         hairiRef.current.vx = 0;
@@ -1498,6 +1497,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         hairiRef.current.x = 1200;
         hairiRef.current.vx = 1.0;
         hairiRef.current.state = "walk";
+        hairiRef.current.hp = 300;
+        hairiRef.current.maxHp = 300;
+        hairiRef.current.phase = 1;
       }
       cameraXRef.current = 0;
       krlStateRef.current.x = 2200;
@@ -1583,8 +1585,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     if (!currentDialogueId && pendingBattleRef.current) {
       pendingBattleRef.current = false;
       battleAdifHairiRef.current.inCombat = true;
-      adifRef.current.state = "combat";
+      battleAdifHairiRef.current.isDefeated = false;
       hairiRef.current.state = "combat";
+      hairiRef.current.hp = 300;
+      hairiRef.current.maxHp = 300;
+      hairiRef.current.phase = 1;
+      hairiRef.current.isFriend = false;
+      hairiRef.current.attackCooldown = 30;
       sound.playHitImpact();
       screenShakeRef.current = 8;
     }
@@ -2256,21 +2263,40 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     });
                   }
                 }
-                // Check if Hairi HP depleted
-                if (hairiBoss.hp <= 0) {
+                // Check if Hairi HP depleted in sparring duel
+                if (hairiBoss.hp <= 0 && !duel.isDefeated) {
+                  duel.isDefeated = true;
+                  duel.inCombat = false;
+                  sound.stopCyberBGM();
+                  hairiBoss.hp = 0;
                   hairiBoss.state = "defeated";
                   hairiBoss.phase = 1;
+                  hairiBoss.y = GROUND_Y;
+                  hairiBoss.isFriend = true;
+                  sound.playWin();
+                  sound.playCoin();
+                  screenShakeRef.current = 10;
+                  damageNumbersRef.current.push({
+                    x: hairiBoss.x,
+                    y: GROUND_Y - 110,
+                    text: "✨ TES ILMU SELESAI • PERSAHABATAN TERJALIN! ✨",
+                    color: "#fbbf24",
+                    life: 75,
+                    maxLife: 75,
+                    vy: -1.0,
+                    isCrit: true,
+                  });
+                  onTriggerDialogue("adif_hairi_defeat");
                 }
               }
             }
 
-            // Check if both Adif and Hairi defeated
-            if (adifBoss.hp <= 0 && hairiBoss.hp <= 0 && !duel.isDefeated) {
+            // Check if Hairi defeated
+            if (hairiBoss.hp <= 0 && !duel.isDefeated) {
               duel.isDefeated = true;
               duel.inCombat = false;
               sound.stopCyberBGM();
-              adifBoss.state = "defeated";
-              adifBoss.isFriend = true;
+              hairiBoss.hp = 0;
               hairiBoss.state = "defeated";
               hairiBoss.phase = 1;
               hairiBoss.y = GROUND_Y;
@@ -2279,7 +2305,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               sound.playCoin();
               screenShakeRef.current = 10;
               damageNumbersRef.current.push({
-                x: (adifBoss.x + hairiBoss.x) / 2,
+                x: hairiBoss.x,
                 y: GROUND_Y - 110,
                 text: "✨ TES ILMU SELESAI • PERSAHABATAN TERJALIN! ✨",
                 color: "#fbbf24",
@@ -2827,19 +2853,28 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 targetObj.state = "hurt";
                 targetObj.hp = Math.max(0, targetObj.hp - damage);
                 if (targetObj.hp <= 0) {
+                  targetObj.hp = 0;
                   targetObj.state = "defeated";
                   targetObj.phase = 1;
-                  if (adifRef.current.hp <= 0 && !duel.isDefeated) {
+                  targetObj.y = GROUND_Y;
+                  targetObj.isFriend = true;
+                  if (!duel.isDefeated) {
                     duel.isDefeated = true;
                     duel.inCombat = false;
                     sound.stopCyberBGM();
-                    adifRef.current.state = "defeated";
-                    adifRef.current.isFriend = true;
-                    targetObj.phase = 1;
-                    targetObj.y = GROUND_Y;
-                    targetObj.isFriend = true;
                     sound.playWin();
                     sound.playCoin();
+                    screenShakeRef.current = 10;
+                    damageNumbersRef.current.push({
+                      x: targetObj.x,
+                      y: GROUND_Y - 110,
+                      text: "✨ TES ILMU SELESAI • PERSAHABATAN TERJALIN! ✨",
+                      color: "#fbbf24",
+                      life: 75,
+                      maxLife: 75,
+                      vy: -1.0,
+                      isCrit: true,
+                    });
                     onTriggerDialogue("adif_hairi_defeat");
                   }
                 }
@@ -3080,8 +3115,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             });
             if (hairi.hp <= 0) {
               hairi.hp = 0;
+              hairi.state = "defeated";
+              hairi.phase = 1;
+              hairi.y = GROUND_Y;
               hairi.isFriend = true;
-              hairi.phase = 3;
+              if (!battleAdifHairiRef.current.isDefeated) {
+                battleAdifHairiRef.current.isDefeated = true;
+                battleAdifHairiRef.current.inCombat = false;
+                sound.stopCyberBGM();
+                sound.playWin();
+                sound.playCoin();
+                screenShakeRef.current = 10;
+                onTriggerDialogue("adif_hairi_defeat");
+              }
             }
           }
 
@@ -3416,7 +3462,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        if (duelState.inCombat && !duelState.isDefeated) {
+        if (duelState.inCombat && !duelState.isDefeated && zoneRef.current === "perkampungan") {
           adifState.facingLeft = active.x < adifState.x;
           const dist = Math.abs(active.x - adifState.x);
 
@@ -3873,7 +3919,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             if (hairiState.animTimer % 7 === 0) hairiState.animFrame = (hairiState.animFrame + 1) % 8;
           }
         }
-      } else if (duelState.inCombat && !duelState.isDefeated) {
+      } else if (duelState.inCombat && !duelState.isDefeated && hairiState.hp > 0) {
         // COMBAT DUEL MODE: Pursues, attacks, flinches on hit
         hairiState.facingLeft = active.x < hairiState.x;
         const dist = Math.abs(active.x - hairiState.x);
@@ -4181,9 +4227,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           hairiState.animFrame = (hairiState.animFrame + 1) % 8;
         }
       } else {
-        // Defeated: Collapse & Lie down on the ground
+        // Defeated: Stop attacking immediately, lie down / rest peacefully
         hairiState.state = "defeated";
         hairiState.vx = 0;
+        hairiState.isAttacking = false;
+        hairiState.attackCooldown = 9999;
         if (hairiState.animTimer % 5 === 0 && hairiState.animFrame < 7) {
           hairiState.animFrame++;
         }
@@ -6421,8 +6469,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone or Befriended Companion
-      if (adifMasterImg && (currentZone === "perkampungan" || adifState.isFriend)) {
+      // Layer 5.62: Adif (Sang Koboi Menara) - Perkampungan Zone Only
+      if (adifMasterImg && currentZone === "perkampungan") {
         const destW = 104;
         const destH = 138;
         const frameW = 180;
@@ -6464,7 +6512,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           let aRow = 0;
           let aCol = adifState.animFrame % 8;
 
-          if (duelState.inCombat && !duelState.isDefeated) {
+          if (duelState.inCombat && !duelState.isDefeated && zoneRef.current === "perkampungan") {
             if (adifState.state === "combat") {
               activeSheet = adifCombatImg || adifMasterImg;
               aRow = 0; // Combat 8-frame lasso combo attack
@@ -6580,8 +6628,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu) - Stasiun Menara or Befriended Companion
-      if ((hairiIdleImg || hairiMasterImg) && (currentZone === "stasiun_menara" || hairiState.isFriend)) {
+      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu) - Stasiun Menara or Befriended Companion (Never in Perkampungan)
+      if ((hairiIdleImg || hairiMasterImg) && (currentZone === "stasiun_menara" || (hairiState.isFriend && currentZone !== "perkampungan"))) {
         const frameW = 256;
         const frameH = 256;
         const isCombat = hairiState.state === "combat" || hairiState.state === "hurt";
@@ -7976,8 +8024,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           } else if (nearestPromptObj.id === "adif_tower") {
             if (adifState.isRappelling) {
               promptText = "Adif Sedang Meluncur Turun...";
-            } else if (duelState.isDefeated) {
-              promptText = hairiState.isFriend ? "Mengobrol dengan Sahabat Adif & Hairi" : "Ajak Hairi Menjadi Sahabat & Rekan Bertarung";
+            } else if (adifState.isFriend) {
+              promptText = "Mengobrol dengan Adif Sang Koboi Menara";
             }
           }
           const text = `[E] ${promptText}`;
@@ -8207,20 +8255,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             let targetDialogue = nearestPromptObj.dialogueId;
             if (nearestPromptObj.id === "panci_misterius" && monsterRef.current.isDefeated) {
               targetDialogue = "panci_defeat";
-            } else if (nearestPromptObj.id === "adif_tower" && duelState.isDefeated) {
-              targetDialogue = "adif_hairi_defeat_2";
-              hairiState.isFriend = true;
-              hairiState.state = "idle";
-              damageNumbersRef.current.push({
-                x: hairiState.x,
-                y: hairiState.y - 85,
-                text: "🤝 HAIRI BERGABUNG SEBAGAI REKAN!",
-                color: "#38bdf8",
-                life: 60,
-                maxLife: 60,
-                vy: -1.5,
-                isCrit: true,
-              });
             }
             if (targetDialogue) {
               onTriggerDialogue(targetDialogue);
@@ -8431,7 +8465,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Layer 7.65: Sparring Duel Bar HUD (Hairi) - Stasiun Menara
-      if ((currentZone === "stasiun_menara" || currentZone === "perkampungan") && duelState.inCombat && !duelState.isDefeated) {
+      if (currentZone === "stasiun_menara" && duelState.inCombat && !duelState.isDefeated && hairiState.hp > 0) {
         ctx.save();
         const barW = 340;
         const barH = 14;
