@@ -740,11 +740,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     isFriend: boolean;
     bashShockwave: { active: boolean; x: number; y: number; dir: number; timer: number } | null;
   }>({
-    x: 1620,
+    x: 1200,
     y: GROUND_Y,
-    vx: -1.0,
-    facingLeft: true,
-    state: "walk_angry",
+    vx: 1.0,
+    facingLeft: false,
+    state: "walk",
     animFrame: 0,
     animTimer: 0,
     hp: 300,
@@ -1082,15 +1082,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           y: GROUND_Y - 140,
           width: 120,
           height: 180,
-          prompt: duelDefeated
-            ? (hairiFriend ? "Mengobrol dengan Sahabat Adif & Hairi" : "Ajak Hairi Menjadi Sahabat & Rekan Bertarung")
-            : "Panggil Adif di Atas Tower Menara Sinyal",
+          prompt: adifRef.current.isFriend
+            ? "Mengobrol dengan Adif Sang Koboi Menara"
+            : (adifRef.current.isRappelling ? "Adif Sedang Meluncur Turun..." : "Panggil Adif di Atas Tower Menara Sinyal"),
           interacted: false,
-          dialogueId: duelDefeated ? "adif_hairi_defeat_2" : "adif_tower_1",
+          dialogueId: adifRef.current.isFriend ? "adif_tower_4" : "adif_tower_1",
         },
-      ];
-      if (duelDefeated) {
-        objs.push({
+        {
           id: "portal_stasiun_menara",
           type: "pier_edge",
           x: 2750,
@@ -1100,8 +1098,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           prompt: "🌀 [E] Masuk Portal Stasiun KRL",
           interacted: false,
           dialogueId: "portal_stasiun_menara_1",
-        });
-      }
+        },
+      ];
       return objs;
     } else if (zone === "stasiun_menara") {
       // Dedicated Zone 3: Stasiun Bawah Tanah Kampung Menara (Expansive Platform)
@@ -1118,15 +1116,30 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           dialogueId: "",
         },
         {
+          id: "hairi_npc_stasiun",
+          type: "pier_edge",
+          x: hairiFriend ? 1400 : Math.round(hairiRef.current.x),
+          y: GROUND_Y - 80,
+          width: 120,
+          height: 160,
+          prompt: hairiFriend
+            ? "Mengobrol dengan Sahabat Hairi"
+            : (duelDefeated ? "Ajak Hairi Bergabung" : "Sapa Hairi yang Sedang Jalan-jalan di Peron"),
+          interacted: false,
+          dialogueId: hairiFriend ? "adif_hairi_defeat_2" : "hairi_entry_1",
+        },
+        {
           id: "krl_menara_to_bekasi",
           type: "pier_edge",
           x: 2200,
           y: GROUND_Y - 80,
           width: 260,
           height: 180,
-          prompt: "🚉 [E] Naik KRL Commuter Line Menuju Stasiun Bekasi",
+          prompt: hairiFriend
+            ? "🚉 [E] Naik KRL Commuter Line Menuju Stasiun Bekasi"
+            : "🚉 Ajak Hairi Bergabung Terlebih Dahulu Sebelum Naik KRL",
           interacted: false,
-          dialogueId: "krl_station_1",
+          dialogueId: hairiFriend ? "krl_station_1" : "hairi_entry_1",
         },
       ];
       return objs;
@@ -1402,6 +1415,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       adifRef.current.isRappelling = true;
       adifRef.current.y = GROUND_Y - 225;
     }
+    if (currentDialogueId === "adif_tower_4") {
+      adifRef.current.isFriend = true;
+      adifRef.current.onTower = false;
+      adifRef.current.isRappelling = false;
+      adifRef.current.y = GROUND_Y;
+      adifRef.current.state = "idle";
+    }
     if (currentDialogueId === "adif_hairi_battle_start") {
       pendingBattleRef.current = true;
     }
@@ -1467,10 +1487,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       daniPosRef.current.vx = 0;
       jihanPosRef.current.x = 180;
       jihanPosRef.current.vx = 0;
-      hairiRef.current.x = 140;
-      hairiRef.current.vx = 0;
-      adifRef.current.x = 100;
-      adifRef.current.vx = 0;
+      if (adifRef.current.isFriend) {
+        adifRef.current.x = 100;
+        adifRef.current.vx = 0;
+      }
+      if (hairiRef.current.isFriend) {
+        hairiRef.current.x = 140;
+        hairiRef.current.vx = 0;
+      } else {
+        hairiRef.current.x = 1200;
+        hairiRef.current.vx = 1.0;
+        hairiRef.current.state = "walk";
+      }
       cameraXRef.current = 0;
       krlStateRef.current.x = 2200;
       krlStateRef.current.targetX = 2200;
@@ -1681,23 +1709,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           teleportFlashRef.current = 20;
           sound.playMonsterGrowl();
         } else if (boss === "adif_hairi") {
-          zoneRef.current = "perkampungan";
-          setCurrentZone("perkampungan");
+          zoneRef.current = "stasiun_menara";
+          setCurrentZone("stasiun_menara");
           const active = activeCharacter === "jihan" ? jihanPosRef.current : daniPosRef.current;
-          active.x = 1500;
-          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1500 - CANVAS_W / 2));
-          adifRef.current.onTower = false;
-          adifRef.current.isRappelling = false;
-          adifRef.current.y = GROUND_Y;
-          adifRef.current.x = 1710;
-          adifRef.current.hp = 300;
-          adifRef.current.state = "combat";
-          adifRef.current.isFriend = false;
+          active.x = 1000;
+          cameraXRef.current = Math.max(0, Math.min(WORLD_W - CANVAS_W, 1000 - CANVAS_W / 2));
+          adifRef.current.isFriend = true;
+          adifRef.current.state = "idle";
           hairiRef.current.phase = 1;
           hairiRef.current.hp = 300;
+          hairiRef.current.maxHp = 300;
           hairiRef.current.state = "combat";
           hairiRef.current.isFriend = false;
-          hairiRef.current.x = 1620;
+          hairiRef.current.x = 1200;
           hairiRef.current.y = GROUND_Y;
           battleAdifHairiRef.current.inCombat = true;
           battleAdifHairiRef.current.isDefeated = false;
@@ -4143,17 +4167,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         hairiState.x = Math.max(300, Math.min(2700, hairiState.x));
       } else if (!duelState.isDefeated) {
-        // Pre-combat pacing between Tower 2 (1080) and Tower 3 (1710)
-        hairiState.state = "walk_angry";
+        // Peaceful stroll on the underground station platform (between 850 and 1550)
+        hairiState.state = "walk";
         hairiState.x += hairiState.vx;
-        if (hairiState.x > 1850) {
+        if (hairiState.x > 1550) {
           hairiState.vx = -1.1;
           hairiState.facingLeft = true;
-        } else if (hairiState.x < 1450) {
+        } else if (hairiState.x < 850) {
           hairiState.vx = 1.1;
           hairiState.facingLeft = false;
         }
-        if (hairiState.animTimer % 4 === 0) {
+        if (hairiState.animTimer % 5 === 0) {
           hairiState.animFrame = (hairiState.animFrame + 1) % 8;
         }
       } else {
@@ -6556,8 +6580,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu)
-      if ((hairiIdleImg || hairiMasterImg) && (currentZone === "perkampungan" || hairiState.isFriend)) {
+      // Layer 5.63: Hairi (Pemuda Kaos Abu-abu) - Stasiun Menara or Befriended Companion
+      if ((hairiIdleImg || hairiMasterImg) && (currentZone === "stasiun_menara" || hairiState.isFriend)) {
         const frameW = 256;
         const frameH = 256;
         const isCombat = hairiState.state === "combat" || hairiState.state === "hurt";
@@ -6578,7 +6602,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           activeSheet = hairiCombatImg || hairiIdleImg || hairiMasterImg;
         } else if (hairiState.state === "run") {
           activeSheet = hairiRunImg || hairiWalkImg || hairiIdleImg || hairiMasterImg;
-        } else if (hairiState.state === "walk" || hairiState.state === "walk_angry") {
+        } else if (hairiState.state === "walk") {
           activeSheet = hairiWalkImg || hairiIdleImg || hairiMasterImg;
         } else if (isSpeaking || (hairiState.isFriend && hairiState.state === "idle" && active.vx === 0 && Math.abs(active.x - hairiState.x) < 90 && Math.sin(hairiState.animTimer * 0.05) > 0.3)) {
           activeSheet = hairiInteractImg || hairiIdleImg || hairiMasterImg;
@@ -8124,7 +8148,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               return;
             }
 
+            if (nearestPromptObj.id === "hairi_npc_stasiun") {
+              sound.playInteract();
+              onTriggerDialogue(nearestPromptObj.dialogueId);
+              return;
+            }
+
             if (nearestPromptObj.id === "krl_menara_to_bekasi") {
+              if (!hairiState.isFriend) {
+                sound.playInteract();
+                onTriggerDialogue("hairi_entry_1");
+                return;
+              }
               sound.playTrainChime();
               onTriggerDialogue("krl_station_1");
               return;
@@ -8395,8 +8430,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
       }
 
-      // Layer 7.65: Dual Boss Bar HUD (Adif & Hairi) - Perkampungan Zone Only
-      if (currentZone === "perkampungan" && duelState.inCombat && !duelState.isDefeated) {
+      // Layer 7.65: Sparring Duel Bar HUD (Hairi) - Stasiun Menara
+      if ((currentZone === "stasiun_menara" || currentZone === "perkampungan") && duelState.inCombat && !duelState.isDefeated) {
         ctx.save();
         const barW = 340;
         const barH = 14;
@@ -8405,7 +8440,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Banner Frame
         ctx.fillStyle = "rgba(10, 12, 22, 0.94)";
-        ctx.strokeStyle = "#f59e0b";
+        ctx.strokeStyle = "#38bdf8";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.roundRect(centerX - barW / 2 - 14, barY - 16, barW + 28, barH + 34, 10);
@@ -8416,54 +8451,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.font = "bold 11px 'Courier New', monospace";
         ctx.textAlign = "center";
         ctx.fillStyle = "#fef08a";
-        ctx.fillText("⚔️ DUEL PERSAHABATAN: ADIF & HAIRI ⚔️", centerX, barY - 4);
+        ctx.fillText("⚔️ LATIHAN TANDING PERSAHABATAN: HAIRI ⚔️", centerX, barY - 4);
 
-        // Half width for each
-        const halfW = (barW - 10) / 2;
-
-        // Adif (Cowboy) HP Bar - Left
-        const adifRatio = Math.max(0, adifState.hp / adifState.maxHp);
-        ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
-        ctx.fillRect(centerX - barW / 2, barY, halfW, barH);
-        const adifGrad = ctx.createLinearGradient(centerX - barW / 2, barY, centerX - barW / 2 + halfW, barY);
-        adifGrad.addColorStop(0, "#d97706");
-        adifGrad.addColorStop(1, "#fbbf24");
-        ctx.fillStyle = adifGrad;
-        ctx.fillRect(centerX - barW / 2, barY, halfW * adifRatio, barH);
-        ctx.font = "bold 8px 'Courier New', monospace";
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
-        ctx.fillText(`🤠 ADIF ${adifState.hp}/300`, centerX - barW / 2 + halfW / 2, barY + barH / 2 + 3);
-
-        // Hairi (XL Shield & Boxing Glove) HP Bar - Right
+        // Hairi HP Bar (Full width)
         const hairiRatio = Math.max(0, hairiState.hp / hairiState.maxHp);
-        const rightX = centerX + 5;
         ctx.fillStyle = "rgba(30, 27, 46, 0.95)";
-        ctx.fillRect(rightX, barY, halfW, barH);
-        const hairiGrad = ctx.createLinearGradient(rightX, barY, rightX + halfW, barY);
-        if (hairiState.phase === 3) {
-          hairiGrad.addColorStop(0, "#7c3aed");
-          hairiGrad.addColorStop(0.5, "#a855f7");
-          hairiGrad.addColorStop(1, "#06b6d4");
-        } else if (hairiState.phase === 2) {
-          hairiGrad.addColorStop(0, "#0891b2");
-          hairiGrad.addColorStop(0.5, "#06b6d4");
-          hairiGrad.addColorStop(1, "#38bdf8");
-        } else if (hairiState.isEnraged) {
-          hairiGrad.addColorStop(0, "#ef4444");
-          hairiGrad.addColorStop(0.5, "#f97316");
-          hairiGrad.addColorStop(1, "#fbbf24");
-        } else {
-          hairiGrad.addColorStop(0, "#dc2626");
-          hairiGrad.addColorStop(1, "#3b82f6");
-        }
+        ctx.fillRect(centerX - barW / 2, barY, barW, barH);
+        const hairiGrad = ctx.createLinearGradient(centerX - barW / 2, barY, centerX + barW / 2, barY);
+        hairiGrad.addColorStop(0, "#0284c7");
+        hairiGrad.addColorStop(0.5, "#38bdf8");
+        hairiGrad.addColorStop(1, "#f59e0b");
         ctx.fillStyle = hairiGrad;
-        ctx.fillRect(rightX, barY, halfW * hairiRatio, barH);
-        ctx.font = "bold 8px 'Courier New', monospace";
+        ctx.fillRect(centerX - barW / 2, barY, barW * hairiRatio, barH);
+        ctx.font = "bold 9px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        const hairiLabel = `🛡️ HAIRI (TES ILMU) ${hairiState.hp}/${hairiState.maxHp}`;
-        ctx.fillText(hairiLabel, rightX + halfW / 2, barY + barH / 2 + 3);
+        const hairiLabel = `🛡️ HAIRI (TES ILMU SILAT) ${hairiState.hp}/${hairiState.maxHp}`;
+        ctx.fillText(hairiLabel, centerX, barY + barH / 2 + 3);
 
         ctx.restore();
       }
