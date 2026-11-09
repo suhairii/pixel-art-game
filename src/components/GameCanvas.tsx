@@ -6514,7 +6514,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Special emote check (dialogue talk, inspect, happy) -> use 10-pose sheet
         const isSpecialEmote = pos.pose === "talk" || pos.pose === "inspect" || pos.pose === "happy";
 
-        // 0.00 Dedicated Transform Animation (Dani Super Garuda & Jihan Dewi Teratai)
+        // 0.00 Dedicated Transform Animation (Dani Awakened Silat & Jihan Samurai Berhijab)
         const isTransforming = isCurrentActive && transformStateRef.current.isTransforming;
         if (isTransforming) {
           const transImg = charId === "jihan" ? imagesRef.current.jihanTransform : imagesRef.current.daniTransform;
@@ -6524,23 +6524,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const destW = 190;
-            const destH = 190;
-            const drawY = pos.y + 18 - destH * (236 / 256);
+            const destW = 150;
+            const destH = 150;
+            const drawY = pos.y + 18 - destH * (228 / 256);
 
             ctx.save();
-            const transAura = ctx.createRadialGradient(screenX, drawY + destH / 2, 10, screenX, drawY + destH / 2, 130);
+            const transAura = ctx.createRadialGradient(screenX, drawY + destH / 2, 10, screenX, drawY + destH / 2, 110);
             if (charId === "jihan") {
-              transAura.addColorStop(0, "rgba(236, 72, 153, 0.7)");
-              transAura.addColorStop(0.5, "rgba(56, 189, 248, 0.35)");
+              transAura.addColorStop(0, "rgba(244, 114, 182, 0.65)");
+              transAura.addColorStop(0.5, "rgba(56, 189, 248, 0.25)");
               transAura.addColorStop(1, "rgba(0, 0, 0, 0)");
             } else {
-              transAura.addColorStop(0, "rgba(251, 191, 36, 0.8)");
-              transAura.addColorStop(0.5, "rgba(245, 158, 11, 0.4)");
+              transAura.addColorStop(0, "rgba(245, 158, 11, 0.7)");
+              transAura.addColorStop(0.5, "rgba(239, 68, 68, 0.3)");
               transAura.addColorStop(1, "rgba(0, 0, 0, 0)");
             }
             ctx.fillStyle = transAura;
-            ctx.fillRect(screenX - 130, drawY - 20, 260, destH + 40);
+            ctx.fillRect(screenX - 110, drawY, 220, destH);
 
             if (pos.facingLeft) {
               ctx.translate(screenX, 0);
@@ -6646,7 +6646,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        // 0.05 Dedicated Awakened Transformed Character Animation (Super Garuda Dani & Samurai Berhijab Jihan)
+        // 0.05 Dedicated Awakened Transformed Character Animation (Awakened Silat Dani & Samurai Berhijab Jihan)
         if (isCurrentActive && transformStateRef.current.isActive) {
           const isJihanT = charId === "jihan";
           let tImg: HTMLImageElement | null = null;
@@ -6673,9 +6673,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             const frameH = 256;
             const sx = frameIdx * frameW;
             const sy = 0;
-            const destW = 168;
-            const destH = 168;
-            const drawY = pos.y + 18 - destH * (236 / 256);
+            const destW = 142;
+            const destH = 142;
+            const drawY = pos.y + 18 - destH * (228 / 256);
 
             ctx.save();
             if (pos.facingLeft) {
@@ -7305,9 +7305,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       const transLabel = tState.isActive
         ? (tState.character === "jihan"
-            ? `🌸 DEWI TERATAI (${Math.ceil(tState.durationTimer / 60)}s)`
-            : `🔥 SUPER GARUDA (${Math.ceil(tState.durationTimer / 60)}s)`)
-        : "🔥 TRANSFORM: READY! [T]";
+            ? `🌸 SAMURAI BERHIJAB (${Math.ceil(tState.durationTimer / 60)}s)`
+            : `🔥 PENDEKAR SILAT (${Math.ceil(tState.durationTimer / 60)}s)`)
+        : "🔥 AWAKENING: READY! [T]";
 
       ctx.font = "bold 8px 'Courier New', monospace";
       ctx.fillStyle = tState.isActive
@@ -7681,18 +7681,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.font = "bold 15px 'Courier New', monospace";
           ctx.fillStyle = "#f472b6";
           ctx.textAlign = "center";
-          ctx.fillText("🌸 AWAKENING: DEWI TERATAI SURGAWI SULAWESI! 🌸", bannerX, bannerY - 8);
+          ctx.fillText("🌸 AWAKENING: SAMURAI BERHIJAB JIHAN! 🌸", bannerX, bannerY - 8);
           ctx.font = "bold 11px 'Courier New', monospace";
           ctx.fillStyle = "#38bdf8";
-          ctx.fillText("JIHAN • CELESTIAL FORM (SPEED +35% • ATK +50% • CELESTIAL AURA)", bannerX, bannerY + 16);
+          ctx.fillText("PEDANG KATANA IAIJUTSU • SPEED +35% • ATK +50% • SAKURA BLADE", bannerX, bannerY + 16);
         } else {
           ctx.font = "bold 15px 'Courier New', monospace";
           ctx.fillStyle = "#fbbf24";
           ctx.textAlign = "center";
-          ctx.fillText("🔥 AWAKENING: PENDEKAR SAKTI GARUDA EMAS! 🔥", bannerX, bannerY - 8);
+          ctx.fillText("🔥 AWAKENING: PENDEKAR SILAT SAKTI DANI! 🔥", bannerX, bannerY - 8);
           ctx.font = "bold 11px 'Courier New', monospace";
           ctx.fillStyle = "#ef4444";
-          ctx.fillText("DANI • SUPER GARUDA FORM (SPEED +35% • ATK +50% • DIVINE AURA)", bannerX, bannerY + 16);
+          ctx.fillText("JURUS SILAT PETIR DUA KERIS • SPEED +35% • ATK +50% • KI HARIMAU", bannerX, bannerY + 16);
         }
         ctx.restore();
       }
